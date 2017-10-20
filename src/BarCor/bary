@@ -1,0 +1,31 @@
+#! /bin/bash
+#t0=$(date "+%s.%N")
+# PS4=' $(echo `date "+%s.%N"`-$t0 |bc; t0=`date "+%s.%N"`): '
+[ ! "$1" ] && echo SYNTAX ./bary ra mm ss de mm ss  YYYY-MM-DD hh::mm:ss.ss exptime pmra pmde inst && exit
+# Example
+#  ./bary 14 29 42.9500  -62 40 46.100  2007-03-14 07:28:30 000.00;  cat tmp.par bary.par tmp.dat
+
+inst=${12:-14} # default HARPS
+
+# inst
+#  14 HARPS
+#  15 UVES
+#  16 CAHA3p5m
+
+# echo this > tmp.par
+# printf "%10.4f%10.4f%10.4f%10.4f%10.4f%10.4f 2000   %02i%10.4f%10.4f\n" ${@:1:6} $inst ${@:10:2}>> tmp.par
+#  LANG=C printf "%10.4f" "42.9500"
+# helps for this error message
+#  LANG=de_DE.UTF-8 printf "%10.4f" "42.9500"
+#  bash: printf: 42.9500: Ungültige Zahl.
+
+LANG=C printf "this\n%10.4f%10.4f%10.4f%10.4f%10.4f%10.4f 2000   %02i%10.4f%10.4f\n" ${@:1:6} $inst ${@:10:2} > tmp.par
+
+#14.       29.       42.9500   -62.      40.       46.100     2000   14
+
+dte=`date --utc --date "$7 $8" "+%Y %m %d %H %M %S"`
+cat > tmp.dat <<EOF
+    1 $dte $9
+EOF
+
+rm res; echo -e "tmp.par\ntmp.dat\nres\n" | ./bary.e > /dev/null 2>&1; awk 'END{print $9,$10}' res
