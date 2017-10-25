@@ -5,6 +5,10 @@ The concept of SERVAL is described in https://arxiv.org/abs/.
 
 ## Install instruction
 
+Requirements:
+- python 2.7 + numpy, scipy, pyfits
+- gnuplot
+
 Setup the path:
 ```
 export SERVALHOME=~/mzechmeister
@@ -20,6 +24,7 @@ setenv SERVALHOME ~
 
 Download SERVAL and required tools
 ```
+mkdir $SERVALHOME
 cd $SERVALHOME
 git clone https://github.com/mzechmeister/serval.git
 git clone https://github.com/mzechmeister/python.git
@@ -32,20 +37,25 @@ chmod u+x $SERVAL/src/read_spec.py
 mv $SERVAL/zoom.gnu ~/
 ```
 
-Likely not nessecary
+A few c programs come precompiled. Likely not nessecary
 ```
+cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC psplinelib.c; gcc -o psplinelib.so -shared psplinelib.o
 ```
 
-A first try to check whether there are any conflict. It should list all available options: 
+A first try to check whether there are any conflict. It should list all available options:
 ```
 $SERVAL/src/serval.py --help
 ```
 
-A useful short cut:
+If you have a ~/bin folder, a useful shortcut is:
 ```
 ln -s $SERVAL/src/serval.py ~/bin/serval
+```
+Otherwise, an alias can be create and included in `~/.bashrc`.
+```
+alias serval=$SERVAL/src/serval.py
 ```
 and you can run it as
 ```
