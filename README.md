@@ -22,7 +22,7 @@ setenv SERVALHOME ~
 ...
 ```
 
-Download SERVAL and required tools
+Download SERVAL and required tools:
 ```
 mkdir $SERVALHOME
 cd $SERVALHOME
@@ -30,21 +30,21 @@ git clone https://github.com/mzechmeister/serval.git
 git clone https://github.com/mzechmeister/python.git
 ```
 
-Make main files executable
+Make main files executable:
 ```
 chmod u+x $SERVAL/src/serval.py
 chmod u+x $SERVAL/src/read_spec.py
 mv $SERVAL/zoom.gnu ~/
 ```
 
-A few c programs come precompiled. Likely not nessecary
+A few c programs come precompiled. Therefore, it is likely not necessary to compile but in case ...
 ```
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC psplinelib.c; gcc -o psplinelib.so -shared psplinelib.o
 ```
 
-A first try to check whether there are any conflict. It should list all available options:
+A first try to check whether there are any conflicts. It should list all available options:
 ```
 $SERVAL/src/serval.py --help
 ```
