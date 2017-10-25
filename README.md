@@ -41,7 +41,7 @@ A few c programs come precompiled. Therefore, it is likely not necessary to comp
 ```
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
-gcc -c  -Wall -O2 -ansi -pedantic -fPIC psplinelib.c; gcc -o psplinelib.so -shared psplinelib.o
+gcc -c  -Wall -O2 -ansi -pedantic -fPIC cbspline.c; gcc -o cbspline.so -shared cbspline.o
 ```
 
 A first try to check whether there are any conflicts. It should list all available options:
