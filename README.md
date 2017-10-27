@@ -34,7 +34,6 @@ Make main files executable:
 ```
 chmod u+x $SERVAL/src/serval.py
 chmod u+x $SERVAL/src/read_spec.py
-mv $SERVAL/zoom.gnu ~/
 ```
 
 A few c programs come precompiled. Therefore, it is likely not necessary to compile but in case ...
