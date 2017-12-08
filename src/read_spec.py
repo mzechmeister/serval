@@ -350,7 +350,10 @@ def read_harps(self, s, inst='HARPS', orders=None, pfits=True, verb=False):
 
    """
    drs = self.drs
-   if '.gz' in s: pfits = True
+   if isinstance(s, str) and '.gz' in s:
+      # if s is isinstance(s,tarfile.ExFileObject) then s.position will change !? resulting in:
+      # *** IOError: Empty or corrupt FITS file
+      pfits = True
 
    if orders is None or self.header is None or (pfits==True and not hasattr(self, 'hdulist')):
       HIERARCH = 'HIERARCH '
@@ -414,6 +417,9 @@ def read_harps(self, s, inst='HARPS', orders=None, pfits=True, verb=False):
       self.sn55 = hdr.get(k_sn55, np.nan)
       self.blaze = hdr.get(HIERDRS+'BLAZE FILE', 0)
       self.drift = hdr.get(HIERDRS+'DRIFT RV USED', np.nan)
+      if abs(self.drift) > 1000:
+         # sometimes there are crazy drift values ~2147491.59911, e.g. 2011-06-15T08:11:13.465
+         self.drift = np.nan
 
       if self.inst == 'HARPS':
          # read the comment

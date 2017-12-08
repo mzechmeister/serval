@@ -1047,13 +1047,18 @@ def serval(*argv):
    # In any case we want to read the highest S/N spectrum (e.g. @wfix).
    # Use pyfits to get the full header
    spt = Spectrum(spt, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
-   # Estimate a Q for each order to find identify fast rotators
-   Wi = (spt.f[:,2:]-spt.f[:,:-2]) / (spt.w[:,2:]-spt.w[:,:-2]) / spt.e[:,1:-1]
-   Q = np.sqrt(np.nansum(Wi**2, axis=1)) / np.sqrt(np.nansum(spt.f[:,1:-1]**2,axis=1))
+   # Estimate a Q for each order to identify fast rotators
+   # Estimation similar as in Bouchy01
+   # yet tellurics are not masked
+   Wi = (spt.f[:,2:]-spt.f[:,:-2]) / (spt.w[:,2:]-spt.w[:,:-2]) / spt.e[:,1:-1]   # Eq.(8)
+   dv = c / np.sqrt(np.nansum(Wi**2, axis=1))   # theoretical RV precision Eq.(10)
+   sn = np.sqrt(np.nansum((spt.f[:,1:-1] / spt.e[:,1:-1])**2, axis=1))   # total SNR over order, corresponds to sqrt(Ne) in Bouchy
+   Q = c / dv / sn
+   #Q = np.sqrt(np.nansum(Wi**2, axis=1)) / np.sqrt(np.nansum((spt.f[:,1:-1] / spt.e[:,1:-1])**2, axis=1) # a robust variant
    #gplot(Q)
 
    print 'median SN:', snrmedian
-   print 'template:', spt.timeid, 'SN55', spt.sn55, '#', spi, ' Q=%s' % np.median(Q)
+   print 'template:', spt.timeid, 'SN55', spt.sn55, '#', spi, ' <e_rv>=%0.2fm/s, <Q>=%s' % (np.median(dv)*1000, np.median(Q))
 
    if nspec>40 and coadd=='post':
       print 'n>40 Forcing flying coadd'
@@ -1948,11 +1953,12 @@ def serval(*argv):
          # scipy version
          #np.polynomial.polyval(x,[a,b])
          def func(x, a, b): return a + b*x #  np.polynomial.polyval(x,a)
-         x = np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)    # lambda
-         x = 1/np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)  # 1/lambda
-         x = np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)
+         #
+         # x = np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)    # lambda
+         # x = 1/np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)  # 1/lambda
          x = np.mean(spt.w if def_wlog else np.log(spt.w), axis=1)  # ln(lambda)
-         xc = np.mean(x)
+         xc = np.mean(x[ind])   # only to center the trend fit
+         # fit trend with curve_fit to get parameter error
          pval, cov = curve_fit(func, x[ind]-xc, rv[i][ind], np.array([0.0, 0.0]), e_rv[i][ind])
          perr = np.sqrt(np.diag(cov))
          #pause()
