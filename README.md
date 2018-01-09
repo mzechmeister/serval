@@ -1,7 +1,7 @@
 # SERVAL (SpEctrum Radial Velocity AnaLyser)
 calculate radial velocities from stellar spectra
 
-The concept of SERVAL is described in https://arxiv.org/abs/.
+The concept of SERVAL is described in http://adsabs.harvard.edu/abs/2017A%26A...609A..12Z.
 
 ## Install instruction
 
@@ -41,6 +41,8 @@ A few c programs come precompiled. Therefore, it is likely not necessary to comp
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC cbspline.c; gcc -o cbspline.so -shared cbspline.o
+cd $SERVAL/src/BarCor
+gfortran bary.f -o bary.e
 ```
 
 A first try to check whether there are any conflicts. It should list all available options:

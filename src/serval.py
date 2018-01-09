@@ -31,6 +31,7 @@ from wstat import wstd, wmean, wrms, rms, mlrms, iqr, wsem, nanwsem, nanwstd, na
 from golay import *
 from read_spec import *   # flag, sflag, def_wlog
 from calcspec import *
+from targ import Targ
 import cubicSpline
 import cspline as spl
 import masktools
@@ -772,8 +773,10 @@ def serval(*argv):
       x = analyse_rv(obj, postiter=postiter, fibsuf=fibsuf, oidx=orders)
       exit()
 
+   os.system('mkdir -p '+obj)
+
    ### SELECT TARGET ###
-   targ = type('TARG', (), {'name': targ, 'sa': targsa})
+   targ = type('TARG', (), {'name': targ, 'plx': targplx})
    targ.ra, targ.de = targrade
    targ.pmra, targ.pmde = targpm
    use_drsberv = False
@@ -782,6 +785,9 @@ def serval(*argv):
 
    if targ.name == 'cal':
       print 'no barycentric correction (calibration)'
+   elif targ.ra and targ.de or targ.name:
+      targ = Targ(targ.name, targrade, targpm, plx=targplx, cvs=obj+'/'+obj+'.targ.cvs')
+      '''
    elif targ.ra and targ.de:
       targ.ra = tuple(map(float,targ.ra.split(':')))
       targ.de = tuple(map(float,targ.de.split(':')))
@@ -812,6 +818,7 @@ def serval(*argv):
          use_drsberv = True
          if usersa != '':
             targ.sa = float(usersa)
+      '''
       print ' using sa=', targ.sa, 'm/s/yr', 'ra=', targ.ra, 'de=', targ.de, 'pmra=', targ.pmra, 'pmde=', targ.pmde
    else:
       print 'using barycentric correction from DRS'
@@ -877,7 +884,6 @@ def serval(*argv):
    if lookp: lookp = np.arange(iomax)[lookp]
    if lookssr: lookssr = np.arange(iomax)[lookssr]
 
-   os.system('mkdir -p '+obj)
    if outfmt or outchi: os.system('mkdir -p '+obj+'/res')
    sys.stdout.logname(obj+'/log.'+obj)
    with open(outdir+'lastcmd.txt', 'w') as f:
@@ -1410,13 +1416,13 @@ def serval(*argv):
                sig = std(res[~tellind[ind]])
                # iqr(res, sig=True) untested, will be slower (in normal mode) than std but fewer iterations
                #gplot(wmod[ind], res,', %s lt 3, %s lt 3, %s lt 2, %s lt 2' %(-sig,sig,-ckappa[0]*sig, ckappa[1]*sig))
-               #gplot(wmod[ind], res,', %s lt 3, %s lt 3, %s lt 2, %s lt 2' %(-sig,sig,-ckappa[0]*sig, ckappa[1]*sig))
 
                if np.isnan(sig):
+                  msg ='nan err_values in coadding. This may happen when data have gaps e.g. due masking or bad pixel flaging. Try the -pspline option'
                   if safemode:
-                     print 'nan err_values in coadding. This may happen when data have gaps e.g. due masking or bad pixel flaging. Try the -pspline option'
+                     print msg
                      exit()
-                  pause('nan err_values in coadding. This may happen when data have gaps e.g. due masking or bad pixel flaging. Try the -pspline option')
+                  pause(msg)
                   gplot(wmod[ind], mod[ind], we[ind])
                if 1:
                   # flexible sig
@@ -1432,8 +1438,9 @@ def serval(*argv):
                   vara = spl.ucbspl(chik/normk, wmod[ind].min(), wmod[ind].max())
                   sig = np.sqrt(vara(wmod[ind]))
 
-                  #gplot(wmod[ind], res, -sig*ckappa[0], sig*ckappa[1], ', "" us 1:3 w l lt 7, "" us 1:4 w l lt 7')
-                  #gplot(wmod[ind], res, -sig, sig, ', "" us 1:3 w l lt 7, "" us 1:4 w l lt 7')
+                  if 0:
+                     gplot(wmod[ind], res, -sig*ckappa[0], sig*ckappa[1], ', "" us 1:3 w l lt 7, "" us 1:4 w l lt 7')
+                     gplot(wmod[ind], res, -sig, sig, ', "" us 1:3 w l lt 7, "" us 1:4 w l lt 7')
                #pause('look ',o)
 
                okmap = np.array([True] * len(res))
@@ -2082,7 +2089,7 @@ def serval(*argv):
       print >>mypfile[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,e_rv[i]))
       #stop()
       print >>rvcunit[rvflag], sp.bjd, RVc[i], e_RVc[i], sp.drift, sp.e_drift, RV[i], e_RV[i], sp.berv, sp.sa
-      print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tcrx[i])), " ".join(map(str,xo[i]))
+      print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tcrx[i]) + map(str,xo[i]))
       print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], crx[i], e_crx[i], dLW[i], e_dLW[i]
       print >>dfwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dLWo[i]))
       print >>snrunit[rvflag], sp.bjd, np.nansum(snr[i]**2)**0.5, " ".join(map(str,snr[i]))
@@ -2127,8 +2134,8 @@ if __name__ == "__main__":
    argopt('-targ', help='Target name looked up in star.cat.')
    argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
    argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
-   #argopt('-targplx', help='target parallax', type=float)
-   argopt('-targsa', help='[m/s/yr] Secular acceleration.', type=float, default=np.nan)
+   argopt('-targplx', help='target parallax', type=float, default='nan')
+   #argopt('-targsa', help='[m/s/yr] Secular acceleration.', type=float, default=np.nan)
    argopt('-rvguess', help='[km/s] Target rv guess (default=vref).', type=float)
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
