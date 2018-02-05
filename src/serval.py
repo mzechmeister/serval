@@ -185,31 +185,9 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    if pdf:
       gplot(pl='set term pdfcairo; set out "%s.pdf"'% obj)
    if 1: # chromatic slope
-      col = zeros((len(bjd),4))
-      for i, ibjd in enumerate(bjd):
-         ind, = where(e_rv[i] > 0.)
-         if 0:
-            par,d_ordmean = mpfitexpr.mpfitexpr('p[0]+x*p[1]', orders[ind], rv[i][ind], e_rv[i][ind], [0,0], quiet=1, full_output=1)
-            pval = par.params
-            perr = par.perror*np.sqrt(par.fnorm / par.dof)
-         elif 0:
-            # numpy 1.6 polyfit gives no errors estimates
-            params, stat = np.polynomial.polyfit(orders[ind], rv[i][ind], w=1/e_rv[i][ind], deg=1, full=1)
-         else:
-            # scipy version
-            #np.polynomial.polyval(x,[a,b])
-            def func(x, a, b): return a + b*x #  np.polynomial.polyval(x,a)
-            pval, cov = curve_fit(func, orders[ind], rv[i][ind], np.array([0.0, 0.0]), e_rv[i][ind])
-            perr = np.sqrt(np.diag(cov))
-         col[i,:] = np.append(pval, perr)
-
-         #coli,stat = polynomial.polyfit(arange(len(rv[i]))[ind],rv[i][ind], 1, w=1./e_rv[i][ind], full=True)
-         if 0:   # show trend in each order
-            gplot(orders[ind], rv[i], e_rv[i], ' w e, %f+x*%f' % tuple(col[i,0:2]))
-            pause(i)
-      gplot(bjd, col[:,1], col[:,3], 'us ($1-2450000):2:3 w e pt 7 t "col"', tmp=obj+'/'+obj+'.col.dat')
+      gplot('"'+obj+'/'+obj+'.srv'+fibsuf+'.dat" us ($1-2450000):4:5 w e pt 7')
       if not safemode: pause('chromatic slope')
-      gplot(RVc, col[:,1], e_RVc, col[:,3], ' w xyerr pt 7 t "col"')
+      gplot('"" us 2:4:3:5:($1-2450000)  w xyerr pt 7 palette')
       if not safemode: pause('correlation RV - chromatic slope')
 
    snro = snr[:,2+orders]
@@ -302,9 +280,9 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
    """
    wcen, dv1, dv2 = {
          'Halpha': (6562.808, -15.5, 15.5),   # Kuerster et al. (2003, A&A, 403, 1077)
+         'Halpha': (6562.808, -80, 80),   # Kuerster et al. (2003, A&A, 403, 1077)
          'Halpha': (6562.808, -40., 40.),
          'Haleft': (6562.808, -300., -100.),
-         'Halpha': (6562.808, -80, 80),   # Kuerster et al. (2003, A&A, 403, 1077)
          'Harigh': (6562.808, 100, 300),
          'Haleft': (6562.808, -500., -300.),
          'Harigh': (6562.808, 300, 500),
@@ -327,7 +305,6 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
          'NaDref3': (5905, -40, 40)           # My definition
    }[typ]
    wcen = lam2wave(airtovac(wcen))
-
    o = None
    if inst == 'HARPS':
       if typ in ['Halpha', 'Haleft', 'Harigh', 'CaI']: o = 67
@@ -776,7 +753,7 @@ def serval(*argv):
    os.system('mkdir -p '+obj)
 
    ### SELECT TARGET ###
-   targ = type('TARG', (), {'name': targ, 'plx': targplx})
+   targ = type('TARG', (), {'name': targ, 'plx': targplx, 'sa': float('nan')})
    targ.ra, targ.de = targrade
    targ.pmra, targ.pmde = targpm
    use_drsberv = False
@@ -1354,7 +1331,7 @@ def serval(*argv):
                mod[i] = sp.f / poly   # be careful if  poly<0
                emod[i] = sp.e / poly
                if 0:#-1 in look or o in look: #o==-29:
-                  gplot(sp.w,sp.f,poly.clip(0)*50000, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
+                  gplot(sp.w,sp.f,poly, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
                   pause()
               #(fmod<0) * flag.neg
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
@@ -2027,7 +2004,7 @@ def serval(*argv):
          if 'res' in outfmt: data['res'] = sp.f - fmod
          if 'ratio' in outfmt: data['ratio'] = sp.f / fmod
 
-         sph = Spectrum(sp.filename, inst=inst, pfits=2 if 'HARP' in inst else True, drs=drs, fib=fib, targ=targ).header
+         sph = Spectrum(sp.filename, inst=inst, pfits=True, drs=drs, fib=fib, targ=targ).header
          sph['HIERARCH SERVAL RV'] = (RV[i], '[m/s] Radial velocity')
          sph['HIERARCH SERVAL E_RV'] = (e_RV[i], '[m/s] RV error estimate')
          sph['HIERARCH SERVAL RVC'] = (RVc[i], '[m/s] RV drift corrected')
@@ -2054,7 +2031,7 @@ def serval(*argv):
          hdr['CDELT2'] = 1
          write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
          #ds9(chi2map)
-         #pause()
+         pause()
 
       if i>0 and not safemode:
          # plot time series
@@ -2139,7 +2116,7 @@ if __name__ == "__main__":
    argopt('-rvguess', help='[km/s] Target rv guess (default=vref).', type=float)
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
-   argopt('-brvref', help='Barycentric RV code reference', choices=brvref, type=str, default='MH')
+   argopt('-brvref', help='Barycentric RV code reference', choices=brvref, type=str, default='WE')
    argopt('-distmax', help='[arcsec] Max distance telescope position from target coordinates.', type=float)
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)
@@ -2150,7 +2127,7 @@ if __name__ == "__main__":
    argopt('-coadd', help='coadd method'+default, default='post3',
                    choices=['fly', 'post', 'post2', 'post3'])
    argopt('-coset', help='index for order in coadding (default: oset)', type=arg2slice)
-   #argopt('-coset', help='index for order in coadding'+default, type=arg2slice, default=':')
+   #argopt('-coset', help='index for order in coadding'+default, type=arg2slqice, default=':')
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
    argopt('-deg',  help='degree for background polynomial', type=int, default=3)

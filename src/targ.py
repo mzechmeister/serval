@@ -18,6 +18,8 @@ import sys
 def simbad_query(targ):
    '''
    Make a request to simbad to get RADE, PM and PLX.
+   
+   targ : str, identifier name for simbad request.
 
    Example:
    --------
@@ -58,8 +60,8 @@ class Targ:
          self.ra = tuple(map(float,self.ra.split(':')))
          self.de = tuple(map(float,self.de.split(':')))
       else:
-         # look for name, try to read from file else make a request to simbad
-         if not self.fromfile(cvs):
+         # look for name, try to read from file. If not found or different object then make a request to simbad
+         if not self.fromfile(cvs) or not self.line.startswith(self.name+";"):
             self.query()
             self.tofile(cvs)
          self.assignAttr(self.line)
@@ -106,46 +108,4 @@ if __name__ == "__main__":
    #targ = Targ('gj699', fromfilename='bla')
    print targ.sa, targ.pmra, targ.pmde, targ.plx
 
-'''
-   use_drsberv = False
-   if fib == 'B' or (ccf is not None and 'th_mask' in ccf):
-      pass
-
-   if targ.name == 'cal':
-      print 'no barycentric correction (calibration)'
-   elif targ.ra and targ.de:
-      targ.ra = tuple(map(float,targ.ra.split(':')))
-      targ.de = tuple(map(float,targ.de.split(':')))
-   elif targ.name:
-      if starcat:
-         if os.path.isfile(starcat):    # user file
-            starcat = starcat
-         elif os.path.isdir(starcat):   # user dir
-            starcat = os.path.join(starcat, 'star.cat')
-      else:
-         if os.path.isfile('star.cat'): # local file
-            starcat = 'star.cat'
-         elif os.path.isfile(servaldir+'star.cat'): # src file
-            starcat = servaldir + 'star.cat'
-      print 'Looking for', targ.name, 'in ', starcat + '.'
-      for line in open(starcat):
-         if line.startswith(targ.name+' '):
-            line = line.split()
-            targ.ra = tuple(map(float,line[3:6]))  # rammss = (14.,29.,42.94)
-            targ.de = tuple(map(float,line[6:9]))  # demmss = (-62.,40.,46.16)
-            targ.pmra = float(line[9])             # pma = -3775.75
-            targ.pmde = float(line[10])            # pmd = 765.54
-            targ.sa = float(line[2])
-
-      if targ.ra is None:
-         print targ.name, ' not found in ', starcat + '.'
-         usersa = raw_input('Continue with DRSBERVs? Then, please enter a secular acceleration [0.0 m/s/yr]:')
-         use_drsberv = True
-         if usersa != '':
-            targ.sa = float(usersa)
-      print ' using sa=', targ.sa, 'm/s/yr', 'ra=', targ.ra, 'de=', targ.de, 'pmra=', targ.pmra, 'pmde=', targ.pmde
-   else:
-      print 'using barycentric correction from DRS'
-   # if targ.plx is not None: targ.sa = ...
-'''
 

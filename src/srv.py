@@ -175,7 +175,7 @@ class srv:
          gplot(pl='unset multiplot')
          nn = pause('%i/%i %s'% (n+1,self.N, bjd[n]))
          try:
-            n = int(nn)
+            n += int(nn)
          except:
             if nn in ('-', "D", "B"):
                n -= 1
@@ -391,6 +391,10 @@ class srv:
 
    def xcorr(self, block=True):
       '''Correlation plots.'''
+      import matplotlib
+      if (matplotlib.get_backend() != "TkAgg"):
+         matplotlib.use("TkAgg")
+
       import matplotlib.pylab as plt
 
       # Drift and sa yet no applied to rvo
@@ -443,7 +447,7 @@ class srv:
 
       plt.show()
 
-      #pause(obj)
+      pause(obj)
 
 if __name__ == "__main__":
    '''

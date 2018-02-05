@@ -64,8 +64,8 @@ def bjdbrv(jd_utc, ra, dec, obsname=None, lat=None, lon=None, elevation=None,
    Example:
    --------
    >>> from brv_we14idl import bjdbrv
-   >>> print bjdbrv('2457395.24563d', '4.585590721',  '44.02195596', 'ca')
-   (2457395.2441977435, -23682.0760968412)
+   >>> print bjdbrv(2457395.24563, 4.585590721, 44.02195596, 'ca')
+   (2457395.247062143, -23684.543818733157)
 
    """
    params = {
@@ -73,7 +73,7 @@ def bjdbrv(jd_utc, ra, dec, obsname=None, lat=None, lon=None, elevation=None,
         'PMDEC': pmdec,
         'PARALLAX': parallax,
         'RV': rv,
-        'ZMEAS': '0.0',  # Applied manually below
+        'ZMEAS': 0.0,  # Applied manually below
         'EPOCH': epoch,
         'TBASE': tbase,
         'RAUNITS': "'"+raunits+"'",
@@ -128,11 +128,8 @@ def bvc(jd_utc, ra, dec, obsname=None, lat=None, lon=None, elevation=None,
    Example:
    --------
    >>> from brv_we14idl import bvc
-   >>> print bvc('2457395.24563d', '4.585590721',  '44.02195596', 'ca')
-   ('2457395.2', '-23682.076')
-   >>> from brv_we14htmll import bvc
-   >>> print bvc('2457395.24563d', '4.585590721',  '44.02195596', 'ca')
-   ('2457395.2', '-23682.076')
+   >>> print bvc(2457395.24563, 4.585590721,  44.02195596, 'ca')
+   -23684.5438187
 
 ; INPUTS:
 ;  JDUTC    - The full julian date in UTC, (scalar or vector), e.g.,
@@ -262,7 +259,7 @@ def _query_idl(cmd):
    """
    Query idl with cmd and return results.
    """
-   barycorrsav= os.path.join(os.path.dirname(__file__), "barycorr.sav")
+   barycorrsav = os.path.join(os.path.dirname(__file__), "barycorr.sav")
    if not os.environ.get('ASTRO_DATA'):
       raise EnvironmentError('environment variable ASTRO_DATA is not set')
 
@@ -277,3 +274,4 @@ def _query_idl(cmd):
    stdout, stderr = idl.communicate()
    return stdout
 
+#print bjdbrv(2457395.24563, 4.585590721,  44.02195596, 'ca')

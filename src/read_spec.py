@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2017-01-09'
+__version__ = '2018-01-10'
 
 import datetime
 import glob
@@ -72,7 +72,7 @@ sflag = nameddict(
 # bpmap flags
 flag_cosm = flag.sat  # @ FEROS for now use same flag as sat
 def_wlog = True
-brvref = ['DRS', 'MH', 'WEhtml', 'WEidl']
+brvref = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
 
 class Spectrum:
    """
@@ -118,8 +118,6 @@ class Spectrum:
       self.airmass = np.nan
       if '.gz' in filename: pfits=True
 
-      #ccftup = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask header')
-      #self.ccf = ccftup(0,0,0,0,0,0,0)
       self.ccf = type('ccf',(), dict(rvc=np.nan, err_rvc=np.nan, bis=np.nan, fwhm=np.nan, contrast=np.nan, mask=0, header=0))
 
       read_spec(self, filename, inst=inst, pfits=pfits, verb=verb)   # scan fits header
@@ -127,33 +125,35 @@ class Spectrum:
          pause('WARNING:', filename, 'from', self.inst, ', but mode is', inst)
       self.obj = self.header['OBJECT']
 
+      ### Barycentric correction ###
+
       if targ and targ.name == 'cal':
          self.bjd, self.berv = self.drsbjd, 0.
       elif targ and targ.ra:  # unique coordinates
          if self.brvref == 'MH':
+            # fastest version
             #sys.path.append(os.environ['HOME']+'/programs/BarCor/')
             sys.path.insert(1, sys.path[0]+os.sep+'BarCor')            # bary now in src/BarCor
             import bary
             self.bjd, self.berv = bary.bary(self.dateobs, targ.ra, targ.de, inst, epoch=2000, exptime=self.exptime*2* self.tmmean, pma=targ.pmra, pmd=targ.pmde)
-         if self.brvref in ('WEhtml', 'WEidl'):
+         if self.brvref in ('WEhtml', 'WEidl', 'WE'):
             # Wright & Eastman (2014) via online or idl request
             # cd /home/raid0/zechmeister/idl/exofast/bary
             # export ASTRO_DATA=/home/raid0/zechmeister/
             #idl -e 'print, bjd2utc(2457395.24563d, 4.58559072, 44.02195596), fo="(D)"'
-            brv_we14 = brv_we14html if self.brvref == 'WEhtml' else brv_we14idl
             jd_utc = [self.mjd + 2400000.5 + self.exptime*self.tmmean/24./3600]
-            #self.bjd = brv_we14html.utc2bjd(jd_utc=jd_utc, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de)
-            ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15
-            de = (targ.de[0] + targ.de[1]/60. + targ.de[2]/3600.)
-            obsname = {'CARM_VIS':'ca', 'CARM_NIR':'ca', 'HARPS':'eso', 'HARPN':'lapalma'}[inst]
-            #lon, lat, alt = {'CARM_VIS': ([2,32,46.5], [37,13,25], 2168)}[inst]
-            #lon = lon[0] + lon[1]/60. + lon[2]/3600.
-            #lat = lat[0] + lat[1]/60. + lat[2]/3600.
-            if self.brvref == 'WEhtml':
+            ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15  # [deg]
+            de = (targ.de[0] + np.copysign(targ.de[1]/60. + targ.de[2]/3600., targ.de[0]))       # [deg]
+            obsname = {'CARM_VIS':'ca', 'CARM_NIR':'ca', 'FEROS':'eso', 'HARPS':'eso', 'HARPN':'lapalma'}[inst]
+            if self.brvref == 'WE':
+               # pure python version
+               import brv_we14py
+               self.bjd, self.berv = brv_we14py.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
+            elif self.brvref == 'WEhtml':
                self.bjd = brv_we14html.utc2bjd(jd_utc=jd_utc, ra=ra, dec=de)
-               self.berv = brv_we14html.bvc(jd_utc=jd_utc, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de, obsname='ca', pmra= targ.pmra, pmdec= targ.pmde,parallax=0., rv=0., zmeas=[0], raunits='hours',deunits='hours')[0]
+               self.berv = brv_we14html.bvc(jd_utc=jd_utc, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de, obsname='ca', pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], raunits='hours', deunits='degrees')[0]
             else:
-               self.bjd, self.berv = brv_we14idl.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra= targ.pmra, pmdec= targ.pmde,parallax=0., rv=0., zmeas=[0], raunits='hours',deunits='hours')
+               self.bjd, self.berv = brv_we14idl.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
 
             self.berv /= 1000.   # m/s to km/s
       else:
@@ -174,8 +174,8 @@ class Spectrum:
 
       if self.utc:
          date = self.utc.year, self.utc.month, self.utc.day
-         sunris = sunrise.sun(*date, lon=self.obs.lon,lat=self.obs.lat)
-         sunset = sunrise.sun(*date, lon=self.obs.lon,lat=self.obs.lat, rise=False)
+         sunris = sunrise.sun(*date, lon=self.obs.lon, lat=self.obs.lat)
+         sunset = sunrise.sun(*date, lon=self.obs.lon, lat=self.obs.lat, rise=False)
          ut = self.utc.hour + self.utc.minute/60. +  self.utc.second/3600.
          utend = ut + self.exptime/3600.
          dark = ((sunset < ut <= utend < sunris) or   # |****S__UT__R***|
@@ -525,6 +525,10 @@ def read_carm_vis(self, s, orders=None, pfits=True, verb=True):
       #if isinstance(self.drsbjd, str):
          #self.drsbjd = 0.0   # workaround for MJD-OBS bugs (empty or missing fractional digits) @2016-Jan
       self.dateobs = hdr['DATE-OBS']
+      # dateobs is used by MH, but date-obs seems more reliable from FILENAME
+      # CARACAL computes mjd-obs also from FILENAME
+      self.dateobs = hdr['FILENAME'].replace("h",":").replace("m",":")
+      self.dateobs = self.dateobs[4:8]+"-"+self.dateobs[8:10]+"-"+self.dateobs[10:21]
       self.mjd = hdr.get('HIERARCH CARACAL MJD-OBS')
       if not self.mjd:
          import warnings
@@ -678,6 +682,13 @@ def read_carm_nir(self, s, orders=None, pfits=True, verb=True):
       self.drsbjd = hdr.get('HIERARCH CARACAL BJD', hdr.get('MJD-OBS',0.0))
       self.drsbjd = hdr.get('HIERARCH CARACAL BJD', np.nan) + 2400000
       self.dateobs = hdr['DATE-OBS']
+      self.dateobs = hdr['FILENAME'].replace("h",":").replace("m",":")
+      self.dateobs = self.dateobs[4:8]+"-"+self.dateobs[8:10]+"-"+self.dateobs[10:21]
+      self.mjd = hdr.get('HIERARCH CARACAL MJD-OBS')
+      if not self.mjd:
+         import warnings
+         warnings.warn("Warning: keyword HIERARCH CARACAL MJD-OBS not found! This was implemented in CARACAL v2.00."+
+                       "Please use lastest products.")
       if isinstance(self.drsbjd, str): self.drsbjd = 0.0   # workaround for MJD-OBS bug @2016-Jan
       self.fox = HIERARCH+'CARACAL FOX XWD' in hdr
       # check LED for NIR This order can be affect
@@ -780,7 +791,7 @@ def read_carm_nir(self, s, orders=None, pfits=True, verb=True):
          if 1:
             sl = [None, None]
             sl[1-det] = f.shape[0]/2
-            sl=slice(*sl)
+            sl = slice(*sl)
             f = f[sl]
             bp[0], bp[1] = bp[0]*2, bp[1]%f.shape[0]
 
