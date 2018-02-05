@@ -17,7 +17,7 @@ import sys
 
 def simbad_query(targ):
    '''
-   Make a request to simbad to get RADE, PM and PLX.
+   Make a request to simbad to get RADE, PM, and PLX.
    
    targ : str, identifier name for simbad request.
 

@@ -5,6 +5,10 @@ The concept of SERVAL is described in http://adsabs.harvard.edu/abs/2017A%26A...
 
 Currently, SERVAL can process data from CARM_VIS, CARM_NIR, HARPS, and HARPN.
 
+## Recent changes
+* request to simbad to get RADE, PM, and PL via -targ
+* barycentric correction with Wright & Eastman (2014) is now default (requires https://github.com/shbhuk/barycorrpy)
+
 ## Install instruction
 
 Requirements:
@@ -38,11 +42,18 @@ chmod u+x $SERVAL/src/serval.py
 chmod u+x $SERVAL/src/read_spec.py
 ```
 
-A few c programs come precompiled. Therefore, it is likely not necessary to compile but in case ...
+Install barycorrpy
+```bash
+pip install barycorrpy
+```
+See also https://github.com/shbhuk/barycorrpy/wiki/1.-Installation for other possibilities.
+
+A few c programs come precompiled. Therefore, it is likely not necessary to compile but in case (e.g. Mac OS) ...
 ```bash
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC cbspline.c; gcc -o cbspline.so -shared cbspline.o
+f2py -c -m spl_int spl_int.f
 cd $SERVAL/src/BarCor
 gfortran bary.f -o bary.e
 ```
