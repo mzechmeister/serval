@@ -87,6 +87,10 @@ import astropy.io.fits as pyfits
 
 A basic example is:
 ```bash
-serval gj3917 /path/to/e2ds/ -inst HARPS -targ gj3917 -vref auto
+mkdir data
+(cd data; git clone https://github.com/mzechmeister/HARPS.git)
+serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699 -vref auto
 ```
-More explanation is in prepapration...
+
+`-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used)
+`-vref` uses an absolute RV from fitsheader (required to get Halpha indices)

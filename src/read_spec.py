@@ -373,7 +373,7 @@ def read_harps(self, s, inst='HARPS', orders=None, pfits=True, verb=False):
          self.hdulist = hdulist = pyfits.open(s) # slow 30 ms
          hdr = self.hdulist[0].header # pyfits.getheader(s)
       elif pfits==2:     # a faster version
-         args = ('INSTRUME', 'OBJECT', 'DATE-OBS', 'OBS TARG NAME', 'EXPTIME',
+         args = ('INSTRUME', 'OBJECT', 'MJD-OBS', 'DATE-OBS', 'OBS TARG NAME', 'EXPTIME',
                  'MJD-OBS', 'FILENAME', 'RA', 'DEC', k_tmmean, HIERINST+'DPR TYPE',
                  HIERINST+'DPR TECH', HIERINST+'INS MODE', HIERINST+'OBS TARG NAME')
          args += (k_bjd, k_berv, k_sn55)
@@ -398,6 +398,7 @@ def read_harps(self, s, inst='HARPS', orders=None, pfits=True, verb=False):
 
       self.airmass = hdr.get('AIRMASS', np.nan)
       self.exptime = hdr['EXPTIME']
+      self.mjd = hdr['MJD-OBS']
       self.dateobs = hdr['DATE-OBS']
       self.ra = hdr['RA']
       self.de = hdr['DEC']
