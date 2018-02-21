@@ -1808,7 +1808,10 @@ def serval(*argv):
                # may underestimate gradients
                #dy = 0 * spt.f[o]
                #dy[1:-1] = (spt.f[o][2:]-spt.f[o][:-2]) / (spt.w[o][2:]-spt.w[o][:-2])
-               dy = np.gradient(spt.f[o], np.gradient(spt.w[o]))
+               if tuple(map(int,np.__version__.split("."))) < (1,13):
+                  dy = np.gradient(spt.f[o], np.gradient(spt.w[o]))
+               else:
+                  dy = np.gradient(spt.f[o], spt.w[o])
                ddy = 0 * spt.f[o]
                # ddy[1:-1] = (spt.f[o][2:]-2*spt.f[o][1:-1]+spt.f[o][:-2]) / ((spt.w[o][2:]-spt.w[o][:-2])**2 / 4) # assumes dw_i ~ dw_(i+1)
                # ddy = ((f(x+h2)-f(x))/h2 - (f(x)-f(x-h1))/h1) / ((h1+h2)/2)
