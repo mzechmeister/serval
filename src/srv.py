@@ -35,8 +35,10 @@ class srv:
       self.allerr = np.genfromtxt(pre+'.rvo'+fibsuf+'.daterr')
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0]) # as string
       self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')
+      self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')
       self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')
       self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')
+      self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
       self.info = np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';')
       info = " ".join(self.info)
@@ -76,6 +78,20 @@ class srv:
       self.rvc = self.rv - np.nan_to_num(RVd[:,np.newaxis]) - np.nan_to_num(RVsa[:,np.newaxis])
       self.RVc = self.RV - np.nan_to_num(RVd) - np.nan_to_num(RVsa)
       self.e_RVc = np.sqrt(self.e_RV**2 + np.nan_to_num(e_RVd)**2)
+
+   def plot_dlw(self):
+      '''Show RVs over order for each observation.'''
+      bjd, dLW, e_dLW = self.bjd, self.dLW, self.e_dLW
+      arg = ''
+      if not self.has_d.all():
+         arg += 'us 1:2:3 w e pt 6 lt 7 t "dLW no drift"'
+      if self.has_d.any():
+         if arg: arg += ', "" '
+         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLW"'
+      gplot(pl=';set key tit "%s"'%(self.keytitle), flush='')
+      gplot(pl=';set xlabel "BJD - 2 450 000"; set ylabel "dLW [1000 (m/s)^2]"', flush='')
+      gplot(bjd-2450000, dLW, e_dLW, self.has_d, arg)
+      pause('dLW ', self.tag)
 
    def drsrv(self):
       '''Show RVs over order for each observation.'''
@@ -210,7 +226,35 @@ class srv:
          arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "RVc"'
       gplot(bjdmap.ravel()-2450000, rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",', bjd-2450000, RVc, e_RVc, self.has_d, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
 
-      pause('rvo ', self.tag)
+      pause('dlwo ', self.tag)
+
+   def plot_dlwo(self):
+      bjd, RVc, e_RVc, RVd, e_RVd, RV, e_RV, BRV, RVsa = self.trvc
+      allrv = self.allrv
+      bjd, RV, e_RV, rv, e_rv = allrv[:,0], allrv[:,1], allrv[:,2], allrv[:,5:], self.allerr[:,5:]
+      dlw = self
+      (bjd, dLW, e_dLW), dlw, e_rv = self.dlw.T[[0,1,2]], self.dlw[:,3:], self.allerr[:,5:]
+      bjdmap = np.tile(bjd[:,np.newaxis], rv.shape[1])
+      omap = np.tile(np.arange(len(self.dlw.T)), dlw.shape[0]).T
+
+      # Drift and sa yet no applied to rvo
+      # gplot(bjd, RV, e_RV, 'us 1:2:3 w e pt 7',)
+      # gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
+      rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
+      gplot(pl='set palette define (0 "blue", 1 "green", 2 "red"); set key tit "%s"'% self.keytitle)
+      gplot(pl='set xlabel "BJD - 2 450 000"; set ylabel "dLW [1000 (m/s)^2]')
+      # not drift corrected
+      #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
+      # drift corrected
+      arg = ''
+      if not self.has_d.all():
+         arg += 'us 1:2:3 w e pt 6 lt 7 t "dLWo (no drift)"'
+      if self.has_d.any():
+         if arg: arg += ', "" '
+         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLWo"'
+      gplot(bjdmap.ravel()-2450000, dlw.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",', bjd-2450000, dLW, e_dLW, self.has_d, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
+
+      pause('dLWo ', self.tag)
 
    def plotrv(self):
       '''Show RVs over order for each observation.'''
@@ -462,6 +506,9 @@ if __name__ == "__main__":
    argopt = parser.add_argument   # function short cut
    argopt('tags', nargs='*', help='Tag, output directory and file prefix')
    argopt('-chi2map', help='plot the chi2map', action='store_true')
+   argopt('-dlw', help='plot dLW', action='store_true')
+   argopt('-dlwo', help='plot dLW_o colorcoded', action='store_true')
+   argopt('-dlwno', help='plot dLW and the dLW_o for spectrum n in a lower panel', action='store_true')
    argopt('-drs', help='plot DRS RV vs RVc', action='store_true')
    argopt('-gls', help='GLS periodogram', action='store_true')
    argopt('-i', help='interactive task selection', action='store_true')
@@ -471,7 +518,7 @@ if __name__ == "__main__":
    #argopt('-rv', help='plot rv', action='store_true')
    argopt('-rv', help='plot rv', action='store_true')
    #argopt('-rv', help='plot rv', action='store_true')
-   argopt('-rvio', help='plot rv and the rvo for spectrum i in a lower panel ', action='store_true')
+   argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel ', action='store_true')
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
    argopt('-x', help='cross plot'+default, action='store_true')
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
@@ -496,6 +543,8 @@ if __name__ == "__main__":
       else:
          if args.rv:
             obj.plotrv()
+         if args.dlw:
+            obj.plot_dlw()
          if args.drs:
             obj.drsrv()
          if args.pre:
@@ -506,11 +555,13 @@ if __name__ == "__main__":
             obj.xcorr()
          if args.gls:
             obj.gls()
-         if args.rvio:
+         if args.rvno:
             obj.plotrvo()
          if args.chi2map:
             obj.chi2map()
          if args.rvo:
             obj.plotrvocol()
+         if args.dlwo:
+            obj.plot_dlwo()
          if args.postrv:
             obj.postrv()
