@@ -56,6 +56,7 @@ class Targ:
       self.ra, self.de = rade
       self.pmra, self.pmde = pm
       self.plx = plx
+      self.rv = rv
       if self.ra and self.de:
          # apply user input from command line
          self.ra = tuple(map(float,self.ra.split(':')))

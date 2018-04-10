@@ -225,6 +225,8 @@ def read_spec(self, s, inst='HARPS', plot=False, **kwargs):
    elif inst == 'FTS': sp = read_fts(self, s, **kwargs)
    else:
       return None
+   #if hasattr(s, 'close'):
+      #s.close()
 
    if plot:
       gplot_set("set xlabel 'wavelength'; set ylabel 'intensity'")
@@ -295,6 +297,7 @@ def read_template(filename):
 
 def read_harps_ccf(s):
    ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask')
+   tar = None
    if ".tar" in s:
       tar = tarfile.open(s)
       extr = None
@@ -326,6 +329,8 @@ def read_harps_ccf(s):
       os.system('mv tarfits/* tmp.fits ')
       data,hdr = fitsio.read('tmp.fits',header=1)
       HIERARCH = ''
+
+   if tar:
       tar.close()
 
    rvc = hdr[HIERARCH+'ESO DRS CCF RVC']   # [km/s]
@@ -358,7 +363,9 @@ def read_harps(self, s, inst='HARPS', orders=None, pfits=True, verb=False):
    if orders is None or self.header is None or (pfits==True and not hasattr(self, 'hdulist')):
       HIERARCH = 'HIERARCH '
       HIERINST = HIERARCH + {'HARPS': 'ESO ', 'HARPN': 'TNG '}[inst]
-      k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST +  'EXP_METER_A EXP CENTROID'}[inst]
+      k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST + 'EXP_METER_A EXP CENTROID'}[inst]
+      # In old HARPN the keyword is different and the value absolute
+      #k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST + 'EXP1 TMMEAN'}[inst]
       if drs:
          self.HIERDRS = HIERDRS = HIERINST + 'DRS '
          k_sn55 = HIERDRS + 'SPE EXT SN55'
@@ -407,7 +414,9 @@ def read_harps(self, s, inst='HARPS', orders=None, pfits=True, verb=False):
       self.obs.lon = -70.7345
       self.obs.lat = -29.2584
 
-      self.tmmean = hdr[k_tmmean]
+      if k_tmmean not in hdr:
+         warnings.warn('Warning: old HARPN data? Setting tmmean to 0.5!')
+      self.tmmean = hdr.get(k_tmmean, 0.5)
 
       self.drsbjd = hdr.get(k_bjd)
       if self.drsbjd is None:
@@ -694,7 +703,7 @@ def read_carm_nir(self, s, orders=None, pfits=True, verb=True):
       self.fox = HIERARCH+'CARACAL FOX XWD' in hdr
       # check LED for NIR This order can be affect
       r = hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan) /  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan)
-      if r >1.5: print r, hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan),  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan)
+      if r >1.5: print r, hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan), hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan), "# This spectrum could be affected by LED"
       self.sn55 = min(hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan),  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan))
       if self.dateobs[:10] in ('2016-01-13', '2016-01-14', '2016-01-22', '2016-01-23'):
          self.sn55 = min(self.sn55, 10.) # bug in NIR fits file
@@ -810,7 +819,7 @@ def read_carm_nir(self, s, orders=None, pfits=True, verb=True):
 #         e = 1000+0*f
       else:
          # fib B, linear extraction
-         e = 0*f + np.sqrt(np.median(f)) # unweighted maybe for HCL
+         e = 0*f + np.sqrt(np.nanmedian(f)) # unweighted maybe for HCL
          bpmap[f>300000] |= flag.sat
          #bpmap[:,1:] |= flag.sat * (f>300000)[:,:-1]
          #bpmap[:,:-1] |= flag.sat * (f>300000)[:,1:]
@@ -1117,6 +1126,9 @@ def file_from_tar(s, inst='HARPS', fib=None, **kwargs):
 class imhead(dict):
    """
    Returns fitsheader as a dict.
+   
+   imhead runs faster than pyfits. It does less checks, but might be
+   more error prone.
 
    Keyword arguments:
    filename -- filename of the fitsfile
@@ -1168,7 +1180,8 @@ class imhead(dict):
             if card.startswith('END '): break
             if card.startswith(args):
                #key, val, comment = card.replace("= ","/ ",1).split("/ ")
-               key, val, comment = card.replace(' /','= ',1).split('= ')
+               key, val, comment = card.replace(' /','= ',1).split('= ')   # does not parse HARPN.2012-09-03T05-29-56.622 "HIERARCH TNG OBS TARG NAME = 'M1'/ no comment"
+               # key, val, comment = card.replace('/','= ',1).split('= ')
                hdr[key.strip()] = val.strip("' ") if "'" in val else float(val) if '.' in val else int(val)
                #hdr[key.strip()] = val.strip("' ") if any(i in val for i in "'TF") else float(val) if '.' in val and not 'NaN.' in val else int(val) if val.strip(" -").isdigit() else val
                self.comments[key.strip()] = comment
