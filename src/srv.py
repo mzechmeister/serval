@@ -6,8 +6,11 @@ import argparse
 import numpy as np
 from gplot import *
 from pause import *
-from wstat import nanwsem, wmean, mlrms
-import gls
+from wstat import nanwsem, wmean, mlrms, wstd
+try:
+   import gls
+except:
+    print 'Cannot import gls'
 
 __author__ = 'Mathias Zechmeister'
 __version__ = '2017-06-28'
@@ -18,6 +21,10 @@ SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
 ''' % (__version__, __author__)
 
 class srv:
+   '''
+   Analysis of SERVAL products
+   
+   '''
 
    def __init__(self, obj, fibsuf='', oidx=None, safemode=False, pdf=False, plotrvo=True):
       '''
@@ -41,6 +48,8 @@ class srv:
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
       self.info = np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';')
+      if not self.info.ndim:
+         self.info = self.info[np.newaxis]
       info = " ".join(self.info)
       self.inst = ''
       if '-vis.fits' in info: self.inst = 'CARM_VIS'
@@ -49,9 +58,9 @@ class srv:
 
       self.keytitle = self.tag
       if self.inst:
-         self.keytitle += ' (' + self.inst + ')'
+         self.keytitle += ' (' + self.inst.replace('_', ' ') + ')'
 
-      #bjd , self.col, self.e_col = np.genfromtxt(obj+'/'+obj+'.col.dat', dtype=None).T
+      #bjd , self.crx, self.e_crx = np.genfromtxt(obj+'/'+obj+'.crx.dat', dtype=None).T
       #bjd, self.dwid,self.e_dwid = np.genfromtxt(obj+'/'+obj+'.dfwhm.dat', dtype=None, usecols=(0,1,2)).T
       self.N = len(self.allrv)
       if self.N == 1:
@@ -175,21 +184,23 @@ class srv:
       print 'wrms_RVc [m/s]:   %.2f\njitter [m/s]: %.2f' % self.mlrms
       #pause()
 
-   def plotrvo(self):
+   def plotrvno(self):
       '''Show RVs over order for each observation.'''
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
       n = 0
       #for n in range(self.N):
       while 0 <= n < self.N:
-         gplot(pl=';set key tit "%s %s"'%(n+1, bjd[n]), flush='')
+         gplot(pl=';set key tit "%s %s %s"'%(n+1, bjd[n], self.info[n]), flush='')
          if 1:
             gplot(pl='; set multiplot layout 2,1;')
             gplot(pl='set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"', flush='')
-            gplot(bjd-2450000, RVc, e_RVc, 'us 1:2:3 w e pt 6,', [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush='')
+            hypertext = ' "" us 1:2:(sprintf("%d\\n%f\\n%f+/-%f",$0+1, $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+            gplot(bjd-2450000, RVc, e_RVc, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush='')
+         
          gplot(pl='; set xlabel "order"; set ylabel "RV [m/s]"', flush='')
          gplot(self.orders,self.rvc[n],self.e_rv[n], 'us 1:2:3 w e pt 7, %s lt 3 t "%s +/- %sm/s", %s lt 2 t "", %s lt 2 t ""' %(RVc[n], RVc[n],e_RVc[n],RVc[n]-e_RVc[n],RVc[n]+e_RVc[n]))
          gplot(pl='unset multiplot')
-         nn = pause('%i/%i %s'% (n+1,self.N, bjd[n]))
+         nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
          try:
             n += int(nn)
          except:
@@ -202,7 +213,7 @@ class srv:
             else:
                n += 1
 
-   def plotrvocol(self):
+   def plotrvo(self):
       bjd, RVc, e_RVc, RVd, e_RVd, RV, e_RV, BRV, RVsa = self.trvc
       allrv = self.allrv
       bjd, RV, e_RV, rv, e_rv = allrv[:,0], allrv[:,1], allrv[:,2], allrv[:,5:], self.allerr[:,5:]
@@ -219,14 +230,17 @@ class srv:
       #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
       # drift corrected
       arg = ''
+      hypertext = ''
       if not self.has_d.all():
          arg += 'us 1:2:3 w e pt 6 lt 7 t "RV no drift"'
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "RVc"'
-      gplot(bjdmap.ravel()-2450000, rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",', bjd-2450000, RVc, e_RVc, self.has_d, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
+      if 1:
+         hypertext = ' "" us 1:2:(sprintf("o: %d\\nBJD: %f\\nRV: %f", $4, $1, $2)) w labels hypertext point pt 0 lt 1 t "",'
+      gplot(bjdmap.ravel()-2450000, rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",'+hypertext, bjd-2450000, RVc, e_RVc, self.has_d, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
 
-      pause('dlwo ', self.tag)
+      pause('rvo ', self.tag)
 
    def plot_dlwo(self):
       bjd, RVc, e_RVc, RVd, e_RVd, RV, e_RV, BRV, RVsa = self.trvc
@@ -265,6 +279,8 @@ class srv:
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "RVc"'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nBJD: %f\\nRV: %f+/-%f",$0+1, $1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
+      arg += hypertext
       gplot(pl=';set key tit "%s (rms = %.3g m/s)"'%(self.keytitle, self.mlrms[0]), flush='')
       gplot(pl=';set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"', flush='')
       gplot(bjd-2450000, RVc, e_RVc, self.has_d, arg)
@@ -351,6 +367,37 @@ class srv:
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
          ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(preRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc (rms = %1.3g m/s)"'%self.mlrms[0])
          pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
+
+   def disp(self):
+      orddisp = self.rv - self.RV[:,np.newaxis]
+      #ok &= np.abs(orddisp-d_ordmean) <= 3*ordstd  # clip and update mask
+      ordstd, d_ordmean = wstd(orddisp, self.e_rv, axis=0)
+      #ordmean += d_ordmean                # update ordmean
+      #orddisp
+      gplot_set('reset; ')
+      gplot(pl='set tit "Order dispersion %s";'%self.keytitle, flush='')
+      gplot_set('set xlabel "Order"; set ylabel "RV_{n,o} - RV_n [m/s]"')
+      gplot(orddisp, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(self.orders)]))
+      ogplot(self.orders, ordstd, ' w lp lt 3 t "", "" us 1:(-$2) w lp t ""')
+      pause()
+      ##gplot('"'+filename,'" matrix every ::%i::%i us ($1-5):3' % (omin+5,omax+5))
+      ##ogplot(allrv[:,5:71],' matrix every ::%i us 1:3' %omin)
+      ## create ord, rv,e_rv, bb
+      ##ore = [(o+omin,orddisp[n,o],e_rv[n,o],~ok[n,o]) for n,x in enumerate(orddisp[:,0]) for o,x in enumerate(orddisp[0,:])]
+      ##ore = [(o,)+x for row in zip(orddisp,e_rv,~ok) for o,x in enumerate(zip(*row),omin)]
+      #ore = [np.tile(orders,orddisp.shape).ravel(), orddisp.ravel(), e_rv.ravel(), ~ok.ravel()]
+      #gplot(*ore + ['us 1:2:($3/30) w xe'], flush='')
+      #if not ok.all(): ogplot('"" us 1:2:($3/30/$4) w xe', flush='') # mark 3-sigma outliners
+      ##gplot(orddisp,' matrix  us ($1+%i):3' % omin, flush='')
+      ##gplot('"'+filename,'" matrix every ::'+str(omin+5)+' us ($1-5):3')
+      ##ogplot(ordmean,' us ($0+%i):1 w lp lt 3 pt 3  t "ord mean"' %omin, flush='')
+      #ogplot(orders, ordstd,' w lp lt 3 pt 3  t "1 sigma"', flush='')
+      #ogplot('"" us 1:(-$2) w lp lt 3 pt 3  t ""', flush='')
+      #ogplot('"" us 1:($2*3) w lp lt 4 pt 3  t "3 sigma"', flush='')
+      #ogplot('"" us 1:(-$2*3) w lp lt 4 pt 3  t ""', flush='')
+      #ogplot('"" us ($1+0.25):(0):(sprintf("%.2f",$2)) w labels rotate t""', flush='')
+      #ogplot(*ore+[ 'us 1:2:($3)  w point pal pt 6'])
+      #if not safemode: pause('ord scatter')
 
    def ls(self, suf='_A_mod.fits'):
       '''Show last square fit form fits file.'''
@@ -444,7 +491,7 @@ class srv:
       # Drift and sa yet no applied to rvo
       #rvc = rv - (RVd + RVsa)[:,np.newaxis]
       bjd, RVc, e_RVc = self.trvc[0:3]
-      bjd, RV, e_RV, col, e_col, dwid, e_dwid = self.tsrv
+      bjd, RV, e_RV, crx, e_crx, dwid, e_dwid = self.tsrv
 
       datstyle = {'fmt':'r.', 'capsize':0}
       fig = plt.figure()
@@ -461,7 +508,7 @@ class srv:
       ax3 = fig.add_subplot(3, 2, 3, sharex=ax1)
       plt.setp(ax3.get_xticklabels(), visible=False)
       ax3.set_ylabel("chromatic index")
-      ax3.errorbar(bjd, col, e_col, **datstyle)
+      ax3.errorbar(bjd, crx, e_crx, **datstyle)
 
       # BJD-DLW
       ax5 = fig.add_subplot(3, 2, 5, sharex=ax1)
@@ -473,7 +520,15 @@ class srv:
       ax4 = fig.add_subplot(3, 2, 4, sharey=ax3)
       plt.setp(ax4.get_xticklabels(), visible=False)
       plt.setp(ax4.get_yticklabels(), visible=False)
-      ax4.errorbar(RVc, col, e_col, xerr=e_RVc, **datstyle)
+
+      #np.fit(RVc, crx)
+      a, cov_a = np.polyfit(RVc, crx, 1, cov=True)
+      e_a = np.sqrt(cov_a[0,0])
+      liney = [RVc.min(), RVc.max()]
+      linex = np.polyval(a, liney)
+      ax4.errorbar(RVc, crx, e_crx, xerr=e_RVc, **datstyle)
+      ax4.plot(liney, linex, label='kappa: %.4g+/-%.4g'% (a[0], e_a))
+      ax4.legend(loc='upper right', frameon=False, framealpha=1, fontsize='small')
 
       # RV-DLW
       ax6 = fig.add_subplot(3, 2, 6, sharex=ax4, sharey=ax5)
@@ -506,6 +561,7 @@ if __name__ == "__main__":
    argopt = parser.add_argument   # function short cut
    argopt('tags', nargs='*', help='Tag, output directory and file prefix')
    argopt('-chi2map', help='plot the chi2map', action='store_true')
+   argopt('-disp', help='plot order dispersion', action='store_true')
    argopt('-dlw', help='plot dLW', action='store_true')
    argopt('-dlwo', help='plot dLW_o colorcoded', action='store_true')
    argopt('-dlwno', help='plot dLW and the dLW_o for spectrum n in a lower panel', action='store_true')
@@ -537,14 +593,16 @@ if __name__ == "__main__":
             if g=='1': obj.drsrv()
             if g=='x': obj.xcorr()
             if g=='g': obj.gls()
-            if g=='4': obj.plotrvo()
-            if g=='5': obj.plotrvocol()
+            if g=='4': obj.plotrvno()
+            if g=='5': obj.plotrvo()
             if g=='6': obj.postrv()
       else:
          if args.rv:
             obj.plotrv()
          if args.dlw:
             obj.plot_dlw()
+         if args.disp:
+            obj.disp()
          if args.drs:
             obj.drsrv()
          if args.pre:
@@ -556,11 +614,11 @@ if __name__ == "__main__":
          if args.gls:
             obj.gls()
          if args.rvno:
-            obj.plotrvo()
+            obj.plotrvno()
          if args.chi2map:
             obj.chi2map()
          if args.rvo:
-            obj.plotrvocol()
+            obj.plotrvo()
          if args.dlwo:
             obj.plot_dlwo()
          if args.postrv:
