@@ -675,7 +675,7 @@ def serval(*argv):
 
    sys.stdout = Logger()
 
-   global obj, targ, oset, coadd, coset, last, tpl, sa, vref, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, rvguess, starcat
+   global obj, targ, oset, coadd, coset, last, tpl, sa, tplrv, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, starcat
 
    if not argv: argv = sys.argv     # python shell start
    else: argv = ['module '] + list(argv)
@@ -763,7 +763,7 @@ def serval(*argv):
    if targ.name == 'cal':
       print 'no barycentric correction (calibration)'
    elif targ.ra and targ.de or targ.name:
-      targ = Targ(targ.name, targrade, targpm, plx=targplx, cvs=obj+'/'+obj+'.targ.cvs')
+      targ = Targ(targ.name, targrade, targpm, plx=targplx, rv=targrv, cvs=obj+'/'+obj+'.targ.cvs')
       '''
    elif targ.ra and targ.de:
       targ.ra = tuple(map(float,targ.ra.split(':')))
@@ -862,7 +862,6 @@ def serval(*argv):
    if lookssr: lookssr = np.arange(iomax)[lookssr]
 
    if outfmt or outchi: os.system('mkdir -p '+obj+'/res')
-   sys.stdout.logname(obj+'/log.'+obj)
    with open(outdir+'lastcmd.txt', 'w') as f:
       print >>f, ' '.join(argv)
    with open('cmdhistory.txt', 'a') as f:
@@ -989,6 +988,7 @@ def serval(*argv):
    badfile.close()
    bervfile.close()
    infofile.close()
+   sys.stdout.logname(obj+'/log.'+obj)
 
    t1 = time.time() - t0
    print nspec, "spectra read (%s)\n" % minsec(t1)
@@ -1330,7 +1330,7 @@ def serval(*argv):
                wmod[i] = w2
                mod[i] = sp.f / poly   # be careful if  poly<0
                emod[i] = sp.e / poly
-               if 0:#-1 in look or o in look: #o==-29:
+               if 0:# o in lookt: #o==-29:
                   gplot(sp.w,sp.f,poly, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
                   pause()
               #(fmod<0) * flag.neg
@@ -1666,22 +1666,28 @@ def serval(*argv):
    snr = nans((nspec,nord))
    rchi2 = nans((nspec,nord))
 
-   if vref == 'auto':
-      vref = spt.ccf.rvc
-      if np.isnan(vref):
-         print 'vref is NaN, trying median'
+   if tplrv == 'targ':
+      tplrv = targ.rv
+      print 'setting tplrv to simbad RV:', tplrv, 'km/s'
+   if tplrv == 'auto':
+      tplrv = spt.ccf.rvc
+      if np.isnan(tplrv):
+         print 'tplrv in spt is NaN, trying median'
          rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
-         vref = np.median(rvdrs[np.isfinite(rvdrs)])
-      print 'setting vref to:', vref
+         tplrv = np.median(rvdrs[np.isfinite(rvdrs)])
+      if np.isnan(tplrv):
+         print 'tplrv is NaN in all spec, simbad RV'
+         tplrv = targ.rv
+      print 'setting tplrv to:', tplrv, 'km/s'
 
-   meas_index = vref is not None and 'B' not in fib #and not 'th_mask' in ccf
+   meas_index = tplrv is not None and 'B' not in fib #and not 'th_mask' in ccf
    meas_CaIRT = meas_index and inst=='CARM_VIS'
    meas_NaD = meas_index and inst=='CARM_VIS'
 
-   if vref is None: vref = 0   # do this after setting meas_index
-   vref = float(vref)
-   if rvguess is None:
-      rvguess = vref
+   if tplrv is None: tplrv = 0   # do this after setting meas_index
+   tplrv = float(tplrv)
+   if targrv is None:
+      targrv = tplrv
 
    if meas_index:
       halpha = []
@@ -1746,7 +1752,7 @@ def serval(*argv):
          b2[pmax:] |= flag.out
          b2[tellmask(w2)>0.01] |= flag.atm    # flag 8 for telluric
          b2[skymsk(w2)>0.01] |= flag.sky    # flag 16 for telluric
-         b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(vref-rvguess)))>0.01)!=0] |= flag.badT   # flag 128 for bad template
+         b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag 128 for bad template
          #pause()
          #if inst == 'HARPS':
             #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
@@ -1755,14 +1761,14 @@ def serval(*argv):
 
          wmod = barshift(w2, np.nan_to_num(sp.berv))   # berv can be NaN, e.g. calibration FP, ...
          if debug:   # check the input
-            gplot(dopshift(ww[o],vref), ff[o], ',', dopshift(wmod,rvguess), f2)
+            gplot(dopshift(ww[o],tplrv), ff[o], ',', dopshift(wmod,targrv), f2)
             pause(o)
          rchi = 1
 
          if ccf:
             '''METHOD CCF'''
             f2 *= b2==0
-            par, f2mod, vCCF, stat = CCF(lam2wave(ccfmask[:,0]), ccfmask[:,1], wmod, f2, rvguess+v_lo, rvguess+v_hi, e_y2=e2, keep=pind, plot=(o in look)+2*(o in lookssr), ccfmode=ccfmode)
+            par, f2mod, vCCF, stat = CCF(lam2wave(ccfmask[:,0]), ccfmask[:,1], wmod, f2, targrv+v_lo, targrv+v_hi, e_y2=e2, keep=pind, plot=(o in look)+2*(o in lookssr), ccfmode=ccfmode)
 
             rvccf[i,o] = par.params[0] * 1000
             e_rvccf[i,o] = par.perror[0] * 1000
@@ -1827,7 +1833,7 @@ def serval(*argv):
                gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
                pause(o)
 
-            par, f2mod, keep, stat = fitspec(spt.w[o],spt.f[o],kk[o], wmod,f2,e2, v=rvguess/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
+            par, f2mod, keep, stat = fitspec(spt.w[o],spt.f[o],kk[o], wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
 
             e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
             e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
@@ -1854,7 +1860,7 @@ def serval(*argv):
 
             # pause()
             if o==41: pind=pind[:-9]   # @CARM_NIR?
-            par, f2mod, keep, stat, chi2mapo = fitspec(ww[o], ff[o], kk[o], wmod, f2, e2, v=rvguess-vref, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
+            par, f2mod, keep, stat, chi2mapo = fitspec(ww[o], ff[o], kk[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
 
             if diff_width:
                '''we need the model at the observation and oversampled since we need the second derivative including the polynomial'''
@@ -1902,7 +1908,7 @@ def serval(*argv):
          clipped = np.sort(list(set(pind).difference(set(keep))))
          if len(clipped):
             b2[clipped] = flag.clip
-         if not safemode and (o in look or (abs(rvo/1000-rvguess+vref)>rvwarn and not sp.flag) or debug>1):
+         if not safemode and (o in look or (abs(rvo/1000-targrv+tplrv)>rvwarn and not sp.flag) or debug>1):
             if def_wlog: w2 = np.exp(w2)
             res = np.nan * f2
             res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
@@ -1921,7 +1927,7 @@ def serval(*argv):
 
             ogplot(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"', flush='')
             ogplot(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
-            pause('large RV ' if abs(rvo/1000-rvguess+vref)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi2[i,o]))
+            pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi2[i,o]))
       # end loop over orders
 
       # ind = setdiff1d(where(e_rv[i]>0.)[0],[71]) # do not use the failed and last order
@@ -1960,7 +1966,7 @@ def serval(*argv):
             pause()
 
       # Line Indices
-      vabs = vref + RV[i]/1000.
+      vabs = tplrv + RV[i]/1000.
       kwargs = {'inst': inst, 'plot':looki}
       if meas_index:
          halpha += [getHalpha(vabs, 'Halpha', **kwargs)]
@@ -2115,8 +2121,8 @@ if __name__ == "__main__":
    argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
    argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
    argopt('-targplx', help='target parallax', type=float, default='nan')
-   #argopt('-targsa', help='[m/s/yr] Secular acceleration.', type=float, default=np.nan)
    argopt('-rvguess', help='[km/s] Target rv guess (default=vref).', type=float)
+   argopt('-targrv', help='[km/s] Target rv guess (default=tplrv)', type=float)
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-brvref', help='Barycentric RV code reference', choices=brvref, type=str, default='WE')
@@ -2168,11 +2174,12 @@ if __name__ == "__main__":
    argopt('-starcat', help='directory or filename of target look-up table. (default: local star.cat, then servaldir/star.cat)', type=str)
    argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
    argopt('-tpl',  help="template filename, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
+   argopt('-tplrv', help='[km/s] template RV (default auto, for index measures, for phoe tpl put 0 km/s, None => no measure, targ => from simbad, auto => first from header, second from targ else consider to adapt also rvguess))', default={'CARM_NIR':None, 'else':'auto'})
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
-   argopt('-vrange', help='velocity grid around rvguess (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
-   argopt('-vref', help='[km/s] reference RV of the template (for index measures, None => no measure, for phoe template put 0, auto => from header, else consider to adapt also rvguess)')
+   argopt('-vrange', help='velocity grid around targrv (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
+   argopt('-vref', help='[km/s] reference RV of the template (for index measures, None => no measure, targ => from simbad, for phoe template put 0, auto => 1. from header, 2. targ else consider to adapt also rvguess)', default={'CARM_NIR':None, 'else':'auto'})
    argopt('-vtfix', help='fix RV in template creation', action='store_true')
 
    argopt('-wfix', help='fix wavelength solution', action='store_true')
@@ -2195,6 +2202,7 @@ if __name__ == "__main__":
    if isinstance(oset, dict): oset = arg2slice(oset[inst])
    if isinstance(o_excl, dict): o_excl = arg2slice(o_excl[inst]) if inst in o_excl else []
    if isinstance(pmax, dict): pmax = pmax[inst] if inst in pmax else pmax['else']
+   if isinstance(tplrv, dict): tplrv = tplrv[inst] if inst in tplrv else tplrv['else']
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl
 
