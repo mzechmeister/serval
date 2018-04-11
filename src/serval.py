@@ -106,6 +106,10 @@ class Logger(object):
       self.logfile = None # open(logfilename, "a")
       self.logbuf = ''
 
+   def flush(self):
+      # dummy for function astropy iers download; progress bar will not be shown
+      pass 
+
    def write(self, message):   # fork the output to stdout and file
       self.terminal.write(message)
       if self.logfile:
