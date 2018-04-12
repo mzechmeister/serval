@@ -47,7 +47,12 @@ class srv:
       self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
-      self.info = np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';')
+      # info includes also flagged files; exclude them based on unpairable bjd
+      # (due to different formatting use bjd from brv.dat not info.cvs.)
+      bjd = np.genfromtxt(pre+'.brv.dat', usecols=[0])
+      nn = [n for (n,t) in enumerate(bjd) if t in self.allrv[:,0]]
+      self.info = np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';')[nn]
+
       if not self.info.ndim:
          self.info = self.info[np.newaxis]
       info = " ".join(self.info)
@@ -67,7 +72,8 @@ class srv:
          return   # just one line, e.g. drift
 
       self.tsrv = np.genfromtxt(pre+'.srv.dat', dtype=None).T
-      self.trvc = self.bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa = np.genfromtxt(pre+'.rvc'+fibsuf+'.dat', dtype=None).T
+      self.trvc = self.bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa \
+                = np.genfromtxt(pre+'.rvc'+fibsuf+'.dat', dtype=None).T
       self.drs = np.genfromtxt(pre+'.drs.dat')
 
       with np.errstate(invalid='ignore'):
@@ -97,8 +103,8 @@ class srv:
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLW"'
-      gplot(pl=';set key tit "%s"'%(self.keytitle), flush='')
-      gplot(pl=';set xlabel "BJD - 2 450 000"; set ylabel "dLW [1000 (m/s)^2]"', flush='')
+      gplot.key('tit "%s"'%(self.keytitle))
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]"')
       gplot(bjd-2450000, dLW, e_dLW, self.has_d, arg)
       pause('dLW ', self.tag)
 
@@ -108,12 +114,12 @@ class srv:
       drsRVc = drsRVc - np.nan_to_num(self.trvc[8])
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
       if 1:
-         gplot(pl=';set key tit "%s"'%self.keytitle, flush='')
-         gplot(pl=';set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"', flush='')
+         gplot.key('tit "%s"'%self.keytitle)
+         gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
          #gplot(';set ytics nomirr; set y2tics;', flush='')
          gplot(drsbjd-2450000, drsRVc, drse_RVc, 'us 1:2:3 w e pt 7 lt 1 t "DRS (rms = %1.3g m/s)"'% mlrms(drsRVc, e=drse_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
-         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "RVc (rms = %1.3g m/s)\\nrms(diff)=%.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
+         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff)=%.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
          pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
 
    def chi2map(self, maxnorm=True, suf='_A_chi2map.fits'):
@@ -121,7 +127,7 @@ class srv:
       v_step, v_lo = 0.1, -15.
       n = 0
       #for n in range(self.N):
-      gplot_set("set key Left left rev bottom title '%s'" % self.keytitle)
+      gplot.key("Left left rev bottom title '%s'" % self.keytitle)
       while 0 <= n < self.N:
          name = self.dir +'/res/' + self.info[n][:-5] + suf
          gplot_set('set palette defined (0 "blue", 1 "green", 2 "red")')
@@ -190,16 +196,17 @@ class srv:
       n = 0
       #for n in range(self.N):
       while 0 <= n < self.N:
-         gplot(pl=';set key tit "%s %s %s"'%(n+1, bjd[n], self.info[n]), flush='')
+         gplot.key('tit "%s %s %s"'%(n+1, bjd[n], self.info[n]))
          if 1:
-            gplot(pl='; set multiplot layout 2,1;')
-            gplot(pl='set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"', flush='')
-            hypertext = ' "" us 1:2:(sprintf("%d\\n%f\\n%f+/-%f",$0+1, $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
-            gplot(bjd-2450000, RVc, e_RVc, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush='')
-         
-         gplot(pl='; set xlabel "order"; set ylabel "RV [m/s]"', flush='')
-         gplot(self.orders,self.rvc[n],self.e_rv[n], 'us 1:2:3 w e pt 7, %s lt 3 t "%s +/- %sm/s", %s lt 2 t "", %s lt 2 t ""' %(RVc[n], RVc[n],e_RVc[n],RVc[n]-e_RVc[n],RVc[n]+e_RVc[n]))
-         gplot(pl='unset multiplot')
+            gplot.multiplot('layout 2,1')
+            # bottom panel
+            gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
+            hypertext = ' "" us 1:2:(sprintf("%d %s\\n%f\\n%f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+            gplot(bjd-2450000, RVc, e_RVc, self.info, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
+
+         gplot.xlabel('"order"').ylabel('"RV [m/s]"')
+         gplot(self.orders, self.rvc[n], self.e_rv[n], 'us 1:2:3 w e pt 7, %s lt 3 t "%s +/- %sm/s", %s lt 2 t "", %s lt 2 t ""' %(RVc[n], RVc[n],e_RVc[n],RVc[n]-e_RVc[n],RVc[n]+e_RVc[n]))
+         gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
          try:
             n += int(nn)
@@ -224,8 +231,8 @@ class srv:
       # gplot(bjd, RV, e_RV, 'us 1:2:3 w e pt 7',)
       # gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
-      gplot(pl='set palette define (0 "blue", 1 "green", 2 "red"); set key tit "%s"'% self.keytitle)
-      gplot(pl='set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]')
+      gplot.palette('define (0 "blue", 1 "green", 2 "red")').key('tit "%s"'% self.keytitle)
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]')
       # not drift corrected
       #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
       # drift corrected
@@ -255,8 +262,8 @@ class srv:
       # gplot(bjd, RV, e_RV, 'us 1:2:3 w e pt 7',)
       # gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
-      gplot(pl='set palette define (0 "blue", 1 "green", 2 "red"); set key tit "%s"'% self.keytitle)
-      gplot(pl='set xlabel "BJD - 2 450 000"; set ylabel "dLW [1000 (m/s)^2]')
+      gplot.palette('define (0 "blue", 1 "green", 2 "red")').key('tit "%s"'% self.keytitle)
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]')
       # not drift corrected
       #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
       # drift corrected
@@ -279,11 +286,11 @@ class srv:
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "RVc"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nBJD: %f\\nRV: %f+/-%f",$0+1, $1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
       arg += hypertext
-      gplot(pl=';set key tit "%s (rms = %.3g m/s)"'%(self.keytitle, self.mlrms[0]), flush='')
-      gplot(pl=';set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"', flush='')
-      gplot(bjd-2450000, RVc, e_RVc, self.has_d, arg)
+      gplot.key('tit "%s (rms = %.3g m/s)"'%(self.keytitle, self.mlrms[0]))
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
+      gplot(bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg)
       pause('rv ', self.tag)
 
    def postrv(self, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False, plotrvo=True):
@@ -312,8 +319,8 @@ class srv:
       #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
 
-      gplot(pl='set palette define (0 "blue", 1 "green", 2 "red"); set key tit "%s"'% self.keytitle)
-      gplot(pl='set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]')
+      gplot.palette('define (0 "blue", 1 "green", 2 "red")').key('tit "%s"'% self.keytitle)
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]')
       # not drift corrected
       gplot(bjdmap.ravel()-2450000, rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd-2450000, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
       # drift corrected
@@ -337,14 +344,14 @@ class srv:
          e_o = np.sqrt((np.nansum((r**2-e_rv**2-e_n**2)/e_r**2, axis=0)/np.nansum(1/e_r**2, axis=0)).clip(min=0))[np.newaxis,:]
          L = - 0.5* np.nansum(r**2/e_r**2) - 0.5* np.nansum(np.log(2.*np.pi*e_r**2))
          print L, e_n.ravel()
-         gplot(pl='unset multiplot')
-         gplot(pl='set datafile missing nan')
-         gplot(pl='set multiplot layout 1,2;')
-         gplot(pl='set xlabel "order"; set ylabel "rvo - RV [m/s]"')
+         gplot.unset(' multiplot')
+         gplot.datafile('missing "nan"')
+         gplot.multiplot('layout 1,2;')
+         gplot.xlabel('"order"').ylabel('"rvo - RV [m/s]"')
          gplot(rv - RV, ' matrix,', m_o.ravel(), 'us 0:1')
-         gplot(pl='set xlabel "obs No."; set ylabel "rvo - RV [m/s]"')
+         gplot.xlabel('"obs No."').ylabel('"rvo - RV [m/s]"')
          gplot((rv - RV).T, ' matrix')
-         gplot(pl='unset multiplot')
+         gplot.unset('multiplot')
          pause()
 
       # ind, = where(np.isfinite(e_rv[i])) # do not use the failed and last order
@@ -359,9 +366,8 @@ class srv:
       preRVc = preRV - np.nan_to_num(self.trvc[8])
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
       if 1:
-         gplot(pl=';set key tit "%s"'%self.keytitle, flush='')
-         gplot(pl=';set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"', flush='')
-         pause()
+         gplot.key('tit "%s"'%self.keytitle)
+         gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
          #gplot(';set ytics nomirr; set y2tics;', flush='')
          gplot(prebjd-2450000, preRVc, pree_RVc, 'us 1:2:3 w e pt 5 lt 3 t "preRVc (rms = %1.3g m/s)"'% mlrms(preRVc, e=pree_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
@@ -374,10 +380,10 @@ class srv:
       ordstd, d_ordmean = wstd(orddisp, self.e_rv, axis=0)
       #ordmean += d_ordmean                # update ordmean
       #orddisp
-      gplot_set('reset; ')
-      gplot(pl='set tit "Order dispersion %s";'%self.keytitle, flush='')
-      gplot_set('set xlabel "Order"; set ylabel "RV_{n,o} - RV_n [m/s]"')
-      gplot(orddisp, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(self.orders)]))
+      gplot.reset()
+      gplot.tit('"Order dispersion %s";'%self.keytitle)
+      gplot.xlabel('"Order"').ylabel('"RV_{n,o} - RV_n [m/s]"')
+      gplot(orddisp.T, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(self.orders)]))
       ogplot(self.orders, ordstd, ' w lp lt 3 t "", "" us 1:(-$2) w lp t ""')
       pause()
       ##gplot('"'+filename,'" matrix every ::%i::%i us ($1-5):3' % (omin+5,omax+5))
@@ -404,7 +410,7 @@ class srv:
       #prebjd, preRV, pree_RVc = self.tpre.T[0:3]
       import pyfits
       #for n in range(self.N):
-      gplot_set("set key Left left rev bottom title '%s'" % self.keytitle)
+      gplot.key("Left left rev bottom title '%s'" % self.keytitle)
       '''
              if def_wlog: w2 = np.exp(w2)
             res = np.nan * f2

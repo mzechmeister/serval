@@ -38,6 +38,9 @@ import masktools
 import phoenix_as_RVmodel
 
 
+if 'gplot_set' in locals():
+   raise ImportError('Please update new gplot.py.')
+
 if tuple(map(int,np.__version__.split('.'))) > (1,6,1):
    np.seterr(invalid='ignore', divide='ignore') # suppression warnings when comparing with nan.
 
@@ -169,7 +172,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    # post RVs (re-weightening)
    ok = e_rv > 0
    ordmean = average(rv*0, axis=0)
-   gplot_set('set key tit "'+obj+'"')
+   gplot.key('tit "'+obj+'"')
    for i in range(1+postiter): # centering, first loop to init, other to clip
       RVp, e_RVp = nanwsem(rv-ordmean, e=e_rv*ok, axis=1)
       orddisp = rv - ordmean - RVp[:,newaxis]
@@ -181,29 +184,29 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
          RVp, e_RVp = RV, e_RV
          break
       else:
-         gplot(orddisp, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(orders)]))
+         gplot(orddisp.T, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(orders)]))
          ogplot(orders, ordstd, ' w lp lt 3 t "", "" us 1:(-$2) w lp t ""')
       if 0: pause(i)
    rvp = rv - ordmean
-   pdf=1
+   pdf=0
    if pdf:
-      gplot(pl='set term pdfcairo; set out "%s.pdf"'% obj)
+      gplot.term('pdfcairo; set out "%s.pdf"'% obj)
    if 1: # chromatic slope
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"chromatic index [m/s/Np]"')
       gplot('"'+obj+'/'+obj+'.srv'+fibsuf+'.dat" us ($1-2450000):4:5 w e pt 7')
       if not safemode: pause('chromatic slope')
+      gplot.xlabel('"RV [m/s]"').ylabel('"chromatic index [m/s/Np]"')
       gplot('"" us 2:4:3:5:($1-2450000)  w xyerr pt 7 palette')
       if not safemode: pause('correlation RV - chromatic slope')
 
    snro = snr[:,2+orders]
    print "total SNR:", np.sum(snro**2)**0.5
    if 1: # plot SNR
-      gplot_set('reset; set xlabel "Order"; set ylabel "SNR"; set ytics nomirr; set y2label "total SNR"; set y2tics; set yrange[0:]; set y2range[0:]')
-      gplot(snro, 'matrix us ($1+%i):3' % np.min(orders), flush='')
+      gplot.reset().xlabel('"Order"; set ylabel "SNR"; set ytics nomirr; set y2label "total SNR"; set y2tics; set yrange[0:]; set y2range[0:]')
+      gplot(snro, 'matrix us ($2+%i):3' % np.min(orders), flush='')
       ogplot(np.sum(snro**2,axis=1)**0.5,' us (%i):1 axis x1y2 t "total SNR"'% (np.min(orders)+len(orders)))
       if not safemode: pause()
-      gplot_set('reset')
-
-   gplot_set('set key tit "'+obj+'"')
+      gplot.reset()
 
    # store post processed rvs
    RVpc = RVp - np.nan_to_num(RVd) - np.nan_to_num(RVsa)
@@ -221,11 +224,11 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    print 'median internal precision', np.median(e_RV)
    print  'Time span [d]: ', bjd.max()-bjd.min()
 
-   gplot_set('reset; set xlabel "BJD - 2 450 000"; set ylabel "RV [m/s]"')
+   gplot.reset().xlabel('"BJD - 2 450 000"; set ylabel "RV [m/s]"')
    gplot('"'+obj+'/'+obj+'.rvc'+fibsuf+'.dat" us ($1-2450000):2:3 w e pt 7 t "rvc %s"'%obj)
    if not safemode: pause('rvc')
 
-   gplot(bjd, allrv[:,3],' us ($1-2450000):2t "RVmedian" lt 4', flush='')
+   gplot(bjd, allrv[:,3],' us ($1-2450000):2 t "RVmedian" lt 4', flush='')
    ogplot(bjd, RV, e_RV, ' us ($1-2450000):2:3 w e t "RV"', flush='')
    ogplot(bjd, RVp, e_RVp, ' us ($1-2450000):2:3 w e t "RVp"', flush='')
    ogplot(bjd, RVc, e_RVc, ' us ($1-2450000):2:3 w e pt 7 lt 1 t "RVc"', flush='')
@@ -238,7 +241,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
       ogplot(orders, np.mean(e_rv, axis=0), ' t "internal error"')
       if not safemode: pause('ord disp')
    if 1:  # Order dispersion
-      gplot_set('reset; set xlabel "Order"')
+      gplot.reset().xlabel('"Order"')
       #gplot('"'+filename,'" matrix every ::%i::%i us ($1-5):3' % (omin+5,omax+5))
       #ogplot(allrv[:,5:71],' matrix every ::%i us 1:3' %omin)
       # create ord, rv,e_rv, bb
@@ -260,7 +263,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    print 'mean ord std:',np.mean(ordstd), ', median ord std:',np.median(ordstd)
 
    if pdf:
-      gplot(pl='set out')
+      gplot.out()
 
    return allrv
 
@@ -517,7 +520,7 @@ def CCF(wt, ft, x2, y2, va, vb, e_y2=None, keep=None, plot=False, ccfmode='trape
       for g,diff in zip(np.dstack((xv2, normfac*yv2norm, normfac*ev2, iidx-iidx.min()))[0], np.ediff1d(iidx, to_begin=0)): gg += [g*0-1,g] if diff else [g]
       gg = np.array(gg)
 
-      gplot_set('set palette model HSV rgbformulae 3,2,2; set bar 0')
+      gplot.palette('model HSV rgbformulae 3,2,2; set bar 0')
       gplot(gg, 'us 1:($2/($4>-1)):4 w lp palette pt 7, "" us 1:($2/($4>-1)):3 w e pt 1 lt 1,', vgrid, normfac*SSR2mod, 'w l lc 3 lw 3 t"%.2f +/- %.2f m/s"'%(par2[0]*1000,perr2[2]*1000))
       #gplot(xv2, normfac*yv2norm, normfac*ev2, iidx-iidx.min(), np.ediff1d(iidx, to_begin=0), 'us 1:2:4 w lp palette pt 7, "" us 1:2:3 w e pt 1 lt 1,', vgrid, normfac*SSR2mod, 'w l lc 0 lw 3 t"%.2f +/- %.2f m/s"'%(par2[0]*1000,perr2[2]*1000))
       ogplot(vgrid, SSR, SSRmod, 'w lp lt 7 pt 7 t "CCF", "" us 1:3 w l lt 7 lw 3 t"CCF fit %.2f +/- %.2f m/s"'%(params[0]*1000,perror[0]*1000))
@@ -555,7 +558,7 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    else:
       e_v = 1. / a[2]**0.5
    if (plot==1 and np.isnan(e_v)) or plot==2:
-      gplot_set('set yrange [*:%f]'%SSR.max())
+      gplot.yrange('[*:%f]'%SSR.max())
       gplot(vgrid, SSR-SSR[k], " w lp, v1="+str(vgrid[k])+", %f+(x-v1)*%f+(x-v1)**2*%f," % tuple(a), [v,v], [0,SSR[1]], 'w l t "%f km/s"'%v)
       ogplot(vpeak, SSRpeak, ' lt 1 pt 6; set yrange [*:*]')
       pause(v)
@@ -583,8 +586,8 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
    p, SSRmin, fmod = polyreg(x2, y2, e_y2, v, len(p))   # final call with v
 
    if 0 and (np.isnan(e_v) or plot) and not safemode:
-        gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
-        pause(v)
+      gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
+      pause(v)
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
 def fitspec(wt, ft, tck, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
@@ -653,7 +656,7 @@ def fitspec(wt, ft, tck, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, 
             fMod = ft * p[1]     # compute also at bad pixels
          else:
             fMod = calcspec(w2, *p)     # compute also at bad pixels
-         gplot_set('set y2tics; set ytics nomir;set y2range [-5:35];')
+         gplot.y2tics().ytics('nomir; set y2range [-5:35];')
          gplot(w2,fMod,' w lp pt 7 ps 0.5 t "fmod"',flush='');
          ogplot(w2[keep],fMod[keep],' w lp pt 7 ps 0.5 t "fmod[keep]"',flush='');
          ogplot(w2,f2,' w lp pt 7 ps 0.5 t "f2"',flush='');
@@ -1267,9 +1270,6 @@ def serval(*argv):
         myunit.flush()
         if i>2:
            gplot('"'+prefile+'" us ($1-2450000):2:3 w e pt 7')
-        #if i==0: gplot('"'+prefile+'" us ($1-2450000):2:3 w e pt 7 lt 7')
-        #ogplot(-rv[i], 'us (%s-2450000):1:0 palette pt 5 ps 0.5 t ""'%sp.bjd)
-        #pause()
        myunit.close()
        # end measure pre-RVs
 
@@ -1420,9 +1420,9 @@ def serval(*argv):
                   sig = np.sqrt(vara(wmod[ind]))
 
                   if 0:
-                     gplot(wmod[ind], res, -sig*ckappa[0], sig*ckappa[1], ', "" us 1:3 w l lt 7, "" us 1:4 w l lt 7')
-                     gplot(wmod[ind], res, -sig, sig, ', "" us 1:3 w l lt 7, "" us 1:4 w l lt 7')
-               #pause('look ',o)
+                     # show adaptive clipping threshold
+                     gplot(wmod[ind], res, -sig, sig,  -sig*ckappa[0], sig*ckappa[1], ', "" us 1:3 w l lt 3, "" us 1:4 w l lt 3, ""  us 1:5 w l lt 7, ""  us 1:6 w l lt 7')
+               # pause('look ',o)
 
                okmap = np.array([True] * len(res))
                if ckappa[0]: okmap *= res > -ckappa[0]*sig
@@ -1457,9 +1457,9 @@ def serval(*argv):
 
             # plot the model and spt
             if o in lookt:
-               gplot_set("set bar 0; set key tit '%s order %s'"% (obj,o))
+               gplot.bar(0).key("tit '%s order %s'"% (obj,o))
                #gplot(wmod[ind],mod[ind], 1/np.sqrt(we[ind]), emod[ind], 'us 1:2:3 w e lt 2, "" us 1:2:4  w e pt 7 ps 0.5 lt 1')
-               gplot(wmod[ind], mod[ind], emod[ind],' w e pt 7 ps 0.5 t "data"', flush='')
+               gplot(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"', flush='')
                ogplot(ww[o], ff[o], yfit, 'w lp lt 2 ps 0.5 t "spt", "" us 1:3 w l lt 3 t "template"', flush='')
                if (~ind).any():
                   ogplot(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"', flush='')
@@ -1894,7 +1894,7 @@ def serval(*argv):
                dLWo[i,o] = dsig * 1000       # convert from (km/s) to m/s km/s
                e_dLWo[i,o] = e_dsig * 1000 * drchi
                if 0:
-                  gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,',wmod[keep],(f2-f2mod)[keep], 'us 1:2')
+                  gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,', wmod[keep],(f2-f2mod)[keep], 'us 1:2')
                   ogplot(wmod,dsig/c**2*ddy); #ogplot(wmod,f2, 'axis x1y2')
                   pause(o, 'dLW', dLWo[i,o])
 
@@ -1917,10 +1917,10 @@ def serval(*argv):
             res = np.nan * f2
             res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
             b = str(stat['std'])
-            gplot_set('set key left Left rev samplen 2 tit "%s (o=%s, v=%.2fm/s)"'%(obj,o,rvo))
-            gplot_set('set ytics nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchi, rchi))
-            gplot_set('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
-            gplot('[][][][-5:35]',x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
+            gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2fm/s)"'%(obj,o,rvo))
+            gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchi, rchi))
+            gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
+            gplot('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
             ogplot(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"', flush='')
             ogplot(x2,w2, f2mod,(b2==0)*0.5, 'us (column(i)):3:4 w lp lt 3 pt 7 ps var t "Fmod"', flush='')
             ogplot(x2,w2, res, b2, "us (column(i)):3:4 w lp pt 7 ps 0.5 lc var axis x1y2 t 'residuals'", flush='')
@@ -1965,7 +1965,7 @@ def serval(*argv):
 
          #coli,stat = polynomial.polyfit(arange(len(rv[i]))[ind],rv[i][ind], 1, w=1./e_rv[i][ind], full=True)
          if 0:   # show trend in each order
-            gplot(pl='set log x; set autoscale xfix; set xtic add (0'+(",%i"*10)%tuple((np.arange(10)+1)*1000)+')')
+            gplot.log('x; set autoscale xfix; set xtic add (0'+(",%i"*10)%tuple((np.arange(10)+1)*1000)+')')
             gplot(np.exp(x[ind]), rv[i][ind], e_rv[i][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[i], pval[1],l_v,RV[i]))
             pause()
 
@@ -2001,13 +2001,13 @@ def serval(*argv):
          dLW[i], e_dLW[i] = wsem(dLWo[i,ind], e=e_dLWo[i,ind])
 
       if 0: # plot RVs of all orders
-         gplot_set('set key title "rv %i:  %s"' %(i+1,sp.timeid))
+         gplot.key('title "rv %i:  %s"' %(i+1,sp.timeid))
          gplot(orders,rv[i,orders],e_rv[i,orders],rvccf[i,orders],e_rvccf[i,orders],'us 1:2:3 w e, "" us 1:4:5 w e t "ccf", {0}, {0} - {1}, {0}+{1} lt 2'.format(RV[i],e_RV[i]))
          pause('rvo')
       if 0: # plot dLW of all orders
-         gplot_set('set key title "dLW %i:  %s"' %(i+1,sp.timeid))
+         gplot.key('title "dLW %i:  %s"' %(i+1,sp.timeid))
          gplot(orders, dLWo[i][orders], e_dLWo[i][orders], ' w e, %f, %f, %f lt 2'%(dLW[i]+e_dLW[i],dLW[i],dLW[i]-e_dLW[i]))
-         pause('dLW')
+         pause('dLWo')
 
       if outfmt and not np.isnan(RV[i]):   # write residuals
          data = {'fmod': fmod, 'wave': sp.w, 'spec': sp.f,
@@ -2025,10 +2025,10 @@ def serval(*argv):
          write_res(outdir+'res/'+outfile, data, outfmt, sph, clobber=1)
 
       if outchi and not np.isnan(RV[i]):   # write residuals
-         gplot_set('set palette defined (0 "blue", 1 "green", 2 "red")')
-         gplot_set('set xlabel "v [m/s]"; set ylabel "chi^2/max(chi^2)"; set cblabel "order"')
+         gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
+         gplot.xlabel('"v [m/s]"; set ylabel "chi^2/max(chi^2)"; set cblabel "order"')
          #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
-         gplot(chi2map /chi2map.max(axis=1)[:,np.newaxis], ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
+         gplot(chi2map.T /chi2map.max(axis=1), ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
          outfile = os.path.basename(sp.filename)
          outfile = os.path.splitext(outfile)[0] + '_chi2map.fits'
          hdr = spt.header[0:10]
@@ -2044,7 +2044,7 @@ def serval(*argv):
          hdr['CDELT2'] = 1
          write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
          #ds9(chi2map)
-         pause()
+         pause('chi2map')
 
       if i>0 and not safemode:
          # plot time series

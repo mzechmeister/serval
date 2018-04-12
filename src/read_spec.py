@@ -229,7 +229,7 @@ def read_spec(self, s, inst='HARPS', plot=False, **kwargs):
       #s.close()
 
    if plot:
-      gplot_set("set xlabel 'wavelength'; set ylabel 'intensity'")
+      gplot.xlabel("'wavelength'").ylabel("'intensity'")
       for o in range(len(sp.w)):
          gplot(sp.w[o], sp.f[o], " w lp t 'order %i'"%o)
          pause(o)
