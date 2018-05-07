@@ -703,7 +703,9 @@ def read_carm_nir(self, s, orders=None, pfits=True, verb=True):
       self.fox = HIERARCH+'CARACAL FOX XWD' in hdr
       # check LED for NIR This order can be affect
       r = hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan) /  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan)
-      if r >1.5: print r, hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan), hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan), "# This spectrum could be affected by LED"
+      if r > 1.5:
+         self.flag |= sflag.led
+         print r, hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan), hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan), "# This spectrum could be affected by LED; or back background"
       self.sn55 = min(hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan),  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan))
       if self.dateobs[:10] in ('2016-01-13', '2016-01-14', '2016-01-22', '2016-01-23'):
          self.sn55 = min(self.sn55, 10.) # bug in NIR fits file

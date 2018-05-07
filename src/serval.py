@@ -1118,7 +1118,7 @@ def serval(*argv):
             kk = [kk] * (omax+1)
          else:
             # read a spectrum stored order wise
-            ww, ff, head = read_template(tpl)
+            ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
             print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
             if not 'PHOENIX-ACES-AGSS-COND' in tpl:
                if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
@@ -1375,12 +1375,19 @@ def serval(*argv):
 
                # B-spline fit for co-adding
                #if o == 46:stop()
-               ymod, smod = spl._ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk, lam=pspllam, sigk=True, reta=True)
+               mu, e_mu = None, None
+               if pmu and pe_mu:
+                  # use mean as an estimate for continuum of absoption spectrum
+                  mu = wmean(mod[ind], w=we[ind]) if pmu is True else pmu
+                  # deviation of mu should be as large or larger than mu
+                  e_mu = pe_mu * mu  # 5 *mu
+
+               smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
 
                yfit = smod(ww[o][ind2])
-               wko = smod.xk()   # the knot positions
+               wko = smod.xk     # the knot positions
                fko = smod()      # the knot values
-               eko = smod.sigk   # the error estimates for knot values
+               eko = smod.e_yk   # the error estimates for knot values
                dko = smod.dk()   # ~second derivative at knots
 
                #pause()
@@ -1408,20 +1415,21 @@ def serval(*argv):
                if 1:
                   # flexible sig
                   # sig = np.sqrt(spl._ucbspl_fit(wmod[ind], res**2, K=nk/5)[0])  # not good, van be negative
-
+                  # get fraction of the data to each knot for weighting
                   G, kkk = spl._cbspline_Bk(wmod[ind], nk/5)
-                  chik = np.zeros(nk/5 + 3)   # chi2 per knot
-                  normk = np.zeros(nk/5 + 3)  # normalising factor to compute local chi2_red
-                  for i,kki in enumerate(kkk):
-                     normk[kki:kki+4] += G[i]
-                     chik[kki:kki+4] += res[i]**2 * G[i]
+                  chik = np.zeros(nk/5+2)   # chi2 per knot
+                  normk = np.zeros(nk/5+2)  # normalising factor to compute local chi2_red
+                  for k in range(4):
+                     normk += np.bincount(kkk+k, G[k], nk/5+2)
+                     chik += np.bincount(kkk+k, res**2 * G[k], nk/5+2)
 
                   vara = spl.ucbspl(chik/normk, wmod[ind].min(), wmod[ind].max())
                   sig = np.sqrt(vara(wmod[ind]))
 
-                  if 0:
+                  if 0 and o==33:
                      # show adaptive clipping threshold
                      gplot(wmod[ind], res, -sig, sig,  -sig*ckappa[0], sig*ckappa[1], ', "" us 1:3 w l lt 3, "" us 1:4 w l lt 3, ""  us 1:5 w l lt 7, ""  us 1:6 w l lt 7')
+                     pause('look ',o)
                # pause('look ',o)
 
                okmap = np.array([True] * len(res))
@@ -1904,8 +1912,9 @@ def serval(*argv):
          rv[i,o] = rvo = par.params[0] * 1000. #- sp.drift
          snr[i,o] = stat['snr']
          rchi2[i,o] = stat['std']
-         vgrid = chi2mapo[0]
-         chi2map[o] = chi2mapo[1]
+         if outchi:
+            vgrid = chi2mapo[0]
+            chi2map[o] = chi2mapo[1]
          e_rv[i,o] = par.perror[0] * stat['std'] * 1000
          if verb: print "%s-%02u  %s  %7.2f +/- %5.2f m/s %5.2f %5.1f it=%s %s" % (i+1, o, sp.timeid, rvo, par.perror[0]*1000., stat['std'], stat['snr'], par.niter, np.size(keep))
 
@@ -2042,9 +2051,19 @@ def serval(*argv):
          hdr['CRVAL2'] = 1
          hdr['CRPIX2'] = 1
          hdr['CDELT2'] = 1
+         #pause('chi2map')
          write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
+         mchi2 = np.nansum(chi2map, axis=0)
+         #gplot(mchi2)
+         v, e_v, a = SSRstat(np.arange(v_lo, v_hi, v_step), mchi2, plot=1)
          #ds9(chi2map)
-         pause('chi2map')
+         #pause('master chi2', v*1000, e_v*1000)
+         if 0:
+            # replaced RVs by chi2 master RVs
+            RV[i] = v*1000
+            e_RV[i] = e_v*1000
+            RVc[i] = RV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
+            e_RVc[i] = np.sqrt(e_RV[i]**2 + np.nan_to_num(sp.e_drift)**2)
 
       if i>0 and not safemode:
          # plot time series
@@ -2063,7 +2082,7 @@ def serval(*argv):
    mypfile = [file(rvofile+'err', 'w'), file(rvofile+'errbad', 'w')]
    snrunit = [file(snrfile, 'w'), file(snrfile+'bad', 'w')]
    chiunit = [file(chifile, 'w'), file(chifile+'bad', 'w')]
-   dfwunit = [file(dfwfile, 'w'), file(dfwfile+'bad', 'w')]
+   dlwunit = [file(dfwfile, 'w'), file(dfwfile+'bad', 'w')]
    if meas_index:
       halunit = [file(halfile, 'w'), file(halfile+'bad', 'w')]
    if meas_CaIRT:
@@ -2081,7 +2100,7 @@ def serval(*argv):
       print >>rvcunit[rvflag], sp.bjd, RVc[i], e_RVc[i], sp.drift, sp.e_drift, RV[i], e_RV[i], sp.berv, sp.sa
       print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tcrx[i]) + map(str,xo[i]))
       print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], crx[i], e_crx[i], dLW[i], e_dLW[i]
-      print >>dfwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dLWo[i]))
+      print >>dlwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dLWo[i]))
       print >>snrunit[rvflag], sp.bjd, np.nansum(snr[i]**2)**0.5, " ".join(map(str,snr[i]))
       print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi2[i]))
       if meas_index:
@@ -2124,13 +2143,12 @@ if __name__ == "__main__":
    argopt('-targ', help='Target name looked up in star.cat.')
    argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
    argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
-   argopt('-targplx', help='target parallax', type=float, default='nan')
+   argopt('-targplx', help='Target parallax', type=float, default='nan')
    argopt('-rvguess', help='[km/s] Target rv guess (default=vref).', type=float)
    argopt('-targrv', help='[km/s] Target rv guess (default=tplrv)', type=float)
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-brvref', help='Barycentric RV code reference', choices=brvref, type=str, default='WE')
-   argopt('-distmax', help='[arcsec] Max distance telescope position from target coordinates.', type=float)
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)
    argopt('-mskspec', help='Ascii 0-1 spectrum.'+default, default='')
@@ -2144,6 +2162,7 @@ if __name__ == "__main__":
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
    argopt('-deg',  help='degree for background polynomial', type=int, default=3)
+   argopt('-distmax', help='[arcsec] Max distance telescope position from target coordinates.', nargs='?', type=float, const=30.)
    argopt('-driftref', help='reference file for drift mode', type=str)
    argopt('-fib',  help='fibre', choices=['','A','B','AB'], default='')
    argopt('-inst', help='instrument '+default, default='HARPS',
@@ -2167,6 +2186,8 @@ if __name__ == "__main__":
    argopt('-pmin', help='Minimum pixel'+default, default=300, type=int)
    argopt('-pmax', help='Maximum pixel'+default, default={'CARM_NIR':1800, 'else':3800}, type=int)
    argopt('-pspline', help='pspline as coadd filter [smooth value]', nargs='?', const=0.0000001, dest='pspllam', type=float)
+   argopt('-pmu', help='analog to GP mean. DEfault no GP penalty. Without the mean in each order. Otherwise this value.', nargs='?', const=True, type=float)
+   argopt('-pe_mu', help='analog to GP mean deviation', default=5., type=float)
    argopt('-reana', help='flag reanalyse only', action='store_true')
    argopt('-review', help='level of review template', nargs='?', type=int)
    argopt('-rvwarn', help='[km/s] warning threshold in debug'+default, default=2., type=float)
@@ -2177,7 +2198,7 @@ if __name__ == "__main__":
    argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=400, type=float)
    argopt('-starcat', help='directory or filename of target look-up table. (default: local star.cat, then servaldir/star.cat)', type=str)
    argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
-   argopt('-tpl',  help="template filename, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
+   argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV (default auto, for index measures, for phoe tpl put 0 km/s, None => no measure, targ => from simbad, auto => first from header, second from targ else consider to adapt also rvguess))', default={'CARM_NIR':None, 'else':'auto'})
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')

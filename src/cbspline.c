@@ -4,20 +4,191 @@
 #include <dlfcn.h>
 
 #define MIN(a,b) ((a<b)?a:b)
+#define MAX(a,b) ((a>b)?a:b)
 
 /*
    gcc -c  -Wall -O2 -ansi -pedantic -fPIC cbspline.c; gcc -o cbspline.so -shared cbspline.o
 */
 
+int cholsol(double *A, double *b, int n) {
+  /* solves Ax = b with cholesky decomposition
+     x is returned in b and L in A = LL^T
+     returns 1 if Matrix is not positive definite
+   */
+   int i, j, k;
+   double sum;
 
-void cbsplcoeff(double *x, double *G, long *kk, int n) {
+   /* Find the Cholesky factorization of A* A = R* R */
+   for (i=0; i<n; ++i) {
+      for (j=0; j<i; ++j) {
+         sum = A[i+n*j];
+         for (k=0; k<j; ++k)
+            sum -= A[i+n*k] * A[j+n*k];
+         A[i+n*j] = sum / A[j+n*j];
+      }
+      sum = A[i+n*i];
+      for (k=0; k<i; ++k)
+       sum -= A[i+n*k] * A[i+n*k];
+
+      if (sum >= 0.0) A[i+n*i] = sqrt(sum);
+      else return 1;
+   }
+
+   /* Solve the lower-triangular system R* y = A* b */
+   b[0] = b[0]/A[0];                /* forward substitution */
+   for (i=1; i<n; ++i) {
+      sum = 0.;
+      for (k=0; k<i; ++k)
+        sum += A[i+n*k] * b[k];
+      b[i] = (b[i]-sum) / A[i+n*i];
+   }
+
+   /* Solve the upper-triangular system Rx = y for x. */
+   b[n-1] = b[n-1] / A[n-1+n*(n-1)];    /* backward substitution */
+   for (i=n-2; i>=0; --i) {
+      sum = 0.;
+      for (k=i+1; k<n; ++k)
+        sum += A[n*i+k] * b[k];
+      b[i] = (b[i]-sum) / A[n*i+i];
+   }
+   return 0;
+}
+
+int cholbnd(double *Abnd, double *b, int n, int bw) {
+  /* Cholesky solver for band matrices in lower form
+   *
+   * solves Ax = b with cholesky decomposition
+     x is returned in b and L in A = LL^T
+     returns 1 if Matrix is not positive definite
+
+   bandsolver index = i,j (i+n*j) =>    i,j (i+ n*(j-i))
+python
+import numpy as np
+bw=3
+n=12
+A=np.zeros((bw+1,n))*0j +np.nan
+for i in range(n):
+   for j in range(n):
+      if 0<=i-j<=bw: A[i-j,i] = i+j*1j
+
+print A[:,:6]; print A[:,-6:]
+
+A=np.zeros((bw+1,n))*0j +np.nan
+for i in range(n):
+   for j in range(n):
+      if 0<=j-i<=bw: A[j-i,i] = i+j*1j
+
+print A[:,:6]; print A[:,-6:]
+
+   */
+   int i, j, k;
+   double sum;
+
+   /* Find the Cholesky factorization of A* A = R* R */
+   for (i=0; i<n; ++i) {
+      for (j=MAX(0,i-bw); j<i; ++j) {
+         sum = Abnd[j+n*(i-j)];
+         for (k=MAX(0,i-bw); k<j; ++k)
+            sum -= Abnd[k+n*(i-k)] * Abnd[k+n*(j-k)];
+         Abnd[j+n*(i-j)] = sum / Abnd[j]; /* Li,j = 1/L_jj (A_ij - sum_k(L_ik*L_jk) ) */
+      }
+      sum = Abnd[i];
+      for (k=MAX(0,i-bw); k<i; ++k)
+         sum -= Abnd[k+n*(i-k)] * Abnd[k+n*(i-k)];
+      if (sum >= 0.0) Abnd[i] = sqrt(sum); /* L_jj = sqrt(A_jj - sum_k L_jk^2) */
+      else return 1;
+   }
+
+   /* Solve the lower-triangular system R* y = A* b */
+   b[0] = b[0] / Abnd[0];                /* forward substitution */
+   for (i=1; i<n; ++i) {
+      sum = 0.;
+      for (k=MAX(0,i-bw); k<i; ++k)
+         sum += Abnd[k+n*(i-k)] * b[k];
+      b[i] = (b[i]-sum) / Abnd[i];
+   }
+
+   /* Solve the upper-triangular system Rx = y for x. */
+   /* x_i = (y_i - sum L_ik x_j) / L_ii  */
+   b[n-1] = b[n-1] / Abnd[n-1];        /* backward substitution */
+   for (i=n-2; i>=0; --i) {
+      sum = 0.;
+      for (k=i+1; k<MIN(n,i+bw+1); ++k) 
+         sum += Abnd[n*(k-i)+i] * b[k];
+      b[i] = (b[i]-sum) / Abnd[i];
+   }
+   return 0;
+}
+
+int cholbnd_upper(double *Abnd, double *b, int n, int bw) {
+  /* Cholesky solver for band matrices upper form
+   *
+   * solves Ax = b with cholesky decomposition
+     x is returned in b and L in A = LL^T
+     returns 1 if Matrix is not positive definite
+
+   bandsolver index = i,j (i+n*j) =>    i,j (i+ n*(bw-j+i))
+python
+import numpy as np
+bw=3
+n=12
+A=np.zeros((bw+1,n))*0j +np.nan
+for i in range(n):
+   for j in range(n):
+      if 0<=bw+j-i<=bw: A[bw+j-i,i] =   i+j*1j
+      if 0<=j-i<=bw: A[j-i,i] = i+j*1j
+
+print A[:,:6]; print A[:,-6:]
+
+   */
+   int i, j, k;
+   double sum;
+
+   /* Find the Cholesky factorization of A* A = R* R */
+   for (i=0; i<n; ++i) {
+      for (j=MAX(0,i-bw); j<i; ++j) {
+         sum = Abnd[i+n*(bw+j-i)];
+         for (k=MAX(0,i-bw); k<j; ++k)
+            sum -= Abnd[i+n*(bw+k-i)] * Abnd[j+n*(bw+k-j)];
+         Abnd[i+n*(bw+j-i)] = sum / Abnd[j+n*bw]; /* Li,j = 1/L_jj (A_ij - sum_k(L_ik*L_jk) ) */
+      }
+
+      sum = Abnd[i+n*bw];
+      for (k=MAX(0,i-bw); k<i; ++k)
+         sum -= Abnd[i+n*(bw+k-i)] * Abnd[i+n*(bw+k-i)];
+      if (sum >= 0.0) Abnd[i+n*bw] = sqrt(sum); /* L_jj = sqrt(A_jj - sum_k L_jk^2) */
+      else return 1;
+   }
+
+   /* Solve the lower-triangular system R* y = A* b */
+   b[0] = b[0] / Abnd[0+n*bw];                /* forward substitution */
+   for (i=1; i<n; ++i) {
+      sum = 0.;
+      for (k=MAX(0,i-bw); k<i; ++k)
+         sum += Abnd[i+n*(bw+k-i)] * b[k];
+      b[i] = (b[i]-sum) / Abnd[i+n*bw];
+   }
+
+   /* Solve the upper-triangular system Rx = y for x. */
+   /* x_i = (y_i - sum L_ik x_j) / L_ii  */
+   b[n-1] = b[n-1] / Abnd[n-1+n*bw];        /* backward substitution */
+   for (i=n-2; i>=0; --i) {
+      sum = 0.;
+      for (k=i+1; k<MIN(n,i+bw+1); ++k) 
+         sum += Abnd[n*(bw+i-k)+k] * b[k];
+      b[i] = (b[i]-sum) / Abnd[n*bw+i];
+   }
+   return 0;
+}
+
+void cbspl_Bk(double *x, double *G, long *kk, int n, long fix) {
 /*
       kk,pp = divmod(x,1)
       qq = 1-pp
-      G[0,:]= qq**3
-      G[1,:]= (3*pp**3 - 6*pp**2 + 4) # (-3*pp**2 (1-pp)  -3*pp**2 + 4)
-      G[2,:]= (3*qq**3 - 6*qq**2 + 4) #= (-3*pp**3 + 3*pp**2 + 3*pp + 1)
-      G[3,:]= pp**3
+      G[0,:] = qq**3
+      G[1,:] = 3*pp**3 - 6*pp**2 + 4
+      G[2,:] = 3*qq**3 - 6*qq**2 + 4
+      G[3,:] = pp**3
       G /= 6
 */
    long i, i4;
@@ -25,85 +196,183 @@ void cbsplcoeff(double *x, double *G, long *kk, int n) {
    for (i=0; i<n; ++i) {
       i4 = 4 * i;
       kk[i] = (long)x[i];    /* integer part */
+      if (fix && kk[i] > fix) kk[i] = fix;
       pp = x[i] - kk[i];     /* fractional part */
       qq = 1 - pp;
       tmp = pp*pp; pp *= tmp;
-      G[i4+3] = pp/6;
-      G[i4+1] = (3*pp +4)/6 - tmp;
+      G[i4+3] = 1./6*pp;
+      G[i4+1] = 3./6*pp - tmp + 4./6;
       tmp = qq*qq; qq *= tmp;
-      G[i4]   = qq/6;
-      G[i4+2] = (3*qq +4)/6 - tmp;
+      G[i4]   = 1./6*qq;
+      G[i4+2] = 3./6*qq - tmp + 4./6;
    }
 }
 
 
 int rhs_fill(double *rhs, double *G, double *w, long *kk, int n) {
-/*      for i,kki in enumerate(kk):
+   /* fill the right hand side of the equation system
+      rhs_k = sum_i w_i B_ki
+      for i,kki in enumerate(kk):
          rhs[kk[i]:kk[i]+4] += G[:,i]*wy[i] # rhs[-1] = 0 !!!!
-*/
-   int  j;
-   long i, in;
+   */
+   int j;
+   long i, i4;
 
    for (i=0; i<n; ++i) {
-      in = i * 4;
+      i4 = i * 4;
       for (j=0; j<4; ++j)
-         rhs[kk[i]+j] += w[i] * G[in+j];
+         rhs[kk[i]+j] += w[i] * G[i4+j];
    }
+   return 0;
+}
 
-   return 1;
+int lhsbnd_fill(double *lhsbnd, double *G, double *w, long *kk, int n, int nk) {
+  /* fill the left hand side of the equation system
+   lhs = w * G * G
+   lhsbnd - band matrix ((4 x nk)),  last dim is a dummy
+   n - number of data points
+   G - matrix with bspline coefficients of data points ((4 x n))
+   w - weights ((n))
+   kk - reference knots of data points ((n))
+   nk - number of knots
+
+   BTB_jk = sum_i B_j(x_i) * B_k(x_i)
+   */
+   long i, i4;
+   int j, k;
+
+   for (i=0; i<n; ++i) {
+      i4 = i * 4;
+      for (k=0; k<4; ++k)
+         for (j=k; j<4; ++j)
+            lhsbnd[nk*(j-k)+kk[i]+k] += w[i] * G[i4+k] * G[i4+j];
+   }
+   return 0;
 }
 
 
-int lhsbnd_fill(double *lhsbnd, double *G, double *w, long *kk, int n, int bw, int nk, double lam) {
-  /* fill  lhs = w*G*G
-   lhsbnd - band matrix ((bw x kkmax))
+int lhsbnd_fill_upper(double *lhsbnd, double *G, double *w, long *kk, int n, int nk) {
+   /* fill the left hand side of the equation system
+   lhs = w * G * G
+   lhsbnd - band matrix ((7 x nk)),  last dim is a dummy
    n - number of data points
-   G - matrix with bspline coefficients of data points ((bw/2 x n))
-   kk - reference knots of data points ((n))
+   G - matrix with bspline coefficients of data points ((4 x n))
    w - weights ((n))
+   kk - reference knots of data points ((n))
+   nk - number of knots
 
-   python:
-   bklind = 3+np.arange(4)+(6*np.arange(4))[:,np.newaxis]
-   for i,kki in enumerate(kk): lhsbnd.flat[kk[i]*7+bklind] += w[i]*G[:,i]*G[:,i,np.newaxis]
    */
-   int  j, k;
-   long i, in, kkk, kkmax=0;  /* kkmax = dim lhsbnd*/
-   double tmp;
+   int j, k;
+   long i, i4, kkk;
 
    for (i=0; i<n; ++i) {
-      in = i * 4;
+      i4 = i * 4;
       kkk = kk[i] + 3*nk;
-      if (kk[i]>kkmax) kkmax = kk[i];
       /*printf("%ld %ld %ld\n",i,kk[i],in);*/
 
       for (j=0; j<4; ++j)
          for (k=0; k<=j; ++k)
-            lhsbnd[kkk-nk*(j-k)+j] += w[i] * G[in+j] * G[in+k];
+            lhsbnd[kkk-nk*(j-k)+j] += w[i] * G[i4+j] * G[i4+k];
       /*printf("%ld %ld %f\n",nk*bw,k,lhsbnd[kkk+(nk-1)*k+j]);*/
    }
-   kkmax += 3;
+   return 0;
+}
 
-/*
-array([[ 1., -2.,  1.,  0.,  0.],
-       [-2.,  5., -4.,  1.,  0.],
-       [ 1., -4.,  6., -4.,  1.],
-       [ 0.,  1., -4.,  5., -2.],
-       [ 0.,  0.,  1., -2.,  1.]]) */
-   if (lam>0.0) {
-      /* main diag */
-      lhsbnd[0+3*nk] += lam;   lhsbnd[(kkmax-1)+3*nk] += lam;
-      lhsbnd[1+3*nk] += 5*lam; lhsbnd[(kkmax-2)+3*nk] += 5*lam;
-      tmp = 6*lam; for (i=2; i<kkmax-2; ++i) lhsbnd[i+3*nk] += tmp;
-      /* 1st subdiag */
-      lhsbnd[1+2*nk] += -2*lam; lhsbnd[(kkmax-1)+2*nk] += -2*lam;
-      tmp = -4*lam; for (i=2; i<kkmax-1; ++i) lhsbnd[i+2*nk] += tmp;
-      /* 2nd subdiag */
-      for (i=2; i<kkmax; ++i)   lhsbnd[i+1*nk] += lam;
+int add_DTD(double *lhsbnd, int nk, double lam, int pord) {
+   /* add penalty and make band matrix symmetric
+
+   lhsbnd - band matrix ((7 x nk)),  last dim is a dummy
+   nk - number of knots
+   lam - penalty
+   pord - penalty order
+   */
+   int k;
+
+   if (lam > 0.) {
+      if (pord==0){
+         /* main diag */
+         for (k=0; k<nk; ++k) lhsbnd[k] += lam;
+      }
+      if (pord==1){
+         /* main diag */
+         lhsbnd[0] += lam;
+         for (k=1; k<nk-1; ++k) lhsbnd[k] += 2 * lam;
+         lhsbnd[k] += lam;
+         /* 1st subdiag */
+         for (k=0; k<nk-1; ++k) lhsbnd[k+1*nk] -= lam;
+      }
+      if (pord==2){
+         /* [ 1 -2  1  0  0
+             -2  5 -4  1  0
+              1 -4  6 -4  1
+              0  1 -4  5 -2
+              0  0  1 -2  1] */
+         /* main diag */
+         lhsbnd[0] += lam;
+         lhsbnd[1] += 5*lam;
+         for (k=2; k<nk-2; ++k) lhsbnd[k] += 6*lam;
+         lhsbnd[k] += 5*lam;
+         lhsbnd[++k] += lam;
+         /* 1st subdiag */
+         lhsbnd[1*nk] += -2*lam;
+         for (k=1; k<nk-2; ++k) lhsbnd[k+1*nk] += -4*lam;
+         lhsbnd[k+1*nk] += -2*lam;
+         /* 2nd subdiag */
+         for (k=0; k<nk-2; ++k) lhsbnd[k+2*nk] += lam;
+      }
    }
-   for (j=0; j<bw/2; ++j)  /* fill the symmetric part */
-      for (i=bw/2-j; i<kkmax; ++i) lhsbnd[(i-bw/2+j)+(bw-1-j)*nk] = lhsbnd[i+j*nk];
+   return 0;
+}
 
-   return 1;
+int add_DTD_upper(double *lhsbnd, int nk, double lam, int pord) {
+   /* add penalty and make band matrix symmetric
+
+   lhsbnd - band matrix ((7 x nk)),  last dim is a dummy
+   nk - number of knots
+   lam - penalty
+   pord - penalty order
+   */
+   int j, k, bw=3;
+
+   if (lam > 0.) {
+      if (pord==0){
+         /* main diag */
+         for (k=0; k<nk; ++k) lhsbnd[k+3*nk] += lam;
+      }
+      if (pord==1){
+         /* main diag */
+         lhsbnd[0+3*nk] += lam;
+         for (k=1; k<nk-1; ++k) lhsbnd[k+3*nk] += 2 * lam;
+         lhsbnd[k+3*nk] += lam;
+         /* 1st subdiag */
+         for (k=1; k<nk; ++k) lhsbnd[k+2*nk] -= lam;
+      }
+      if (pord==2){
+         /* [ 1 -2  1  0  0
+             -2  5 -4  1  0
+              1 -4  6 -4  1
+              0  1 -4  5 -2
+              0  0  1 -2  1] */
+         /* main diag */
+         lhsbnd[0+3*nk] += lam;
+         lhsbnd[1+3*nk] += 5*lam;
+         for (k=2; k<nk-2; ++k) lhsbnd[k+3*nk] += 6*lam;
+         lhsbnd[k+3*nk] += 5*lam;
+         lhsbnd[++k +3*nk] += lam;
+         /* 1st subdiag */
+         lhsbnd[1+2*nk] += -2*lam;
+         for (k=2; k<nk-1; ++k) lhsbnd[k+2*nk] += -4*lam;
+         lhsbnd[k+2*nk] += -2*lam;
+         /* 2nd subdiag */
+         for (k=2; k<nk; ++k) lhsbnd[k+1*nk] += lam;
+      }
+   }
+
+   /* fill the symmetric part */
+   for (j=0; j<bw; ++j)
+      for (k=bw-j; k<nk; ++k) lhsbnd[(k-bw+j)+(2*bw-j)*nk] = lhsbnd[k+j*nk];
+
+   return 0;
 }
 
 
