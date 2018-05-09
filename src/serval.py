@@ -1161,7 +1161,7 @@ def serval(*argv):
          ind[0] = True
          ind[-1] = True
          #ee[o,idx[ind]]= interpolate.interp1d(barshift(spt.w[o,idx][ind],spt.berv), spt.e[o,idx][ind])(ww[o,idx[ind]]) # linear
-         ee[o] = interpolate.interp1d(barshift(spt.w[o,idx][ind],spt.berv), spt.e[o,idx][ind])(ww[o]) # linear
+         ee[o] = interpolate.interp1d(barshift(spt.w[o,idx][ind],spt.berv), spt.e[o,idx][ind], fill_value="extrapolate")(ww[o]) # linear, sometimes extrapolate at border might be required, if barshift(spt.w[o,idx][ind][-1],spt.berv) == ww[o][-5]
 
          if 0 or o==-50:
             gplot(ww[o],ff[o], ',', barshift(spt.w[o,ptmin:ptmax],spt.berv), spt.f[o,ptmin:ptmax])
