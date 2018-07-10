@@ -109,7 +109,7 @@ def cbspline_Bk(x, K, xmin=None, xmax=None, fix=True):
    x = (K-1)/(xmax-xmin) * (x-xmin)
 
    kk, pp = divmod(x, 1)
-   G = np.empty((4, x.size), order='FORTRAN')
+   G = np.empty((4, x.size), order='F')
 
    if fix:
       idx, = np.where(kk==K-1)
@@ -152,7 +152,7 @@ def _cbspline_Bk(x, K, xmin=None, xmax=None, fix=True):
 
    x = (K-1)/(xmax-xmin) * (x-xmin)
 
-   G = np.empty((4, x.size), order='FORTRAN')   # "Fortran" because in C the outer loop is over x
+   G = np.empty((4, x.size), order='F')   # "Fortran" because in C the outer loop is over x
    kk = np.empty(x.size, dtype=int)
    _cbspline.cbspl_Bk(x, G, kk, x.size, fix*(K-2))
    return G, kk
@@ -407,7 +407,9 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    '''
    if y is None:    # uniform data
       y = x
-      x = np.arange(y.size)
+      x = np.arange(y.size, dtype='float64')
+      if xmax: x *= (xmax- (0 if xmin is None else xmin)) / x[-1]
+      if xmin: x += xmin
    if w is None:
       w = 1
       wy = y
