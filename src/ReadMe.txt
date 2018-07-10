@@ -10,7 +10,7 @@ FileName       Explanations
 obj.rvc.dat    Radial velocity (drift and secular acceleration corrected, nan-drifts treated as zero)
 obj.brv.dat    Barycentric earth radial velocity
 obj.cairt.dat  CAII IRT line index (requires absolute RVs)
-obj.chi.dat    Reduced chi^2 (orderwise)
+obj.chi.dat    sqrt(reduced chi^2) (orderwise)
 obj.crx.dat    Chromatic RV index (wavelength depedence of the RV)
 obj.dat        Radial velocity (drift and secular acceleration corrected, nan-drift excluded)
 obj.dlw.dat    Differential FWHM
@@ -18,12 +18,14 @@ obj.drs.dat    Online radial velocity from fits header
 obj.fits       Template
 obj.halpha.dat Halpha line index (requires absolute RVs)
 obj.info.cvs   Infomation from fits file
+obj.mlc.dat    RV and CRX averages via maximum likelihood maps (experimental)
 obj.nad.dat    NaD line index (requires absolute RVs)
 obj.post.dat   post processed RVs with re-weighting of orders (experimental)
 obj.pre.dat    RVs measured against highest S/N spectrum, before coadding
 obj.rvo.dat    Radial velocity (orderwise, not drift corrected)
 obj.snr.dat    Signal-to-noise (orderwise)
 obj.srv.dat    Serval products time series compilation
+obj.targ.cvs   Target properties from catalog request
 lastcmd.txt    Used SERVAL options
 log.obj        Plain text logfile of SERVAL stdout
 --------------------------------------------------------------------------------
@@ -87,9 +89,9 @@ Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------
      1 D      ---       BJD       Barycentric Julian date [1]
      2 D      ---       RCHI      Overall reduced chi^2
-     3 D      ---       RCHIO_00  Reduced chi^2 in order 0
-     4 D      ---       RCHIO_01  Reduced chi^2 in order 1
-     5 D      ---       RCHIO_02  Reduced chi^2 in order 2
+     3 D      ---       RCHIO_00  Sqrt(reduced chi^2) in order 0
+     4 D      ---       RCHIO_01  Sqrt(reduced chi^2) in order 1
+     5 D      ---       RCHIO_02  Sqrt(reduced chi^2) in order 2
 etc...
 --------------------------------------------------------------------------------
 
@@ -193,6 +195,20 @@ Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------
 
 
+Description of file: obj.mlc.dat
+--------------------------------------------------------------------------------
+Column Format Units     Label     Explanations
+--------------------------------------------------------------------------------
+     1 D      ---       BJD       Barycentric Julian date [1]
+     2 D      m/s       MLRVC     ML Radial velocity (drift and sa corrected)
+     3 D      m/s     E_MLRVC     ML Radial velocity error
+     4 D      m/s       MLCRX     ML Chromatic index (Slope over logarithmic wavelength)
+     5 D      m/s     E_MLCRX     error for MLCRX (slope error)
+     6 D      m^2/s^2   DLW       Differential Line Width
+     7 D      m^2/s^2 E_DLW       Error in DLW
+--------------------------------------------------------------------------------
+
+
 Description of file: obj.nad.dat
 --------------------------------------------------------------------------------
 Column Format Units     Label     Explanations
@@ -287,6 +303,18 @@ Column Format Units     Label     Explanations
      5 D      m/s     E_CRX       error for CRX (slope error)
      6 D      m^2/s^2   DLW       Differential Line Width
      7 D      m^2/s^2 E_DLW       Error in DLW
+--------------------------------------------------------------------------------
+
+Description of file: obj.targ.cvs
+--------------------------------------------------------------------------------
+Column Format Units     Label     Explanations
+--------------------------------------------------------------------------------
+     1 A      ---       OBJECT    Name requested in simbad
+     2 A      ---       ID        Simbad main identifier
+     3 A      ---       COO       Coordinates RA DE
+     4 A      mas/yr    PM        Proper motion pmRA pmDE [error ellipse]
+     6 A      mas       PLX       Parallax [error] quality bibcode
+     7 A      km/s      RV        Absolute RV (wavelength) quality [error] bibcode
 --------------------------------------------------------------------------------
 
 

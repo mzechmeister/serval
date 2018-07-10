@@ -36,6 +36,7 @@ import cubicSpline
 import cspline as spl
 import masktools
 import phoenix_as_RVmodel
+from chi2map import Chi2Map
 
 
 if 'gplot_set' in locals():
@@ -1671,12 +1672,15 @@ def serval(*argv):
    results = dict((sp.timeid,['']*nord) for sp in splist)
    table = nans((7,nspec))
    bjd, RV, e_RV, rvm, rvmerr, RVc, e_RVc = table   # get pointer to the columns
-   crx, e_crx = nans((2,nspec))   # get pointer to the columns
-   tcrx = np.rec.fromarrays(nans((5,nspec)), names='crx,e_crx,a,e_a,l_v' )   # get pointer to the columns
+   CRX, e_CRX = nans((2,nspec))   # get pointer to the columns
+   mlRV, e_mlRV = nans((2,nspec))
+   mlRVc, e_mlRVc = nans((2,nspec))
+   mlCRX, e_mlCRX = nans((2,nspec))
+   tCRX = np.rec.fromarrays(nans((5,nspec)), names='CRX,e_CRX,a,e_a,l_v' )   # get pointer to the columns
    xo = nans((nspec,nord))
 
    snr = nans((nspec,nord))
-   rchi2 = nans((nspec,nord))
+   rchi = nans((nspec,nord))
 
    if tplrv == 'targ':
       tplrv = targ.rv
@@ -1775,7 +1779,7 @@ def serval(*argv):
          if debug:   # check the input
             gplot(dopshift(ww[o],tplrv), ff[o], ',', dopshift(wmod,targrv), f2)
             pause(o)
-         rchi = 1
+         rchio = 1
 
          if ccf:
             '''METHOD CCF'''
@@ -1785,7 +1789,7 @@ def serval(*argv):
             rvccf[i,o] = par.params[0] * 1000
             e_rvccf[i,o] = par.perror[0] * 1000
             keep = pind
-            rchi = 1
+            rchio = 1
             #pause(rvccf[i,o], e_rvccf[i,o])
          elif diff_rv:
             '''METHOD DRIFT MEASUREMENT'''
@@ -1850,7 +1854,7 @@ def serval(*argv):
             e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
             e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
             #print np.abs(e_vi[keep]).min(), e_vi_min
-            rchi = 1
+            rchio = 1
             # compare both gradients
             #gplot(keep,e_vi[keep])
             #gplot(spt.f[o][keep], dy[keep]/((sp.f[o][2:]-sp.f[o][:-2]) / (sp.w[o][2:]-sp.w[o][:-2]))[keep-1])
@@ -1911,8 +1915,8 @@ def serval(*argv):
          results[sp.timeid][o] = par
          rv[i,o] = rvo = par.params[0] * 1000. #- sp.drift
          snr[i,o] = stat['snr']
-         rchi2[i,o] = stat['std']
-         if outchi:
+         rchi[i,o] = stat['std']
+         if 1 or outchi:
             vgrid = chi2mapo[0]
             chi2map[o] = chi2mapo[1]
          e_rv[i,o] = par.perror[0] * stat['std'] * 1000
@@ -1927,7 +1931,7 @@ def serval(*argv):
             res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
             b = str(stat['std'])
             gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2fm/s)"'%(obj,o,rvo))
-            gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchi, rchi))
+            gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
             gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
             gplot('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
             ogplot(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"', flush='')
@@ -1940,7 +1944,7 @@ def serval(*argv):
 
             ogplot(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"', flush='')
             ogplot(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
-            pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi2[i,o]))
+            pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi[i,o]))
       # end loop over orders
 
       # ind = setdiff1d(where(e_rv[i]>0.)[0],[71]) # do not use the failed and last order
@@ -1969,14 +1973,36 @@ def serval(*argv):
          perr = np.sqrt(np.diag(cov))
          #pause()
          l_v = np.exp(-(pval[0]-RV[i])/pval[1]+xc)
-         crx[i], e_crx[i], xo[i] = pval[1], perr[1], x
-         tcrx[i] = crx[i], e_crx[i], pval[0], perr[0], l_v
+         CRX[i], e_CRX[i], xo[i] = pval[1], perr[1], x
+         tCRX[i] = CRX[i], e_CRX[i], pval[0], perr[0], l_v
 
          #coli,stat = polynomial.polyfit(arange(len(rv[i]))[ind],rv[i][ind], 1, w=1./e_rv[i][ind], full=True)
          if 0:   # show trend in each order
             gplot.log('x; set autoscale xfix; set xtic add (0'+(",%i"*10)%tuple((np.arange(10)+1)*1000)+')')
             gplot(np.exp(x[ind]), rv[i][ind], e_rv[i][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[i], pval[1],l_v,RV[i]))
             pause()
+
+      if 1: # ML version of chromatic trend
+         oo = ~np.isnan(chi2map[:,0])
+
+         gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle='YZ_CMi (CARM_VIS)\\ncar-20161107T03h31m19s-sci-gtoc-vis.fits', rchi=rchi[i], name='')
+         mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
+
+         mlRVc[i] = mlRV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
+         e_mlRVc[i] = np.sqrt(e_mlRV[i]**2 + np.nan_to_num(sp.e_drift)**2)
+
+         if lookmlRV:
+            gg.plot()
+            pause(i, mlRV[i], e_mlRV[i])
+
+         mlCRX[i], e_mlCRX[i] = gg.mlcrx(x, xc, ind)
+         # Yet e_mlCRX is not implemented
+         e_mlCRX[i] = e_CRX[i]
+
+         if lookmlCRX:
+            gg.plot_fit()
+            pause(i, CRX[i], mlCRX[i])
+
 
       # Line Indices
       vabs = tplrv + RV[i]/1000.
@@ -2037,7 +2063,8 @@ def serval(*argv):
          gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
          gplot.xlabel('"v [m/s]"; set ylabel "chi^2/max(chi^2)"; set cblabel "order"')
          #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
-         gplot(chi2map.T /chi2map.max(axis=1), ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
+         if 0:
+            gplot(chi2map.T /chi2map.max(axis=1), ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
          outfile = os.path.basename(sp.filename)
          outfile = os.path.splitext(outfile)[0] + '_chi2map.fits'
          hdr = spt.header[0:10]
@@ -2051,19 +2078,7 @@ def serval(*argv):
          hdr['CRVAL2'] = 1
          hdr['CRPIX2'] = 1
          hdr['CDELT2'] = 1
-         #pause('chi2map')
          write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
-         mchi2 = np.nansum(chi2map, axis=0)
-         #gplot(mchi2)
-         v, e_v, a = SSRstat(np.arange(v_lo, v_hi, v_step), mchi2, plot=1)
-         #ds9(chi2map)
-         #pause('master chi2', v*1000, e_v*1000)
-         if 0:
-            # replaced RVs by chi2 master RVs
-            RV[i] = v*1000
-            e_RV[i] = e_v*1000
-            RVc[i] = RV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
-            e_RVc[i] = np.sqrt(e_RV[i]**2 + np.nan_to_num(sp.e_drift)**2)
 
       if i>0 and not safemode:
          # plot time series
@@ -2073,11 +2088,13 @@ def serval(*argv):
    rvfile = outdir+obj+fibsuf+'.dat'
    rvcfile = outdir+obj+'.rvc'+fibsuf+'.dat'
    crxfile = outdir+obj+'.crx'+fibsuf+'.dat'
+   mlcfile = outdir+obj+'.mlc'+fibsuf+'.dat' # maximum likehood estimated RVCs and CRX
    srvfile = outdir+obj+'.srv'+fibsuf+'.dat' # serval top-level file
    rvunit = [file(rvfile, 'w'), file(outdir+obj+'.badrv'+fibsuf+'.dat', 'w')]
    rvounit = [file(rvofile, 'w'), file(rvofile+'bad', 'w')]
    rvcunit = [file(rvcfile, 'w'), file(rvcfile+'bad', 'w')]
    crxunit = [file(crxfile, 'w'), file(crxfile+'bad', 'w')]
+   mlcunit = [file(mlcfile, 'w'), file(mlcfile+'bad', 'w')]
    srvunit = [file(srvfile, 'w'), file(srvfile+'bad', 'w')]
    mypfile = [file(rvofile+'err', 'w'), file(rvofile+'errbad', 'w')]
    snrunit = [file(snrfile, 'w'), file(snrfile+'bad', 'w')]
@@ -2091,18 +2108,19 @@ def serval(*argv):
       nadunit = [file(nadfile, 'w'), file(nadfile+'bad', 'w')]
    for i,sp in enumerate(spoklist):
       if np.isnan(rvm[i]): sp.flag |= sflag.rvnan
-      rvflag = (sp.flag&(sflag.eggs+sflag.iod+sflag.rvnan)) > 0
+      rvflag = int((sp.flag&(sflag.eggs+sflag.iod+sflag.rvnan)) > 0)
       if rvflag: 'nan RV for file: '+sp.filename
-      print >>rvunit[rvflag or np.isnan(sp.drift)], sp.bjd, RVc[i], e_RVc[i]
+      print >>rvunit[int(rvflag or np.isnan(sp.drift))], sp.bjd, RVc[i], e_RVc[i]
       print >>rvounit[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,rv[i]))
       print >>mypfile[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,e_rv[i]))
       #stop()
       print >>rvcunit[rvflag], sp.bjd, RVc[i], e_RVc[i], sp.drift, sp.e_drift, RV[i], e_RV[i], sp.berv, sp.sa
-      print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tcrx[i]) + map(str,xo[i]))
-      print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], crx[i], e_crx[i], dLW[i], e_dLW[i]
+      print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tCRX[i]) + map(str,xo[i]))
+      print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], CRX[i], e_CRX[i], dLW[i], e_dLW[i]
+      print >>mlcunit[rvflag], sp.bjd, mlRVc[i], e_mlRVc[i], mlCRX[i], e_mlCRX[i], dLW[i], e_dLW[i]
       print >>dlwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dLWo[i]))
       print >>snrunit[rvflag], sp.bjd, np.nansum(snr[i]**2)**0.5, " ".join(map(str,snr[i]))
-      print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi2[i]))
+      print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi[i]))
       if meas_index:
          print >>halunit[rvflag], sp.bjd, " ".join(map(str, lineindex(halpha[i],harigh[i],haleft[i]) + halpha[i] + haleft[i] + harigh[i] + lineindex(cai[i],harigh[i],haleft[i])))  #,cah[i][0],cah[i][1]
       if meas_CaIRT:
@@ -2144,7 +2162,6 @@ if __name__ == "__main__":
    argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
    argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
    argopt('-targplx', help='Target parallax', type=float, default='nan')
-   argopt('-rvguess', help='[km/s] Target rv guess (default=vref).', type=float)
    argopt('-targrv', help='[km/s] Target rv guess (default=tplrv)', type=float)
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
@@ -2175,6 +2192,8 @@ if __name__ == "__main__":
    argopt('-lookt', help='slice of orders to view the coadd fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookp', help='slice of orders to view the preRV fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookssr', help='slice of orders to view the ssr function [:]', nargs='?', default=[], const=':', type=arg2slice)
+   argopt('-lookmlRV', help='chi2map and master', nargs='?', default=[], const=':', type=arg2slice)
+   argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'FTS':':'}, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"17,18,19,20,21,36,37,38,39,40,41,42", "else":[]}, type=arg2slice)
@@ -2204,7 +2223,6 @@ if __name__ == "__main__":
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
    argopt('-vrange', help='velocity grid around targrv (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
-   argopt('-vref', help='[km/s] reference RV of the template (for index measures, None => no measure, targ => from simbad, for phoe template put 0, auto => 1. from header, 2. targ else consider to adapt also rvguess)', default={'CARM_NIR':None, 'else':'auto'})
    argopt('-vtfix', help='fix RV in template creation', action='store_true')
 
    argopt('-wfix', help='fix wavelength solution', action='store_true')

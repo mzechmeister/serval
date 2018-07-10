@@ -12,6 +12,8 @@ try:
 except:
     print 'Cannot import gls'
 
+import chi2map
+
 __author__ = 'Mathias Zechmeister'
 __version__ = '2017-06-28'
 
@@ -19,6 +21,7 @@ description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
      by %s
 ''' % (__version__, __author__)
+
 
 class srv:
    '''
@@ -65,7 +68,8 @@ class srv:
       if self.inst:
          self.keytitle += ' (' + self.inst.replace('_', ' ') + ')'
 
-      #bjd , self.crx, self.e_crx = np.genfromtxt(obj+'/'+obj+'.crx.dat', dtype=None).T
+      self.tcrx = np.genfromtxt(pre+'.crx.dat', dtype=None).T
+
       #bjd, self.dwid,self.e_dwid = np.genfromtxt(obj+'/'+obj+'.dfwhm.dat', dtype=None, usecols=(0,1,2)).T
       self.N = len(self.allrv)
       if self.N == 1:
@@ -75,6 +79,10 @@ class srv:
       self.trvc = self.bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa \
                 = np.genfromtxt(pre+'.rvc'+fibsuf+'.dat', dtype=None).T
       self.drs = np.genfromtxt(pre+'.drs.dat')
+      try:
+         self.tmlc = np.genfromtxt(pre+'.mlc'+fibsuf+'.dat')
+      except:
+         pass
 
       with np.errstate(invalid='ignore'):
          orders, = np.where(np.sum(self.allerr[:,5:]>0, 0))   # orders with all zero error values
@@ -122,28 +130,57 @@ class srv:
          ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff)=%.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
          pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
 
-   def chi2map(self, maxnorm=True, suf='_A_chi2map.fits'):
-      import pyfits
-      v_step, v_lo = 0.1, -15.
+   def mlc(self):
+      '''Show RVs over order for each observation.'''
+      _, mlRVc, e_mlRVc = self.tmlc.T[0:3]
+      bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
+      if 1:
+         gplot.key('tit "%s"'%self.keytitle)
+         gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
+         gplot(bjd-2450000, RVc, e_RVc, ' us 1:2:3 w e pt 5 lc 1 t "RVc (rms = %1.3g m/s)'%self.mlrms[0])
+         ogplot(bjd-2450000,self.tmlc.T[1:], 'us 1:2:3 w e pt 7 lc 3 t "\\nmlRVc (rms = %1.3g m/s)\\nrms(diff)=%.2f m/s"'% (mlrms(mlRVc, e=e_mlRVc)[0], mlrms(mlRVc - RVc, e_RVc)[0]))
+         pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
+
+   def plot_chi2map(self, maxnorm=True, suf='_A_chi2map.fits'):
       n = 0
       #for n in range(self.N):
-      gplot.key("Left left rev bottom title '%s'" % self.keytitle)
       while 0 <= n < self.N:
          name = self.dir +'/res/' + self.info[n][:-5] + suf
-         gplot_set('set palette defined (0 "blue", 1 "green", 2 "red")')
-         gplot_set('set xlabel "v [km/s]"; set ylabel "chi^2 / max(chi^2)"; set cblabel "order"')
-         #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
-         chi2map = pyfits.getdata(name)[self.orders]
-         hdr = pyfits.getheader(name)
-         v_step, v_lo = hdr['CDELT1'], hdr['CRVAL1'] # 0.1, -15
-         gplot(chi2map /chi2map.max(axis=1)[:,np.newaxis], ' matrix us ($1*%s+%s):3:2 w l palette t "%s"'%(v_step, v_lo, self.info[n]), flush='')
-         chi2map = pyfits.getdata(name)[self.orders]
-         mCCF = chi2map.sum(axis=0)
-         rCCF = (chi2map / self.rchi[n,self.orders+1][:,np.newaxis]**2).sum(axis=0)
-         ogplot(rCCF/rCCF.max(), ' us ($0*%s+%s):1 w l lt 7 lw 2 t "total"'%(v_step, v_lo), flush='')
-         ogplot(mCCF/mCCF.max(), ' us ($0*%s+%s):1 w l lt 4 lw 2 t "total"'%(v_step, v_lo), flush='')
-         ogplot([self.RV[n]/1000.]*2, [0,1], [self.e_RV[n]/1000.]*2, 'us 1:2:3 w xerrorlines pt 2 lt 9 t "%.5g +/- %.5g  m/s"'%(self.RV[n],self.e_RV[n]), flush='')
-         ogplot(self.rv[n]/1000., (chi2map /chi2map.max(axis=1)[:,np.newaxis]).min(axis=1), 'us 1:2 lt 7 pt 1 t "chi2_min"')
+
+         chimap = chi2map.fromfile(name, self.RV[n]/1000., self.e_RV[n]/1000., self.rv[n]/1000., self.e_rv[n]/1000., self.orders, self.keytitle, self.rchi[n])
+
+         chimap.plot()
+         print 'mlRV', chimap.mlRV, chimap.e_mlRV
+         print 'RV  ', self.RV[n], self.e_RV[n]
+
+         nn = pause('%i/%i %s %s'% (n+1, self.N, self.bjd[n], self.info[n]))
+         try:
+            n = int(nn)
+         except:
+            if nn in ('-', "D", "B"):
+               n -= 1
+            elif nn in ('^'):
+               n = 0
+            elif nn in ('$'):
+               n = self.N - 1
+            else:
+               n += 1
+
+   def plot_mlcrx(self, maxnorm=True, suf='_A_chi2map.fits'):
+      n = 0
+      #for n in range(self.N):
+      while 0 <= n < self.N:
+         name = self.dir +'/res/' + self.info[n][:-5] + suf
+         chimap = chi2map.fromfile(name, self.RV[n]/1000., self.e_RV[n]/1000., self.rv[n]/1000., self.e_rv[n]/1000., self.orders, self.keytitle, self.rchi[n])
+
+         x = self.tcrx[6:].T[n]
+         ind = self.orders
+         xc = np.mean(x[ind])
+         crxml, e_crxml = chimap.mlcrx(x, xc, ind)
+         print 'crxml', crxml
+         print 'crx  ', self.tcrx[1,n], self.tcrx[2,n]
+         chimap.plot_fit()
+
          nn = pause('%i/%i %s %s'% (n+1, self.N, self.bjd[n], self.info[n]))
          try:
             n = int(nn)
@@ -179,6 +216,19 @@ class srv:
          print 'Prot [km/s]:', x[" P_d \t\t"], x[" eP_d\t\t"], "(%s)"%x[" Ref29\t"]
          print 'SpT :', x[" SpT\t\t"]
 
+   def targ(self):
+      with open(self.pre+'.targ.cvs') as f:
+         self.line = f.read()
+      line = self.line.split(';')        # ['gj699', "NAME Barnard's star", ' 17 57 ...]
+      print line[0],"; ", line[1]
+      line = " ".join(line[2:]).split()
+      self.ra = tuple(map(float,line[0:3]))  # rammss = (14.,29.,42.94)
+      self.de = tuple(map(float,line[3:6]))  # demmss = (-62.,40.,46.16)
+      self.pmra = float(line[6].replace("~","0."))             # pma = -3775.75
+      self.pmde = float(line[7].replace("~","0."))             # pmd = 765.54
+      self.plx = float(line[11].replace("~","nan"))
+      self.rvabs = float(line[16].replace("~","nan"))
+
 
    def stat(self):
       '''
@@ -193,6 +243,9 @@ class srv:
    def plotrvno(self):
       '''Show RVs over order for each observation.'''
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
+      crx, e_crx = self.tcrx[1:3]
+      lam_o = np.exp(self.tcrx[6:].T)
+      lnlv = np.log(self.tcrx[5])
       n = 0
       #for n in range(self.N):
       while 0 <= n < self.N:
@@ -201,11 +254,21 @@ class srv:
             gplot.multiplot('layout 2,1')
             # bottom panel
             gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
+            gplot.unset('log')
             hypertext = ' "" us 1:2:(sprintf("%d %s\\n%f\\n%f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
             gplot(bjd-2450000, RVc, e_RVc, self.info, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
 
          gplot.xlabel('"order"').ylabel('"RV [m/s]"')
-         gplot(self.orders, self.rvc[n], self.e_rv[n], 'us 1:2:3 w e pt 7, %s lt 3 t "%s +/- %sm/s", %s lt 2 t "", %s lt 2 t ""' %(RVc[n], RVc[n],e_RVc[n],RVc[n]-e_RVc[n],RVc[n]+e_RVc[n]))
+         #gplot(self.orders, self.rvc[n], self.e_rv[n], 'us 1:2:3 w e pt 7, %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.50 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+         gplot.xlabel('"wavelength"').ylabel('"RV [m/s]"')
+         gplot.autoscale('noextend')
+         gplot.put('i=2; bind "$" "i = i%2+1; xlab=i==1?\\"order\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; if (i==1) {unset log} else {set log x} ; repl"')
+         #gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], 'us i:3:4 w e pt 7, %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t "", %s*(log(x)-%s)+%s lt 2, "+" us 1:(%s*(log(x)-%s)+%s):(%s*(log(x)-%s)+%s) w filledcurves lt 2 fs transparent solid 0.20 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n], crx[n], lnlv[n], RVc[n], crx[n]-e_crx[n], lnlv[n], RVc[n], crx[n]+e_crx[n], lnlv[n], RVc[n]))
+         RVmod = crx[n]*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
+         RVlow = (crx[n]-e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
+         RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
+         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7,"" us i:5 w l lt 2,"" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+
          gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
          try:
@@ -577,6 +640,8 @@ if __name__ == "__main__":
    argopt('-gls', help='GLS periodogram', action='store_true')
    argopt('-i', help='interactive task selection', action='store_true')
    argopt('-ls', help='ls from fits file', action='store_true')
+   argopt('-mlc', help='plot mlRVc vs RVc', action='store_true')
+   argopt('-mlcrx', help='plot fitting of mlcrx', action='store_true')
    argopt('-pre', help='plot preRV vs RVc', action='store_true')
    argopt('-postrv', help='kappa sigma clip value', action='store_true')
    #argopt('-rv', help='plot rv', action='store_true')
@@ -592,6 +657,7 @@ if __name__ == "__main__":
 
    for tag in args.tags:
       obj = srv(tag, plotrvo='plotrvo' in sys.argv)
+      obj.targ()
       obj.kcita()
       obj.stat()
       if args.i:
@@ -621,13 +687,19 @@ if __name__ == "__main__":
             obj.xcorr()
          if args.gls:
             obj.gls()
+         if args.mlc:
+            obj.mlc()
          if args.rvno:
             obj.plotrvno()
          if args.chi2map:
-            obj.chi2map()
+            obj.plot_chi2map()
+         if args.mlcrx:
+            obj.plot_mlcrx()
          if args.rvo:
             obj.plotrvo()
          if args.dlwo:
             obj.plot_dlwo()
          if args.postrv:
             obj.postrv()
+
+
