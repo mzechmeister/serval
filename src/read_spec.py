@@ -156,6 +156,9 @@ class Spectrum:
                self.bjd, self.berv = brv_we14idl.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
 
             self.berv /= 1000.   # m/s to km/s
+         if self.brvref == 'DRS':
+            self.bjd, self.berv = self.drsbjd, self.drsberv
+            self.brvref = self.drsname
       else:
          self.bjd, self.berv = self.drsbjd, self.drsberv
          self.brvref = self.drsname

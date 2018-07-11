@@ -1117,13 +1117,16 @@ def serval(*argv):
             ww = [ww] * (omax+1)
             ff = [ff] * (omax+1)
             kk = [kk] * (omax+1)
-         else:
+         elif tpl.endswith('template.fits') or os.path.isdir(tpl):
             # read a spectrum stored order wise
             ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
             print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
             if not 'PHOENIX-ACES-AGSS-COND' in tpl:
                if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
                if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
+         else:
+            spt = Spectrum(tpl, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
+            ww, ff = barshift(spt.w,spt.berv), spt.f
       except:
          print 'ERROR: could not read template:', tpl
          exit()
@@ -1620,7 +1623,8 @@ def serval(*argv):
       pass
    elif ordwrappedtemplate:
       for o in orders:
-         kk[o] = spline_cv(ww[o],ff[o])
+         ii = np.isfinite(ff[o])
+         kk[o] = spline_cv(ww[o][ii],ff[o][ii])
          if do_reg:
             print 'q factor masking order ', o
             reg[o] = qfacmask(ww[o],ff[o]) #, plot=True)
@@ -1985,7 +1989,7 @@ def serval(*argv):
       if 1: # ML version of chromatic trend
          oo = ~np.isnan(chi2map[:,0])
 
-         gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle='YZ_CMi (CARM_VIS)\\ncar-20161107T03h31m19s-sci-gtoc-vis.fits', rchi=rchi[i], name='')
+         gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst+')\\n'+sp.timeid, rchi=rchi[i], name='')
          mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
 
          mlRVc[i] = mlRV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)

@@ -36,6 +36,11 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
 
 
 class Chi2Map:
+   '''
+   Plot, mlRV, and mmlCRX from chi2-maps.
+
+   name - file time stamp
+   '''
    def __init__(self, chi2map, vrange, RV, e_RV, rv, e_rv, orders, keytitle, rchi=None, name=''):
       self.args = RV, e_RV, rv, e_rv, orders, keytitle, rchi
       self.chi2map = chi2map
