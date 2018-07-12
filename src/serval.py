@@ -1920,7 +1920,7 @@ def serval(*argv):
          rv[i,o] = rvo = par.params[0] * 1000. #- sp.drift
          snr[i,o] = stat['snr']
          rchi[i,o] = stat['std']
-         if 1 or outchi:
+         if not diff_rv:
             vgrid = chi2mapo[0]
             chi2map[o] = chi2mapo[1]
          e_rv[i,o] = par.perror[0] * stat['std'] * 1000
@@ -1986,7 +1986,7 @@ def serval(*argv):
             gplot(np.exp(x[ind]), rv[i][ind], e_rv[i][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[i], pval[1],l_v,RV[i]))
             pause()
 
-      if 1: # ML version of chromatic trend
+      if not diff_rv: # ML version of chromatic trend
          oo = ~np.isnan(chi2map[:,0])
 
          gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst+')\\n'+sp.timeid, rchi=rchi[i], name='')
