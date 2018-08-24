@@ -160,7 +160,7 @@ def _cbspline_Bk(x, K, xmin=None, xmax=None, fix=True):
 def bk2bknat(G, kk, K):
    '''
    Convert normal B-splines to natural B-splines (bk to bk_nat).
-   
+
    >>> x = np.r_[-2:12:0.1]
    >>> B, k = cbspline_Bk(x, 10, 0, 10)
    >>> bk2bknat(B, k, 10)
@@ -187,21 +187,21 @@ def bk2bknat(G, kk, K):
 class spl:
    '''
    Cardinal cubic spline.
-   
+
    Examples
    --------
    >>> a = np.zeros(10+2); a[5] = 6
    >>> s = ucbspl(a).to_spl()
    >>> x = np.r_[-2:9:0.1]
    >>> gplot(x,s(x), ',', x, s.to_cbspl()(x))
-   
+
    '''
    def __init__(self, a, b, c, d, xmin=0., xmax=None):
       self.a = a, b, c, d
-      self.K = a.size + 1   # there is one more knot than intervals
+      self.K = K = a.size + 1   # there is one more knot than intervals
       self.xmin = xmin
-      self.xmax = self.K if xmax is None else xmax
-      self.dx = float(self.xmax-self.xmin) / (self.K-1)
+      self.xmax = K if xmax is None else xmax
+      self.xk = np.linspace(xmin, self.xmax, num=K)
 
    def __call__(self, x=None, der=0):
       if x is None:
@@ -219,7 +219,7 @@ class spl:
    def to_cbspl(self):
       '''
       Coefficient transformation from normal spline to Bspline.
-      
+
       The (K-1)x4 spline coefficients cover K-1 intervals and K knots.
       Here the K+2 B-spline coefficients are computed.
       '''
@@ -267,13 +267,12 @@ class ucbspl:
 
    '''
    def __init__(self, a, xmin=0., xmax=None):
-      self.a = np.array(a)   # append a dummy zero (to avoid index check at border)
-      self.K = self.a.size - 2
+      self.a = np.array(a)
+      self.K = K = self.a.size - 2
       self.xmin = xmin
-      self.xmax = self.K-1 if xmax is None else xmax
-      self.dx = float(self.xmax-self.xmin) / (self.K-1)
+      self.xmax = K-1 if xmax is None else xmax
       # knot positions (uniform knot grid)
-      self.xk = self.xmin + self.dx * np.arange(self.K)
+      self.xk = np.linspace(xmin, self.xmax, num=K)
 
    def __call__(self, x=None, der=0):
       a = self.a
@@ -379,7 +378,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    >>> xx = np.r_[0:x[-1]:0.1]
    >>> y = (np.sin(0.1*x)+1)*1000
 
-   Comparison of variance estimation
+   Comparison of simple and proper variance estimation
 
    >>> spl, v_spl, c = ucbspl_fit(x, y, w=1./1000**2, K=50, lam=0.00000001, pord=1, nat=0, var=True, cov=True)
    >>> gplot(xx, spl(xx), np.sqrt(v_spl(xx)), np.sqrt(c(xx)), ' us 1:($2-$3):($2+$3) with filledcurves fill transparent solid 0.5, "" us 1:($2-$4):($2+$4) with filledcurves fill transparent solid 0.5 lt 3, ""  w l lt 7,', spl.xk, spl(), ' lt 7 ps 0.5 pt 7,', x, y, ' pt 7 lt 1')
@@ -407,14 +406,13 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    '''
    if y is None:    # uniform data
       y = x
-      x = np.arange(y.size, dtype='float64')
-      if xmax: x *= (xmax- (0 if xmin is None else xmin)) / x[-1]
-      if xmin: x += xmin
+      x = np.linspace(xmin or 0, y.size-1 if xmax is None else xmax, num=y.size)
    if w is None:
       w = 1
       wy = y
    else:
       wy = w * y
+   wy = np.ascontiguousarray(wy)
 
    if xmin is None: xmin = x.min()
    if xmax is None: xmax = x.max()
@@ -551,6 +549,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
       out = out,
 
    if retfit:
+      # same as yfit = mod(x), but re-using G[k]
       yfit = 0.
       for k in [0,1,2,3]: yfit += a[kk+k] * G[k]
       out += yfit,
@@ -580,10 +579,10 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
       mod.e_yk = np.sqrt(varmod())
 
    if plot:
-      xx = xmin + (xmax-xmin)/(K*20-1) * np.arange(K*20)   # oversample the knots
+      xx = np.linspace(xmin, xmax, num=K*20)   # oversample the knots
       gplot(xx, mod(xx), ' w l lt 1,',
             mod.xk, mod(), ' lt 1 pt 7,',
-            x, y, yfit, ' lt 3, "" us 1:3 w l lt 2')
+            x, y, mod(x), ' lt 3, "" us 1:3 w l lt 2')
 
    return out
 
