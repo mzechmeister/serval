@@ -47,7 +47,10 @@ class srv:
       self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')
       self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')
       self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')
-      self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')
+      try:
+         self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')
+      except:
+         print('warning: %s not found' % pre+'.pre'+fibsuf+'.dat')
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
       # info includes also flagged files; exclude them based on unpairable bjd
@@ -127,7 +130,7 @@ class srv:
          #gplot(';set ytics nomirr; set y2tics;', flush='')
          gplot(drsbjd-2450000, drsRVc, drse_RVc, 'us 1:2:3 w e pt 7 lt 1 t "DRS (rms = %1.3g m/s)"'% mlrms(drsRVc, e=drse_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
-         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff)=%.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
+         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff) = %.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
          pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
 
    def mlc(self):
@@ -439,6 +442,18 @@ class srv:
          ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(preRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc (rms = %1.3g m/s)"'%self.mlrms[0])
          pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
 
+   def spaghetti(self):
+         o = np.tile(self.orders, (self.rvc.shape[0],1))
+         bjd = np.tile(self.bjd,  (self.rvc.shape[1],1)).T
+
+         # color bjd with lc variable => same color for same floor(bjd)
+         #gplot(ovis, vis.rvc.ravel(), bjdvis.ravel(), ' lc variable pt 7 ps 0.5,', onir+60, nir.rvc.ravel(), bjdnir.ravel(), ' lc variable pt 7 ps 0.5')
+         gplot.key('tit "%s"' % self.keytitle)
+         gplot.palette('defined')
+         gplot.ylabel('"Order"').ylabel('"RV [m/s]"').cblabel('"BJD - 2 450 000"')
+         gplot(o.ravel(), self.rvc.ravel(), bjd.ravel(), 'us 1:2:($3-2450000) palette')
+         pause('spaghetti %s' % self.keytitle)
+
    def disp(self):
       orddisp = self.rv - self.RV[:,np.newaxis]
       #ok &= np.abs(orddisp-d_ordmean) <= 3*ordstd  # clip and update mask
@@ -649,6 +664,7 @@ if __name__ == "__main__":
    #argopt('-rv', help='plot rv', action='store_true')
    argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel ', action='store_true')
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
+   argopt('-spaghetti', help='plot o-rvno colorcoded', action='store_true')
    argopt('-x', help='cross plot'+default, action='store_true')
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
 
@@ -681,6 +697,8 @@ if __name__ == "__main__":
             obj.drsrv()
          if args.pre:
             obj.prerv()
+         if args.spaghetti:
+            obj.spaghetti()
          if args.ls:
             obj.ls()
          if args.x:

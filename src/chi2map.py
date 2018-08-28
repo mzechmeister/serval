@@ -1,13 +1,15 @@
-from gplot import *
-from pause import *
-import cspline as spl
-from wstat import wsem, wmean
-
 import numpy as np
 import pyfits
 
+import cspline as spl
+import paraboloid
+from gplot import *
+from pause import *
+from wstat import wsem, wmean
+
+
 def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
-   '''taken from serval.py'''
+   '''taken from serval.py and modified with SSRv (chi2 minimum)'''
    v_step = vgrid[1] - vgrid[0]
    # analyse peak
    k = SSR[dk:-dk].argmin() + dk   # best point (exclude borders)
@@ -17,6 +19,7 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    a = np.array([0, (SSR[k+dk]-SSR[k-dk])/(2*v_step), (SSR[k+dk]-2*SSR[k]+SSR[k-dk])/(2*v_step**2)])  # interpolating parabola for even grid
    v = (SSR[k+dk]-SSR[k-dk]) / (SSR[k+dk]-2*SSR[k]+SSR[k-dk]) * 0.5 * v_step
 
+   SSR_v = SSR[k] - a[1]**2/a[2]/4. # a1*v+a2*v**2   # position of parabola minimum = a1*v+a2*v**2 = - a[1]^2/2./a[2]+a[1]^2/4./a[2] = -a[1]^2/a[2]/4.
    v = vgrid[k] - a[1]/2./a[2]   # parabola minimum
    e_v = np.nan
    if -1 in SSR:
@@ -32,17 +35,18 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
       gplot(vgrid, SSR-SSR[k], " w lp, v1="+str(vgrid[k])+", %f+(x-v1)*%f+(x-v1)**2*%f," % tuple(a), [v,v], [0,SSR[1]], 'w l t "%f km/s"'%v)
       ogplot(vpeak, SSRpeak, ' lt 1 pt 6; set yrange [*:*]')
       pause(v)
-   return v, e_v, a
+   return v, e_v, a, SSR_v
 
 
 class Chi2Map:
    '''
-   Plot, mlRV, and mmlCRX from chi2-maps.
+   Plot, mlRV, and mlCRX from chi2-maps.
 
    name - file time stamp
    '''
-   def __init__(self, chi2map, vrange, RV, e_RV, rv, e_rv, orders, keytitle, rchi=None, name=''):
+   def __init__(self, chi2map, vrange, RV, e_RV, rv, e_rv, orders, keytitle, rchi=None, No=None, name=''):
       self.args = RV, e_RV, rv, e_rv, orders, keytitle, rchi
+      self.No = No # Number of orders
       self.chi2map = chi2map
       self.name = name
       self.info = name.split('/')[-1]
@@ -59,11 +63,11 @@ class Chi2Map:
 
       self.nmCCF = self.mCCF / self.mCCF.max()
 
-      self.mlRV, self.e_mlRV, _ = SSRstat(self.vgrid, self.mCCF, dk=1, plot=0)
+      self.mlRV, self.e_mlRV, _, _ = SSRstat(self.vgrid, self.mCCF, dk=1, plot=0)
       self.mlRV, self.e_mlRV = self.mlRV*1000, self.e_mlRV*1000
 
       # Derive again the RV from the CCF minima
-      v, e_v = zip(*[SSRstat(self.vgrid, cmo, dk=1, plot=0)[0:2] for cmo in chi2map[orders]])
+      v, e_v, _, self.SSRv = zip(*[SSRstat(self.vgrid, cmo, dk=1, plot=0) for cmo in chi2map[orders]])
       V, e_V = wsem(np.array(v),e=np.array(e_v), rescale=0)
       V, e_V = wsem(np.array(v),e=np.array(e_v))
       if 0:
@@ -72,7 +76,6 @@ class Chi2Map:
          gplot(rv, e_rv, 'us 0:1:2 w e,', v, e_v,  'us 0:1:2 w e lc 3, %s,%s' % (RV, V))
          gplot(rv, e_rv, 'us 0:1:2 w e,', v, e_v*rchi[1:][orders],  'us 0:1:2 w e lc 3, %s,%s' % (RV, V))
          pause()
-
 
    def plot(self):
       RV, e_RV, rv, e_rv, orders, keytitle, rchi = self.args
@@ -99,10 +102,15 @@ class Chi2Map:
    def mlcrx(self, x, xc, ind):
       '''Maximum likelihood'''
       self.xarg = x, xc, ind
+
+      chi2map = self.chi2map #- self.chi2map.min(axis=1)[:,np.newaxis]
+      v_lo, v_step =self.vrange
+      vgrid = v_lo + v_step * np.arange(chi2map.shape[1])
+
       if 0:
          # test data
          oo = ~np.isnan(chi2map[:,0])
-         rv[i] =  (x-8.6)*0.6*1000 + np.sin(x*100)*100+50
+         rv[i] = (x-8.6)*0.6*1000 + np.sin(x*100)*100+50
          e_rv[i] = rv[i]*0+10
          rv[i][~oo] =np.nan
          gplot(x,rv[i],e_rv[i], " w e")
@@ -110,7 +118,8 @@ class Chi2Map:
          #crx[i] = pval[1]
          #chi2map = (1./2*(vgrid[:,np.newaxis]-rv[i]/1000)**2/(e_rv[i]/1000)**2).T
 
-      def plot_input():
+      def plot_input(*args):
+         RV, e_RV, rv, e_rv, orders, keytitle, rchi = args
          gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
          mm = np.nanmean(chi2map, axis=0)
 
@@ -119,24 +128,24 @@ class Chi2Map:
          # easy to plot as image
          gplot.xlabel('"order"').ylabel('"RV [km/s]"').cblabel('"{/Symbol c^2}"')
          gplot(chi2map, 'matrix us 1:($2*%s+%s):3  w image, '%(v_step, v_lo),
-               rv[i]/1000, e_rv[i]/1000, 'us 0:1:2 w e pt 6 lc 7, ',
+               rv, e_rv, 'us 0:1:2 w e pt 6 lc 7, ',
                mm,mm, 'us (-$1-5):($2*%s+%s):3 matrix w image'%(v_step, v_lo),',',
-               [-5.5],[RV[i]/1000],[e_RVc[i]/1000], 'us 1:2:3 w e pt 7 lc 7')
+               [-5.5],[RV],[e_RV], 'us 1:2:3 w e pt 7 lc 7')
          gplot.xlabel('"RV [km/s]"').ylabel('""').cblabel('"order"')
          gplot(chi2map.T, 'matrix us ($1*%s+%s):3:2  w l palette , '%(v_step, v_lo),
-               chi2map.min(axis=1), rv[i]/1000, e_rv[i]/1000, 'us 2:1:3 w xe pt 7, ',
+               chi2map.min(axis=1), rv, e_rv, 'us 2:1:3 w xe pt 7, ',
                mm, 'us ($0*%s+%s):1 w l'%(v_step, v_lo),' lc 7 lw 2,',
-               [mm.min()], [RV[i]/1000], [e_RVc[i]/1000], 'us 2:1:3 w xe pt 7 lc 7 ')
+               [mm.min()], [RV], [e_RV], 'us 2:1:3 w xe pt 7 lc 7 ')
          gplot.unset("multiplot")
-      #plot_input()
-      #pause()
+
+      if 0:
+         plot_input(*self.args)
+         pause()
 
       # Spline interpolate each chi2map
-      chi2map = self.chi2map
-      v_lo, v_step =self.vrange
-      vgrid = v_lo + v_step * np.arange(chi2map.shape[1])
       self.ll = ll = x[ind]
-      self.cs = cs = [spl.ucbspl_fit(vgrid, chi_o, K=len(chi_o)) for chi_o in chi2map[ind]]
+      rchi = self.args[-1]
+      self.cs = cs = [spl.ucbspl_fit(vgrid, chi_o, K=len(chi_o)) for chi_o in (chi2map[ind]-np.array(self.SSRv)[:,np.newaxis])/rchi[ind][:,np.newaxis]**2]
 
       self.vv = vv = np.arange(vgrid[30], vgrid[-30], 0.01)
 
@@ -156,6 +165,46 @@ class Chi2Map:
          zz = vv[ii[0]] * 1000
 
       if 1:
+      # paraboloid
+         #imin,jmin = np.unravel_index(np.argmin(lnLvbint), lnLvbint.shape)
+         #sl = np.s_[imin-10:imin+11, jmin-10:jmin+11]
+         #X = np.tile(vv, bb.shape+(1,)).T[sl].ravel()
+         #Y = np.tile(bb, vv.shape+(1,))[sl].ravel()
+         #z = lnLvbint[sl].ravel()  # ln L = chi^2/2
+
+         #cov = paraboloid.covmat_fit([X,Y], z, N=self.No[ind].sum())
+         #cov =bbi paraboloid.covmat_fit([X,Y], z)
+
+         # setup a grid around the start guess mlRv and mlCRX=0
+         par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-1, self.mlRV/1000.+1,0.2), np.arange(-500,500,50)/1000.))
+         # par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-0.1, self.mlRV/1000.+.1,0.02), np.arange(-500,500,50)/1000.))
+
+         z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
+
+         # gplot.splot(par, z, ' palette')
+         cov = paraboloid.covmat_fit(par, z, N=len(cs))
+
+         zmod = cov.p(*par)
+         #pause("\n", cov.Va*1000**2, cov.Xc*1000)
+         #cov = paraboloid.covmat_fit(par, z)
+         #cov = paraboloid.covmat_fit(par, z, N=self.No[ind].sum())
+
+         v, b = cov.Xc
+         e_v, e_b = cov.e_a
+         #gplot.splot(par, z, ' palette,', v,b, cov.min); pause("v", v, "b", b)
+         #gplot.splot(par, z, zmod, ' palette,', v,b, cov.min); pause("v", v, "b", b)
+
+         if -1<v<1 and 0.5<b<-0.5 and np.isfinite(cov.e_a).all():
+            # refit closer to minimum
+            par = map(np.ravel, np.meshgrid(np.arange(v-3*e_v, v+3*e_v, e_v/2), np.arange(b-3*e_b, b+3*e_b, e_b/2)))
+            z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
+            cov = paraboloid.covmat_fit(par, z, N=len(cs))
+
+         self.crx = cov.Xc[1] * 1000
+         self.e_crx = cov.e_a[1] * 1000
+         #print self.crx, self.e_crx
+
+      if 0:
       # scipy optimisation
          def lnL(a):
             return np.sum([cs_o(a[0]+a[1]*(x_o-xc)) for x_o,cs_o in zip(ll, cs)])
@@ -166,6 +215,12 @@ class Chi2Map:
          self.zz = pp[0] * 1000
          self.crx = pp[1] * 1000
          self.e_crx = None # e_crx[i]
+
+
+      #SSRstat(self.vgrid, self.mCCF, dk=1, plot=0)[0:2]
+      #ii = np.argmin(self.mCCF); ss = np.s_[ii-3:ii+3]
+      #uu = paraboloid.covmat_fit([self.vgrid[ss]], self.mCCF[ss])
+      #uu.Xc, uu.e_a
 
       return self.crx, self.e_crx
       #print crx_i, crx[i], lnL([vv[ii[0]],bb[ii[1]]]), lnLvbint.min()
