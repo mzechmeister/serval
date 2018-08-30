@@ -1,7 +1,12 @@
+#from __future__ import print_function
+
 import numpy as np
 from gplot import *
 from pause import *
+#def pause():
+#   pass
 
+xzip = zip; zip = lambda *x: list(xzip(*x))
 
 class paraboloid():
    '''
@@ -169,9 +174,9 @@ def fit_paraboloid(X, z, offset=True):
    array([[400.        ,  33.33333333],
           [ 33.33333333,  11.11111111]])
    >>> zmod = fit_paraboloid([x-0.5,y+2], z(x,y), offset=False)
-   >>> #ogplot(x,y, zmod([x-0.5,y+1]), ' us 1:2:3 palette pt 6')
+   >>> #gplot+(x, y, zmod([x-0.5,y+1]), ' us 1:2:3 palette pt 6')
    >>> zmod = fit_paraboloid(X, z(x,y))
-   >>> ogplot(X, zmod(*X), ' us 1:2:3 palette pt 6')
+   >>> gplot+(X, zmod(*X), ' us 1:2:3 palette pt 6')
    >>> W; zmod.center()
    array([[400.        ,  33.33333333],
           [ 33.33333333,  11.11111111]])
@@ -243,7 +248,7 @@ def covmat_fit(X, z, **kwargs):
 
    '''
    H = fit_paraboloid(X, z).W
-   #print np.array2string(Va,precision=2)
+   #print(np.array2string(Va,precision=2))
    return covmat(H, **kwargs) # Va, e_a
 
 
@@ -361,10 +366,10 @@ EOD
             gplot.var(a=self.Xc[i-1])
             gplot.var(e_a=self.e_a[i-1])
             gplot("[a-2*e_a:a+2*e_a] exp(-(x-a)**2/e_a**2/2) t '%g +/- %g'" % (self.Xc[i-1], self.e_a[i-1]), flush='')
-            #gplot("[a-2*e_a:a+2*e_a] exp(-(x-a)**2/e_a**2/2) t 'asdfasdf'", flush='')
-            ogplot("$line us (a+e_a):($1>0) w l lc 'grey' dt 3", flush='')
-            ogplot("$line us (a-e_a):($1>0) w l lc 'grey' dt 3", flush='')
-            ogplot("$line us (a):($1>0) w l lc 'black' dt 2")
+            #gplot<("[a-2*e_a:a+2*e_a] exp(-(x-a)**2/e_a**2/2) t 'asdfasdf'")
+            gplot<("$line us (a+e_a):($1>0) w l lc 'grey' dt 3")
+            gplot<("$line us (a-e_a):($1>0) w l lc 'grey' dt 3")
+            gplot+("$line us (a):($1>0) w l lc 'black' dt 2")
          for j in range(i+1,N+1):
            gplot.put('m=%s; n=%s' %(i,j))
            gplot.origin("x0+(1-x0)*(m-1)/N,y0+(1-y0)*(1-n/N)")
@@ -373,7 +378,7 @@ EOD
            gplot.xlabel("'%s'" % labels[j-1] if i==N else '')
            xc, yc = self.Xc[[i-1,j-1]] #W[0,[i,j]]
            rho = self.C[i-1,j-1] #W[i,j] / np.sqrt(W[i,i]*W[j,j])
-           #print xc, yc, rho, self.e_a
+           #print(xc, yc, rho, self.e_a)
            if j==N:
               gplot.xtics('format "%g"')
               gplot.xlabel("'%s'" % labels[i-1])
@@ -392,18 +397,18 @@ EOD
               gplot("[a-2*e_a:a+2*e_a][b-2*e_b:b+2*e_b] '++' us 1:2:(C11*($1-a)**2+C22*($2-b)**2+2*C12*($1-a)*($2-b)) w image", flush='')
            if 1:
               # contors
-              ogplot("u=1, [0:2*pi] '+' us (a + x($1,rho)):(b+y($1,rho)) w l lc 'white', [0:2*pi] '+' us (a + 2*x($1,rho)):(b+2*y($1,rho)) w l lc 'white'", flush='')
+              gplot<("u=1, [0:2*pi] '+' us (a + x($1,rho)):(b+y($1,rho)) w l lc 'white', [0:2*pi] '+' us (a + 2*x($1,rho)):(b+2*y($1,rho)) w l lc 'white'")
            if 1:
               # best fit
-              ogplot(xc,yc, " pt 5 lc 'white'", flush='')
+              gplot<(xc,yc, " pt 5 lc 'white'")
            if 1:
               # one sigma limits
-              ogplot("$line us (a+2*e_a*$1):(b+e_b) w l lc 'white' dt 3", flush='')
-              ogplot("$line us (a+2*e_a*$1):(b-e_b) w l lc 'white' dt 3", flush='')
-              ogplot("$line us (a+2*e_a*$1):(b) w l lc 'white' dt 2", flush='')
-              ogplot("$line us (a+e_a):(b+2*e_b*$1) w l lc 'white' dt 3", flush='')
-              ogplot("$line us (a-e_a):(b+2*e_b*$1) w l lc 'white' dt 3", flush='')
-              ogplot("$line us (a):(b+2*e_b*$1) w l lc 'white' dt 2")
+              gplot<("$line us (a+2*e_a*$1):(b+e_b) w l lc 'white' dt 3")
+              gplot<("$line us (a+2*e_a*$1):(b-e_b) w l lc 'white' dt 3")
+              gplot<("$line us (a+2*e_a*$1):(b) w l lc 'white' dt 2")
+              gplot<("$line us (a+e_a):(b+2*e_b*$1) w l lc 'white' dt 3")
+              gplot<("$line us (a-e_a):(b+2*e_b*$1) w l lc 'white' dt 3")
+              gplot+("$line us (a):(b+2*e_b*$1) w l lc 'white' dt 2")
       gplot.unset('multiplot')
 
 
@@ -415,7 +420,8 @@ if __name__=='__main__':
    except:
       case = None
    if not case:
-      # test all examples
+      # test all examples 
+      # ok in python 2, but failing in python3 but due to formaatting
       import doctest
       doctest.testmod()
    elif case == 1:
@@ -423,19 +429,20 @@ if __name__=='__main__':
       from scipy.optimize import curve_fit
 
       # model
-      trend = lambda x, a, b: a + b*x # np.polynomial.polyval(x,a)
+      trend = lambda x, a, b: a + b*x   # = np.polynomial.polyval(x, a)
       a0, a1 = 2, 2
 
       # data
       x = np.arange(20)
       e = 2 + np.random.rand(20)
-      y = trend(x, a0, a1) + 2*np.random.normal(0,e) # scale e by 2
+      y = trend(x, a0, a1) + 2*np.random.normal(0, e)   # scale e by 2
       gplot(x, y, e, "w e pt 7")
 
       # curve_fit
       a_cf, cov_cf = curve_fit(trend, x, y, [0.0, 0.0], e)
-      print a_cf; cov_cf
+      print(a_cf); cov_cf
 
+      # paraboloid 
       # parameter and chi2 samples
       P = [[1,0], [0,0], [-1,0], [0,1], [0,-1], [1,-1]]
       # chi2map
@@ -443,24 +450,24 @@ if __name__=='__main__':
 
       cov = covmat_fit(zip(*P), z, N=len(x))
       #cov = covmat_fit(zip(*P), z)
-      ogplot("%s+%s*x w l lc 3"% tuple(cov.Xc))
+      gplot+("%s+%s*x w l lc 3"% tuple(cov.Xc))
 
-      print a0, a1
+      print(a0, a1)
       p = zip(a_cf, np.sqrt(np.diag(cov_cf)))
-      print "curve_fit:  %s +/- %s;" % p[0], "%s +/- %s" % p[1]
+      print("curve_fit:  %s +/- %s;" % p[0], "%s +/- %s" % p[1])
       p = zip(cov.Xc, cov.e_a)
-      print "paraboloid: %s +/- %s;" % p[0], "%s +/- %s" % p[1]
-      print cov_cf
-      print cov.Va
-      f =  trend(x, *cov.Xc)
+      print("paraboloid: %s +/- %s;" % p[0], "%s +/- %s" % p[1])
+      print(cov_cf)
+      print(cov.Va)
+      f = trend(x, *cov.Xc)
       X = [0*x+1, x]
       # uncertainty in prediction
       varf = np.einsum('ik,ij,jk->k', X, cov.Va, X)
-      ogplot(x,f, np.sqrt(varf), 'us 1:($2+$3) w l lc 5, "" us 1:($2-$3) w l lc 5')
+      gplot+(x, f, np.sqrt(varf), 'us 1:($2+$3) w l lc 5, "" us 1:($2-$3) w l lc 5')
 
       pause()
    elif case == 2:
-      # comparison linear fit
+      # comparison linear fit: polyfit vs linalg vs paraboloid
       a = 20
       b = 200
       x = 17 + np.random.rand(100)*2
@@ -470,31 +477,31 @@ if __name__=='__main__':
       (b_pf,a_pf), cov = np.polyfit(x,y, 1, w=1/e_y, cov=True)
       gplot(x, y, e_y, a_pf+x*b_pf, ', "" us 1:4 w l')
 
-      chi2map = [(ai,bi,np.sum((y-(ai+bi*x))**2/e_y**2)) for ai in np.arange(0,40) for bi in np.arange(180,220)]
-      ai,bi,chi2map = zip(*chi2map)
+      chi2map = [(ai, bi, np.sum((y-(ai+bi*x))**2/e_y**2)) for ai in np.arange(0,40) for bi in np.arange(180,220)]
+      ai, bi, chi2map = zip(*chi2map)
 
-      cm = covmat_fit([ai,bi],chi2map)
+      cm = covmat_fit([ai,bi], chi2map)
 
-      # best fit parameter
-      print 'polyfit    a, b', a_pf,b_pf
-      print 'paraboloid a, b', cm.Xc
+      # best fit parameters
+      print('polyfit    a, b', a_pf, b_pf)
+      print('paraboloid a, b', cm.Xc)
 
       lhs = np.array([1/e_y, x/e_y]).T
       cov_ls = np.linalg.inv(np.dot(lhs.T, lhs))
 
-      print 'paraboloid cov\n', cm.Va
-      print 'linreg cov\n', cov_ls
+      print('paraboloid cov\n', cm.Va)
+      print('linreg cov\n', cov_ls)
 
       # with scaling
       scale = np.sqrt((lhs*lhs).sum(axis=0))
       cov_lss = np.linalg.inv(np.dot((lhs/scale).T, lhs/scale)) / np.outer(scale, scale)
-      print 'linreg cov + scale\n', cov_lss
+      print('linreg cov + scale\n', cov_lss)
 
       # polyfit with fac = chi2min/DOF where DOF = N-order-2 (!), order = deg + 1
-      print 'linreg cov + scale + DOF\n', cm.min/(len(x)-2-2.) * cov_lss
-      print 'polyfit cov\n', np.flipud(np.fliplr(cov))
+      print('linreg cov + scale + DOF\n', cm.min/(len(x)-2-2.) * cov_lss)
+      print('polyfit cov\n', np.flipud(np.fliplr(cov)))
 
-      #gplot.splot(ai, bi, chi2map)
+      # gplot.splot(ai, bi, chi2map)
       pause()
    else:
       # Demo of corner
@@ -515,13 +522,13 @@ if __name__=='__main__':
 
       # covariance matrix
       V = C * s * s[np.newaxis].T  # s * C * s[np.newaxis].T not exactly symmetric
-      print "V\n",V
+      print("V\n", V)
 
       # weight matrix / inverse covariance matrix
       W = np.linalg.inv(V)
       W = (W + W.T) / 2 # ensure extract symmetry
       z = paraboloid(W, xc=[50, 2, 150])
-      print "W\n",W
+      print("W\n", W)
 
       gg = covmat(fit_paraboloid(X, z(*X)).W)
       gg.corner()
