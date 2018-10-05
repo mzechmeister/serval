@@ -683,7 +683,7 @@ def serval(*argv):
 
    sys.stdout = Logger()
 
-   global obj, targ, oset, coadd, coset, last, tpl, sa, tplrv, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, starcat
+   global obj, targ, oset, coadd, coset, last, tpl, sa, tplrv, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv
 
    if not argv: argv = sys.argv     # python shell start
    else: argv = ['module '] + list(argv)
@@ -976,7 +976,7 @@ def serval(*argv):
    check_daytime = True
    spoklist = []
    for sp in splist:
-      if sp.flag & (sflag.eggs|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
+      if sp.flag & (sflag.eggs|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
          print 'bad spectra:', sp.timeid, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag))
       else:
          spoklist += [sp]
@@ -1091,8 +1091,9 @@ def serval(*argv):
          elif tpl.endswith('template.fits') or os.path.isdir(tpl):
             # read a spectrum stored order wise
             ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
-            print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
-            if not 'PHOENIX-ACES-AGSS-COND' in tpl:
+            if 'HIERARCH SERVAL COADD NUM' in head:
+               print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
+               #if not 'PHOENIX-ACES-AGSS-COND' in tpl:
                if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
                if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
          else:
@@ -2167,9 +2168,9 @@ if __name__ == "__main__":
    """
    parser = argparse.ArgumentParser(description=description, epilog=epilog, add_help=False)
    argopt = parser.add_argument   # function short cut
-   argopt('obj',   help='Tag, output directory and file prefix (e.g. Object name).')
+   argopt('obj', help='Tag, output directory and file prefix (e.g. Object name).')
    argopt('dir_or_inputlist', help='Directory name with reduced data fits/tar or a file listing the spectra (only suffixes .txt or .lis accepted).', nargs='?')
-   argopt('-targ', help='Target name looked up in star.cat.')
+   argopt('-targ', help='Target name requested in simbad for coordinates, proper motion, parallax and absolute RV.')
    argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
    argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
    argopt('-targplx', help='Target parallax', type=float, default='nan')
@@ -2192,7 +2193,7 @@ if __name__ == "__main__":
    argopt('-deg',  help='degree for background polynomial', type=int, default=3)
    argopt('-distmax', help='[arcsec] Max distance telescope position from target coordinates.', nargs='?', type=float, const=30.)
    argopt('-driftref', help='reference file for drift mode', type=str)
-   argopt('-fib',  help='fibre', choices=['','A','B','AB'], default='')
+   argopt('-fib',  help='fibre', choices=['', 'A', 'B', 'AB'], default='')
    argopt('-inst', help='instrument '+default, default='HARPS',
                    choices=['HARPS', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
@@ -2226,14 +2227,13 @@ if __name__ == "__main__":
    argopt('-skymsk', help='Sky emission line mask ('' for no masking)'+default, default='auto', dest='skyfile')
    argopt('-snmin', help='minimum S/N (considered as not bad and used in template building)'+default, default=10, type=float)
    argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=400, type=float)
-   argopt('-starcat', help='directory or filename of target look-up table. (default: local star.cat, then servaldir/star.cat)', type=str)
    argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV (default auto, for index measures, for phoe tpl put 0 km/s, None => no measure, targ => from simbad, auto => first from header, second from targ else consider to adapt also rvguess))', default={'CARM_NIR':None, 'else':'auto'})
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
-   argopt('-vrange', help='velocity grid around targrv (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
+   argopt('-vrange', help='[km/s] velocity grid around targrv (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
    argopt('-vtfix', help='fix RV in template creation', action='store_true')
 
    argopt('-wfix', help='fix wavelength solution', action='store_true')
