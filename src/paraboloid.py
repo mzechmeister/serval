@@ -293,7 +293,6 @@ class covmat():
       Vinv, self.Xc = self.p.center()
       self.min = self.p(*zip([1]+ list(self.Xc)))
       self.Va = Va = np.linalg.inv(Vinv)
-      #pause()
       if N:
          DOF = N - len(Va)
          chi2red = self.min / DOF        # as in curve_fit
@@ -394,6 +393,8 @@ EOD
               invSij = np.linalg.inv(Sij)
               gplot.put("C11=%s; C22=%s; C12=%s" %  (invSij[0,0], invSij[1,1], invSij[0,1]))
               #gplot.put("C11=%s; C22=%s; C12=%s" %  (W[i,i], W[j,j], W[i,j]))
+              #gplot("[a-2*e_a:a+2*e_a][b-2*e_b:b+2*e_b] '++' us 1:2:(C11*($1-a)**2+C22*($2-b)**2+2*C12*($1-a)*($2-b)) w image", flush='')
+              gplot.urange("[a-2*e_a:a+2*e_a]").vrange("[b-2*e_b:b+2*e_b]")
               gplot("[a-2*e_a:a+2*e_a][b-2*e_b:b+2*e_b] '++' us 1:2:(C11*($1-a)**2+C22*($2-b)**2+2*C12*($1-a)*($2-b)) w image", flush='')
            if 1:
               # contors
@@ -409,6 +410,7 @@ EOD
               gplot<("$line us (a+e_a):(b+2*e_b*$1) w l lc 'white' dt 3")
               gplot<("$line us (a-e_a):(b+2*e_b*$1) w l lc 'white' dt 3")
               gplot+("$line us (a):(b+2*e_b*$1) w l lc 'white' dt 2")
+           #pause(j,i)
       gplot.unset('multiplot')
 
 
