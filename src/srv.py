@@ -42,22 +42,28 @@ class srv:
 
       print pre+'.rvc'+fibsuf+'.dat'
       self.allrv = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat')
-      self.allerr = np.genfromtxt(pre+'.rvo'+fibsuf+'.daterr')
+      sl = np.s_[:]
+      if self.allrv.ndim==1:
+         # reshape
+         sl = np.s_[np.newaxis,:]
+         self.allrv = self.allrv[sl]
+      self.allerr = np.genfromtxt(pre+'.rvo'+fibsuf+'.daterr')[sl]
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0]) # as string
-      self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')
-      self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')
-      self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')
+      self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')[sl]
+      self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')[sl]
+      self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')[sl]
       try:
-         self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')
+         self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')[sl]
       except:
          print('warning: %s not found' % pre+'.pre'+fibsuf+'.dat')
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
       # info includes also flagged files; exclude them based on unpairable bjd
       # (due to different formatting use bjd from brv.dat not info.cvs.)
-      bjd = np.genfromtxt(pre+'.brv.dat', usecols=[0])
+      bjd = np.atleast_1d(np.genfromtxt(pre+'.brv.dat', usecols=[0]))
+
       nn = [n for (n,t) in enumerate(bjd) if t in self.allrv[:,0]]
-      self.info = np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';')[nn]
+      self.info = np.atleast_1d(np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';'))[nn]
 
       if not self.info.ndim:
          self.info = self.info[np.newaxis]
@@ -71,19 +77,19 @@ class srv:
       if self.inst:
          self.keytitle += ' (' + self.inst.replace('_', ' ') + ')'
 
-      self.tcrx = np.genfromtxt(pre+'.crx.dat', dtype=None).T
+      self.tcrx = np.genfromtxt(pre+'.crx.dat', dtype=None)[sl].T
 
       #bjd, self.dwid,self.e_dwid = np.genfromtxt(obj+'/'+obj+'.dfwhm.dat', dtype=None, usecols=(0,1,2)).T
       self.N = len(self.allrv)
-      if self.N == 1:
-         return   # just one line, e.g. drift
+      #if self.N == 1:
+         #return   # just one line, e.g. drift
 
-      self.tsrv = np.genfromtxt(pre+'.srv.dat', dtype=None).T
+      self.tsrv = np.genfromtxt(pre+'.srv.dat', dtype=None)[sl].T
       self.trvc = self.bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa \
-                = np.genfromtxt(pre+'.rvc'+fibsuf+'.dat', dtype=None).T
-      self.drs = np.genfromtxt(pre+'.drs.dat')
+                = np.genfromtxt(pre+'.rvc'+fibsuf+'.dat', dtype=None)[sl].T
+      self.drs = np.genfromtxt(pre+'.drs.dat')[sl]
       try:
-         self.tmlc = np.genfromtxt(pre+'.mlc'+fibsuf+'.dat')
+         self.tmlc = np.genfromtxt(pre+'.mlc'+fibsuf+'.dat')[sl]
       except:
          pass
 
@@ -220,6 +226,7 @@ class srv:
          print 'SpT :', x[" SpT\t\t"]
 
    def targ(self):
+     try:
       with open(self.pre+'.targ.cvs') as f:
          self.line = f.read()
       line = self.line.split(';')        # ['gj699', "NAME Barnard's star", ' 17 57 ...]
@@ -231,6 +238,8 @@ class srv:
       self.pmde = float(line[7].replace("~","0."))             # pmd = 765.54
       self.plx = float(line[11].replace("~","nan"))
       self.rvabs = float(line[16].replace("~","nan"))
+     except:
+        pass
 
 
    def stat(self):
@@ -251,6 +260,7 @@ class srv:
       lnlv = np.log(self.tcrx[5])
       n = 0
       #for n in range(self.N):
+      #pause()
       while 0 <= n < self.N:
          gplot.key('tit "%s %s %s"'%(n+1, bjd[n], self.info[n]))
          if 1:
@@ -270,7 +280,7 @@ class srv:
          RVmod = crx[n]*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          RVlow = (crx[n]-e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
-         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7,"" us i:5 w l lt 2,"" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7, "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
 
          gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
@@ -345,6 +355,45 @@ class srv:
 
       pause('dLWo ', self.tag)
 
+   def plot_dlwno(self):
+      '''Show RVs over order for each observation.'''
+      (bjd, dLW, e_dLW), dlw, e_rv = self.dlw.T[[0,1,2]], self.dlw[:,3:], self.allerr[:,5:]
+      n = 0
+      while 0 <= n < self.N:
+         gplot.key('tit "%s %s %s"'%(n+1, bjd[n], self.info[n]))
+         if 1:
+            gplot.multiplot('layout 2,1')
+            # bottom panel
+            gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000(m/s)^2]"')
+            gplot.unset('log')
+            hypertext = ' "" us 1:2:(sprintf("%d %s\\n%f\\n%f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+            gplot(bjd-2450000, dLW, e_dLW, self.info, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [dLW[n]], [e_dLW[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
+
+         gplot.xlabel('"order"').ylabel('"dLW [m/s]"')
+         gplot(self.orders, dlw[n], self.e_rv[n]*0, 'us 1:2:3 w e pt 7')
+         '''      , %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.50 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+         gplot.xlabel('"wavelength"').ylabel('"RV [m/s]"')
+         gplot.autoscale('noextend')
+         gplot.put('i=2; bind "$" "i = i%2+1; xlab=i==1?\\"order\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; if (i==1) {unset log} else {set log x} ; repl"')
+         #gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], 'us i:3:4 w e pt 7, %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t "", %s*(log(x)-%s)+%s lt 2, "+" us 1:(%s*(log(x)-%s)+%s):(%s*(log(x)-%s)+%s) w filledcurves lt 2 fs transparent solid 0.20 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n], crx[n], lnlv[n], RVc[n], crx[n]-e_crx[n], lnlv[n], RVc[n], crx[n]+e_crx[n], lnlv[n], RVc[n]))
+         RVmod = crx[n]*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
+         RVlow = (crx[n]-e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
+         RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
+         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7, "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+         '''
+         gplot.unset('multiplot')
+         nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
+         try:
+            n += int(nn)
+         except:
+            if nn in ('-', "D", "B"):
+               n -= 1
+            elif nn in ('^'):
+               n = 0
+            elif nn in ('$'):
+               n = self.N - 1
+            else:
+               n += 1
    def plotrv(self):
       '''Show RVs over order for each observation.'''
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
@@ -353,10 +402,10 @@ class srv:
          arg += 'us 1:2:3 w e pt 6 lt 7 t "RV no drift"'
       if self.has_d.any():
          if arg: arg += ', "" '
-         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "RVc"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
+         arg += 'us 1:($2/$4):3 w e pt 7 lt 7 t "RVc"'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
       arg += hypertext
-      gplot.key('tit "%s (rms = %.3g m/s)"'%(self.keytitle, self.mlrms[0]))
+      gplot.key('tit "%s (rms = %.3g m/s)"' % (self.keytitle, self.mlrms[0]))
       gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
       gplot(bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg)
       pause('rv ', self.tag)
@@ -674,7 +723,7 @@ if __name__ == "__main__":
    for tag in args.tags:
       obj = srv(tag, plotrvo='plotrvo' in sys.argv)
       obj.targ()
-      obj.kcita()
+      #obj.kcita()
       obj.stat()
       if args.i:
          while True:
@@ -717,6 +766,8 @@ if __name__ == "__main__":
             obj.plotrvo()
          if args.dlwo:
             obj.plot_dlwo()
+         if args.dlwno:
+            obj.plot_dlwno()
          if args.postrv:
             obj.postrv()
 
