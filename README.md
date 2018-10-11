@@ -1,12 +1,12 @@
 # SERVAL (SpEctrum Radial Velocity AnaLyser)
 calculate radial velocities from stellar spectra
 
-The concept of SERVAL is described in http://adsabs.harvard.edu/abs/2017A%26A...609A..12Z.
+The concept of SERVAL is described in http://adsabs.harvard.edu/abs/2017A%26A...609A..12Z [[pdf](https://www.aanda.org/articles/aa/pdf/2018/01/aa31483-17.pdf)].
 
 Currently, SERVAL can process data from CARM_VIS, CARM_NIR, HARPS, and HARPN.
 
 ## Recent changes
-* request to simbad to get RADE, PM, and PL via -targ
+* request to simbad to get RADE, PM, and PLX via -targ
 * barycentric correction with Wright & Eastman (2014) is now default (requires https://github.com/shbhuk/barycorrpy)
 
 ## Install instruction
@@ -90,8 +90,8 @@ A basic example is:
 ```bash
 mkdir data
 (cd data; git clone https://github.com/mzechmeister/HARPS.git)
-serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699 -vref auto
+serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699
 ```
 
 `-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used)
-`-vref` uses an absolute RV from fitsheader (required to get Halpha indices)
+

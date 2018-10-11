@@ -38,6 +38,7 @@ import masktools
 import phoenix_as_RVmodel
 from chi2map import Chi2Map
 
+gplot2 = Gplot() # for a second plot window
 
 if 'gplot_set' in locals():
    raise ImportError('Please update new gplot.py.')
@@ -1424,6 +1425,26 @@ def serval(*argv):
                #pause()
                if it < niter: ind[ind] *=  okmap
 
+            if ofacauto:
+               # BIC to get optimal knot spacing (smoothing)
+               chired = []
+               BIC = []
+               K = np.logspace(np.log10(10), np.log10(ntpix), dtype=int)
+               for Ki in K:
+                  smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ki, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
+                  chi = ((mod[ind] - ymod)**2*we[ind]).sum()
+                  chired += [ chi / (we[ind].size-Ki)]
+                  BIC += [ chi + np.log(we[ind].size)*Ki]
+
+               Ko = K[np.argmin(BIC)]
+               smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ki, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
+               print "K=%d" % Ko,
+
+               if 0:
+                  gplot2(K, BIC, 'w lp,', Ko, min(BIC), 'lc 3 pt 7')
+                  gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p')
+                  #pause()
+
             # estimate the number of valid points for each knot
             edges = 0.5 * (wko[1:]+wko[:-1])
             edges = np.hstack((edges[0]+2*(wko[0]-edges[0]), edges, edges[-1]+2*(wko[-1]-edges[-1])))
@@ -1444,6 +1465,8 @@ def serval(*argv):
 
             print ' S/N: %.5f' % sn
             spt.header['HIERARCH SERVAL COADD SN%03i' % o] = (float("%.3f" % sn), 'signal-to-noise estimate')
+            if ofacauto:
+               spt.header['HIERARCH SERVAL COADD K%03i' % o] = (Ko, 'optimal knot number')
 
             # plot the model and spt
             if o in lookt:
@@ -1473,6 +1496,12 @@ def serval(*argv):
 
             # apply the fit
             #ff[o][ind2] = yfit
+            if ofacauto:
+               # replace template.fits with optimal knot spacing (smoothing) for RVs
+               yfit = ff[o]* 0 # np.nan
+               ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
+               yfit[ind2] = smod(ww[o][ind2])
+               #pause()
             ff[o] = yfit
             wk[o] = wko
             fk[o] = fko
@@ -2211,6 +2240,7 @@ if __name__ == "__main__":
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"17,18,19,20,21,36,37,38,39,40,41,42", "else":[]}, type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=1., type=float)
+   argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
    argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')

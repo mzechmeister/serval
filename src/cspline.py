@@ -192,8 +192,11 @@ class spl:
    --------
    >>> a = np.zeros(10+2); a[5] = 6
    >>> s = ucbspl(a).to_spl()
-   >>> x = np.r_[-2:9:0.1]
-   >>> gplot(x,s(x), ',', x, s.to_cbspl()(x))
+   >>> x = np.r_[-2:10:0.1]
+
+   Compare spline and bspline
+
+   >>> gplot(x, s(x), ',', x, s.to_cbspl()(x), ',', s.xk, s())
 
    '''
    def __init__(self, a, b, c, d, xmin=0., xmax=None):
@@ -203,18 +206,44 @@ class spl:
       self.xmax = K if xmax is None else xmax
       self.xk = np.linspace(xmin, self.xmax, num=K)
 
-   def __call__(self, x=None, der=0):
+   def __call__(self, x=None, der=0, border='extrapolate'):
       if x is None:
-         return self.a[0]
+         # for last knot append end of last interval a+b*1+c*1^2+d*1^3
+         return np.r_[self.a[0], np.sum(zip(*self.a)[-1])]
       else:
          x = (self.K-1)/(self.xmax-self.xmin) * (x-self.xmin)
          k, p = divmod(x, 1)
          k = k.astype(np.int)
+         # handling of locations outside
+         if border == 'extrapolate':
+            # further options could be natural
+            ii, = np.where(k < 0)
+            p[ii], k[ii] = x[ii], 0
+            ii, = np.where(k > self.K-2)
+            p[ii], k[ii] = x[ii]-(self.K-2), self.K-2
          # use Horner schema y = a + x (b+ x (c + xd)) in a slightly different way
          y = self.a[-1][k]   # init with d (not 0.)
          for ci in self.a[-2::-1]:
             y *= p; y += ci[k]
          return y
+
+   def osamp(self, ofac=1):
+      '''
+      Compute an oversampled spline curve.
+
+      Parameters
+      ----------
+      ofac : oversampling factor.
+
+      Returns
+      -------
+      x : ndarray
+         Oversampled postions.
+      y : ndarray
+         Spline values.
+      '''
+      x = np.linspace(self.xmin, self.xmax, num=self.K*ofac)
+      return x, self(x)
 
    def to_cbspl(self):
       '''
@@ -263,7 +292,7 @@ class ucbspl:
    >>> y = np.zeros(10); y[5] = 1.
    >>> cs = ucbspl_fit(y)
    >>> xx = np.r_[-2:10:0.01]
-   >>> gplot(xx,cs(xx), 'w l,', cs.xk, cs(), 'pt 7 lt 1')
+   >>> gplot(xx, cs(xx), 'w l,', cs.xk, cs(), 'pt 7 lt 1')
 
    '''
    def __init__(self, a, xmin=0., xmax=None):
@@ -288,7 +317,25 @@ class ucbspl:
          # y = np.sum(G * a.k[kk[:,np.newaxis]+np.arange(4).T], axis=1)
          # y = np.einsum('ij,ij->i', G, a.k[kk[:,np.newaxis]+np.arange(4).T])
          return y.reshape(kk.shape)
- 
+
+   def osamp(self, ofac=1):
+      '''
+      Compute an oversampled spline curve.
+
+      Parameters
+      ----------
+      ofac : oversampling factor.
+
+      Returns
+      -------
+      x : ndarray
+         Oversampled postions.
+      y : ndarray
+         Spline values.
+      '''
+      x = np.linspace(self.xmin, self.xmax, num=self.K*ofac)
+      return x, self(x)
+
    def to_spl(self):
       '''
       Convert to cardinal cubic spline.
@@ -322,7 +369,7 @@ class v_cspl:
       v_f = 0.
       for k in range(4):
          for j in range(4): 
-            v_f += B[k]*self.cov[kk+k,kk+j]*B[j]
+            v_f += B[k] * self.cov[kk+k,kk+j] * B[j]
       return v_f.reshape(kk.shape)
 
 
@@ -579,8 +626,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
       mod.e_yk = np.sqrt(varmod())
 
    if plot:
-      xx = np.linspace(xmin, xmax, num=K*20)   # oversample the knots
-      gplot(xx, mod(xx), ' w l lt 1,',
+      gplot(mod.ofac(20), ' w l lt 1,',  # oversample the knots
             mod.xk, mod(), ' lt 1 pt 7,',
             x, y, mod(x), ' lt 3, "" us 1:3 w l lt 2')
 
