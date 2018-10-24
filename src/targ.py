@@ -34,7 +34,9 @@ def simbad_query(targ):
       'query '+targ]))
    # urllib2.urlopen('http://simbad.u-strasbg.fr/simbad/sim-script', 'submit=submit+script&script=output+script%3Doff%0D%0Aoutput+console%3Doff%0D%0Aformat+object+form1+%22%25OBJECT+%3A+%25IDLIST%281%29+%3A+%25COO%28A+D%29+%25PM%28A+D+[E]%29+%25PLX\n%22%0D%0Aquery+gj699')
 
-   result = urllib2.urlopen('http://simbad.u-strasbg.fr/simbad/sim-script', 'submit=submit+script&script='+query).read()
+   site = urllib2.urlopen('http://simbad.u-strasbg.fr/simbad/sim-script').geturl()
+   result = urllib2.urlopen(site, 'submit=submit+script&script='+query).read()
+
    return result
 
 class Targ:
