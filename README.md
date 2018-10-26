@@ -42,14 +42,18 @@ chmod u+x $SERVAL/src/serval.py
 chmod u+x $SERVAL/src/read_spec.py
 ```
 
-Install barycorrpy
+Install barycorrpy:
 ```bash
 pip install barycorrpy
+```
+or if you don't have root rights:
+```bash
+pip install --user barycorrpy
 ```
 See also https://github.com/shbhuk/barycorrpy/wiki/1.-Installation for other possibilities.
 Note there is a numpy 1.14.0 einsum issue which I reported in https://github.com/astropy/astropy/issues/7051#issuecomment-356861381. I fixed this by removing the unicode_literals in https://github.com/astropy/astropy/blob/v2.0.x/astropy/coordinates/builtin_frames/utils.py. But there might be other ways.
 
-A few c programs come precompiled. Therefore, it is likely not necessary to compile but in case (e.g. Mac OS) ...
+A few c programs come precompiled. But probably it is necessary to compile (e.g. Mac OS) ...
 ```bash
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
@@ -95,3 +99,4 @@ serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699
 
 `-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used)
 
+Further tips are giving in the [wiki](../../wiki/).
