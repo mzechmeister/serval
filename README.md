@@ -99,4 +99,16 @@ serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699
 
 `-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used)
 
+### Tip
+
+You may want to include the following lines in your `~/.gnuplot`:
+```
+set colors classic
+load "~/mzechmeister/python/zoom.gnu"
+```
+In gnuplot 5 this uses the old color scheme from gnuplot 4.
+
+And [zoom.gnu](https://github.com/mzechmeister/python/blob/master/zoom.gnu) gives you some additional features, like pan and zoom with keyboard and arrows keys. In particular, very useful for the `look` and `lookt` options to explore the spectra.
+
+
 Further tips are giving in the [wiki](../../wiki/).
