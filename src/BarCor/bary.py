@@ -2,10 +2,14 @@
 import tempfile
 import os
 import sys
-import pyfits
 import numpy as np
 from subprocess import Popen, PIPE, STDOUT
 import argparse
+
+try:
+   import pyfits
+except:
+   import astropy.io.fits as pyfits
 
 path = os.path.dirname(__file__)
 if path=='': path='.'
