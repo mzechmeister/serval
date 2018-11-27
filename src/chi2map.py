@@ -182,9 +182,10 @@ class Chi2Map:
          z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
 
          # gplot.splot(par, z, ' palette')
-         cov = paraboloid.covmat_fit(par, z, N=len(cs))
+         #pause()
+         cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
 
-         zmod = cov.p(*par)
+         zmod = cov.p(zip(*par))
          #pause("\n", cov.Va*1000**2, cov.Xc*1000)
          #cov = paraboloid.covmat_fit(par, z)
          #cov = paraboloid.covmat_fit(par, z, N=self.No[ind].sum())
@@ -192,13 +193,14 @@ class Chi2Map:
          v, b = cov.Xc
          e_v, e_b = cov.e_a
          #gplot.splot(par, z, ' palette,', v,b, cov.min); pause("v", v, "b", b)
-         #gplot.splot(par, z, zmod, ' palette,', v,b, cov.min); pause("v", v, "b", b)
+         #gplot.splot(par, z, zmod, ' palette, "" us 1:2:4 palette pt 6 , "" us 1:2:(($3-$4)*10),', v,b, cov.min); pause("v", v, "b", b)
 
-         if -1<v<1 and 0.5<b<-0.5 and np.isfinite(cov.e_a).all():
+         if -1<v<1 and -0.5<b<0.5 and np.isfinite(cov.e_a).all():
             # refit closer to minimum
             par = map(np.ravel, np.meshgrid(np.arange(v-3*e_v, v+3*e_v, e_v/2), np.arange(b-3*e_b, b+3*e_b, e_b/2)))
             z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
-            cov = paraboloid.covmat_fit(par, z, N=len(cs))
+            zmod = cov.p(zip(*par))
+            cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
 
          self.crx = cov.Xc[1] * 1000
          self.e_crx = cov.e_a[1] * 1000

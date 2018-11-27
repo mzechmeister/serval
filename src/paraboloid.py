@@ -8,15 +8,13 @@ from pause import *
 
 xzip = zip; zip = lambda *x: list(xzip(*x))
 
+
 class paraboloid():
    '''
    Create and evaluate the paraboloid.
 
 # init: p = paraboloid(W); paraboloid(W, Xc, zc)
-# call: z = p(*X)
 # p.W, p.matrix, p.c paraboloid coeffs
-# p.center (root)
-# p(p.center), p.max, p.min, p.extremum
 
    Parameters
    ----------
@@ -26,26 +24,55 @@ class paraboloid():
    Methods
    -------
    __call__ : Returns list of paraboloid values.
+   center_to :
 
    Attributes
    ----------
    dim : dimension
+   W :  paraboloid matrix
+   center : curvature matrix and paraboloid center
+   xc : center position (extremum)
+   zc : center value
+   Wc : curvature matrix
 
    Notes
    -----
-   The symmetric matrix W for the paraboloid is
-      z = W00 + W01*x1 + W02*x2+ W11*x1**2 + W22*x2**2 + 2*W12*x1*x2
-        = Wmn xmi * xni
-        = Xi W Xi.T
+   The symmetric matrix W for a 2D paraboloid is
+
+      z = W00 + 2*W01*x1 + 2*W02*x2 + W11*x1**2 + W22*x2**2 + 2*W12*x1*x2
+        = Wmn xm * xn
+      z_i = Xi W Xi.T
+
    So the first row/column contains the constant and linear terms and the rest
    the quadratic and cross-terms.
 
+   The curvature is given by the submatrix.
+   The minimum position xc is given by n conditions and the first is
+
+      0 = dz/dx1 = 2*W01 + 2*W11 x1 + 2*W12*x2
+      -W01 = W11*x1 + W12*x2
+
+   This means solving the system
+
+      -W0n = W1n*x1 + W2n*x2
+      -W[0,1:] = W[1:,1:] xc
+
+   When shifting the paraboloid to x+dx, the curvature matrix is not affected
+   and the other matrix elements become
+
+      W00 = dx1**2 + dx1**2 + dx1**2
+      W01 = W11*dx1 W11*x1 + 2*W12*x2
+      z' = (X+dX) W (X+dX).T
+         = X W X.T + dX W X.T + X W dX.T + dX W dX.T
+         = z + ...
+
    Examples
    --------
-   Create a parabola (1D paraboloid) with minimum value 10
+   Create a parabola (1D parabolW0 = -W.dot(xc)oid) with minimum value 10
    and curvature 3 centered at 5:
-   z(x) = 10 + 3 (x-5)^2
-        = 10 + 3*5^2 - 2*3*5x + 3x^2
+
+      z(x) = 10 + 3 (x-5)^2
+           = 10 + 3*5^2 - 2*3*5x + 3x^2
 
    >>> z = paraboloid([[3]], xc=[5], zc=10)
    >>> z.dim
@@ -53,6 +80,8 @@ class paraboloid():
    >>> z.W
    array([[ 85, -15],
           [-15,   3]])
+   >>> z.center
+   (array([[3]]), array([5.]), array([10.]))
 
    Check function value at minimum
 
@@ -69,9 +98,9 @@ class paraboloid():
 
    Create sampling points and display.
 
-   >>> x = np.random.rand(10000)*2-1
-   >>> y = np.random.rand(10000)*20-10
-   >>> gplot(x,y, z(x,y), 'us  1:2:3 palette')
+   >>> x = np.random.uniform(-1, 1, 10000)
+   >>> y = np.random.uniform(-10, 10, 10000)
+   >>> gplot(x, y, z(zip(x,y)), ' palette')
 
    '''
    def __init__(self, W, xc=None, zc=0):
@@ -88,17 +117,20 @@ class paraboloid():
          W = (W.T + W) / 2
          # raise Exception('Matrix must be symmetric.')
 
-      if xc is not None:
-         # the reversion operation, shift to xc
-         W0 = -W.dot(xc)
-         z0 = zc + np.diag(W).dot(np.square(xc))
-         W = np.vstack((np.hstack((z0, W0)),
-                        np.vstack((W0, W )).T))
-         # W = np.block([[z0, W0],[W0[:,np.newaxis], W]])
       self.W = W
-      self.dim = len(W) - 1
+      if xc is not None:
+         # W was passed only as curvature matrix.
+         # Shift to xc.
+         W0 = -W.dot(xc)
+         z0 = zc + W.dot(xc).dot(xc)   # dX W dX.T
+         self.W = np.block([[z0, W0],
+                            [W0[:,np.newaxis], W]])
 
-   def __call__(self, *X):
+      self.dim = len(self.W) - 1
+      self.Wc, self.xc, self.zc = self.center = self._center()
+
+   def __call__(self, X):
+      X = np.atleast_2d(X).T
       if self.dim == len(X):
          # for de-centered paraboloid prepend dimension
          X = np.vstack((X[0]*0+1, X))
@@ -106,9 +138,16 @@ class paraboloid():
       z = np.einsum('ik,ij,jk->k', X, self.W, X)
       return z
 
-   def center(self, xc=None):
+   def _center(self):
       '''
-      Extracts the curvature matrix and the center of the paraboloid
+      Extracts the curvature matrix and the center of the paraboloid.
+
+      Returns
+      -------
+      tuple: curvature matrix, xc, zc.
+
+      Example
+      -------
 
       >>> W = np.diag([0, 0.05**-2, 0.3**-2])
       >>> W[0,1] = W[1,0] = 100
@@ -116,50 +155,66 @@ class paraboloid():
       array([[  0.        , 100.        ,   0.        ],
              [100.        , 400.        ,   0.        ],
              [  0.        ,   0.        ,  11.11111111]])
-      >>> Wc, xc = paraboloid(W).center()
-      >>> xc
-      array([-0.25,  0.  ])
-      >>> paraboloid(Wc, xc=xc).W
-      array([[ 25.        , 100.        ,  -0.        ],
-             [100.        , 400.        ,   0.        ],
-             [ -0.        ,   0.        ,  11.11111111]])
-
+      >>> paraboloid(W).center
+      (array([[400.        ,   0.        ],
+             [  0.        ,  11.11111111]]), array([-0.25,  0.  ]), array([-25.]))
       '''
       W = self.W
-      if xc is None:
-         # center to minimum
-         xc = np.linalg.solve(W[1:,1:], -W[0,1:])
-         return W[1:,1:]*1, xc
-      else:
-         # the reversion operation, shift to xc
-         W0 = -W.dot(xc)
-         Wraw = np.hstack((np.r_[0,W0][:,np.newaxis], np.vstack((W0, W))))
-         return  Wraw
+      xc = np.linalg.solve(W[1:,1:], -W[0,1:])
+      zc = self(xc)
+      return W[1:,1:]*1, xc, zc
+
+   def center_to(self, xc, zc=0.):
+      '''
+      Paraboloid will have center at xc and zc.
+
+      Parameters
+      ----------
+      xc (vector) : The paraboloid extremum is shifted to xc.
+      zc (float) : The value of the paraboloid extremum.
+
+      >>> W = np.diag([0, 0.05**-2, 0.3**-2])
+      >>> W[0,1] = W[1,0] = 100
+      >>> W
+      array([[  0.        , 100.        ,   0.        ],
+             [100.        , 400.        ,   0.        ],
+             [  0.        ,   0.        ,  11.11111111]])
+      >>> Wc, xc, zc = paraboloid(W).center
+      >>> xc
+      array([-0.25,  0.  ])
+      >>> paraboloid(Wc, xc=xc, zc=zc).W
+      array([[ 7.10542736e-15,  1.00000000e+02, -0.00000000e+00],
+             [ 1.00000000e+02,  4.00000000e+02,  0.00000000e+00],
+             [-0.00000000e+00,  0.00000000e+00,  1.11111111e+01]])
+
+      '''
+      return paraboloid(self.Wc, xc, zc)
 
 
 def fit_paraboloid(X, z, offset=True):
    '''
    Fit a paraboloid z(X).
 
-   This can be used approximate the extrema of chi2 and likelihood samples.
+   This can be used to approximate the extrema of chi2 and likelihood samples.
 
    Parameters
    ----------
-   X : position vectors
-   z : values
-   offset : if true, the offset (Xc,zc) is fitted
+   X : Position vectors.
+   z : Values.
+   offset : If true, the offset (Xc,zc) is fitted.
 
    Returns
    -------
-   Best fitting fit_paraboloid z(X) = sum_mn Wmn * xm * xn using linear least square.
+   Best fitting fit_paraboloid z(X) = sum_mn Wmn * xm * xn using linear least
+   square.
 
    Example
    -------
    Create sampling points
 
-   >>> x = np.random.rand(10000)*2-1
-   >>> y = np.random.rand(10000)*20-10
-   >>> X = x, y
+   >>> x = np.random.uniform(-1, 1, 10000)
+   >>> y = np.random.uniform(-10, 10, 10000)
+   >>> X = list(zip(x, y))
 
    Create paraboloid matrix
 
@@ -169,19 +224,19 @@ def fit_paraboloid(X, z, offset=True):
    >>> #z_i = W11 *x1_i**2 + W22 * x2_i**2 + 2* W12 * x1_i * x2_i
        #    = Wmn xmi * xni = Xi W Xi.T
    >>> z = paraboloid(W, xc=[-0.5, 1])
-   >>> gplot(x,y,z(*X), 'us 1:2:3 palette')
+   >>> gplot(x, y, z(X), 'us 1:2:3 palette')
    >>> W
    array([[400.        ,  33.33333333],
           [ 33.33333333,  11.11111111]])
-   >>> zmod = fit_paraboloid([x-0.5,y+2], z(x,y), offset=False)
-   >>> #gplot+(x, y, zmod([x-0.5,y+1]), ' us 1:2:3 palette pt 6')
-   >>> zmod = fit_paraboloid(X, z(x,y))
-   >>> gplot+(X, zmod(*X), ' us 1:2:3 palette pt 6')
-   >>> W; zmod.center()
+   >>> zmod = fit_paraboloid([x-0.5,y+2], z(zip(x,y)), offset=False)
+   >>> gplot+(x, y, zmod(zip(x-0.5, y+1)), ' us 1:2:3 palette pt 6')
+   >>> zmod = fit_paraboloid((x,y), z(zip(x,y)))
+   >>> gplot+(x,y, zmod(X), ' us 1:2:3 palette pt 6')
+   >>> W; zmod.center
    array([[400.        ,  33.33333333],
           [ 33.33333333,  11.11111111]])
    (array([[400.        ,  33.33333333],
-          [ 33.33333333,  11.11111111]]), array([-0.5,  1. ]))
+          [ 33.33333333,  11.11111111]]), array([-0.5,  1. ]), array([3.55271368e-13]))
 
    Model:
      z = X W X.T
@@ -192,29 +247,39 @@ def fit_paraboloid(X, z, offset=True):
 
    '''
    X = np.array(X)
+   z = np.array(z)
+   z0 = 0.
+   X0 = 0 * X[...,0]
+
+   if offset:
+      k = np.argmin(z)
+      z0 = z[k]
+      X0 = X[...,k]
+ 
+   dz = z - z0
+   dX = X - X0[:,np.newaxis]
+
    if offset:
       # prepend a column with ones
-      X = np.vstack((X[0]*0+1, X))
-   k = np.argmin(z)
+      dX = np.vstack((dX[0]*0+1, dX))
 
-   dX = X #- X[...,k][:,np.newaxis]
-   dz = z #- z[k]
-
-   n = len(dX) 
+   n = len(dX)
    idx_triu = np.triu_indices(n)   # indices for the upper-triangle of an (n, m) array
 
-   # create basis x^2 xy y^2 ...
-   GG = (dX * dX[:,np.newaxis,:])[idx_triu]
-   # RHS
-   xLx = GG.dot(dz)
-   # LHS
-   xxxx = GG.dot(GG.T)
-   Hu = xLx.dot(np.linalg.inv(xxxx))  # or np.linalg.solve(xxxx, xLx)
+   # create basis: x^2, xy, y^2, ...
+   A = (dX * dX[:,np.newaxis,:])[idx_triu]
+   Hu = np.linalg.lstsq(A.T, dz, rcond=None)[0]
    H = np.zeros((n, n))
    H[idx_triu] = Hu
    H = (H + H.T) / 2
 
-   return paraboloid(H)
+   if offset:
+      p = paraboloid(H)
+      # re-add the centroid to the paraboloid
+      p = paraboloid(p.Wc, xc=X0+p.xc, zc=z0+p.zc)
+   else:
+      p = paraboloid(H, xc=[0.]*n)
+   return p
 
 
 def covmat_fit(X, z, **kwargs):
@@ -228,13 +293,14 @@ def covmat_fit(X, z, **kwargs):
 
    Example
    -------
-   >>> x = np.random.rand(1000)*2-1
-   >>> y = np.random.rand(1000)*20-10
-   >>> X = x, y
+   >>> np.random.seed(0)   # for numerical repeatability
+   >>> x = np.random.uniform(-1, 1, 1000)
+   >>> y = np.random.uniform(-10, 10, 1000)
+   >>> X = list(zip(x, y))
    >>> V = np.array([[0.05**2, 0.5*0.05*0.3],  [0.5*0.05*0.3, 0.3**2]])
    >>> W = np.linalg.inv(V)
    >>> z = paraboloid(W, xc=[0,0])
-   >>> cov = covmat_fit(X, z(*X))
+   >>> cov = covmat_fit(X, z(X))
    >>> cov.Va
    array([[0.0025, 0.0075],
           [0.0075, 0.09  ]])
@@ -244,10 +310,10 @@ def covmat_fit(X, z, **kwargs):
    array([[1. , 0.5],
           [0.5, 1. ]])
    >>> cov.Xc
-   array([2.72004641e-17, 3.21409566e-16])
+   array([-4.64905892e-16, -3.85802501e-15])
 
    '''
-   H = fit_paraboloid(X, z).W
+   H = fit_paraboloid(zip(*X), z).W
    #print(np.array2string(Va,precision=2))
    return covmat(H, **kwargs) # Va, e_a
 
@@ -268,8 +334,8 @@ class covmat():
    dim :
    N : Number data contributed to W
    inv:  W = V.inv
-   p.project, p.marginalise
    contor:
+   p.project, p.marginalise
    showC: gnuplot image
    show:
 
@@ -290,8 +356,7 @@ class covmat():
       self.p = paraboloid(W)
       self.N = N
       # extract the center position (optimum) and the curvatures matrix
-      Vinv, self.Xc = self.p.center()
-      self.min = self.p(*zip([1]+ list(self.Xc)))
+      Vinv, self.Xc, self.min = self.p.center
       self.Va = Va = np.linalg.inv(Vinv)
       if N:
          DOF = N - len(Va)
@@ -301,8 +366,58 @@ class covmat():
       self.e_a = np.sqrt(np.diag(Va))
       self.C = (1/self.e_a) * Va * (1/self.e_a[np.newaxis].T)
 
-   def contor(self):
-      pass
+   def contor(self, i, j, sig=1, samp=100):
+      '''
+      The error ellipse.
+
+      Parameters
+      ----------
+      sig (float) : Sigma level.
+      samp (int) : Number of sampling points.
+
+      '''
+      rho = self.C[i,j]
+      e_a, e_b = self.e_a[[i,j]]
+      a, b = self.Xc[[i,j]]
+
+      t = np.linspace(0., 2*np.pi, samp)
+      x = a + sig * e_a * (np.sqrt(1+rho)*np.cos(t)-np.sqrt(1-rho)*np.sin(t)) / np.sqrt(2)
+      y = b + sig * e_b * (np.sqrt(1+rho)*np.cos(t)+np.sqrt(1-rho)*np.sin(t)) / np.sqrt(2)
+      return x, y
+
+   def ocorner(self, fig, k=None, color='r'):
+      '''
+      Overplot error ellipses to corner plots from corner.py.
+
+      Args:
+         fig : corner.py plot figure.
+         k : list of selected axis.
+      '''
+      if k is None:
+         k = list(range(self.p.dim))
+      col = {'color': color}
+      ndim = len(k)
+      axes = np.array(fig.axes).reshape((ndim, ndim))
+
+      Xc = self.Xc[k]
+
+      # Loop over the diagonal
+      for i in range(ndim):
+         ax = axes[i, i]
+         ax.axvline(Xc[i], **col)
+
+      # Loop over the histograms
+      for j in range(ndim):
+         for i in range(j):
+            ax = axes[j, i]
+            ax.axvline(Xc[i], **col)
+            ax.axhline(Xc[j], **col)
+            ax.plot(Xc[i], Xc[j], "s", **col)
+
+            # contours
+            ax.plot(*self.contor(k[i],k[j]), **col)
+            ax.plot(*self.contor(k[i],k[j],2), linestyle="--", **col)
+      return fig
 
    def corner(self, histogram=True, labels=True):
       '''
@@ -348,7 +463,7 @@ EOD
       for i in range(1,N+1):
          # the first column ist plotted first
          j=i
-         gplot.put('m=%s; n=%s' %(i,j))
+         gplot.var(m=i, n=j)
          gplot.origin("x0+(1-x0)*(m-1)/N, y0+(1-y0)*(1-n/N)")
          if i==1:
             gplot.ylabel("'%s'" % labels[0])
@@ -364,13 +479,13 @@ EOD
 
             gplot.var(a=self.Xc[i-1])
             gplot.var(e_a=self.e_a[i-1])
-            gplot("[a-2*e_a:a+2*e_a] exp(-(x-a)**2/e_a**2/2) t '%g +/- %g'" % (self.Xc[i-1], self.e_a[i-1]), flush='')
+            gplot-("[a-2*e_a:a+2*e_a] exp(-(x-a)**2/e_a**2/2) t '%g +/- %g'" % (self.Xc[i-1], self.e_a[i-1]))
             #gplot<("[a-2*e_a:a+2*e_a] exp(-(x-a)**2/e_a**2/2) t 'asdfasdf'")
             gplot<("$line us (a+e_a):($1>0) w l lc 'grey' dt 3")
             gplot<("$line us (a-e_a):($1>0) w l lc 'grey' dt 3")
             gplot+("$line us (a):($1>0) w l lc 'black' dt 2")
          for j in range(i+1,N+1):
-           gplot.put('m=%s; n=%s' %(i,j))
+           gplot.var(m=i, n=j)
            gplot.origin("x0+(1-x0)*(m-1)/N,y0+(1-y0)*(1-n/N)")
            if i==1:
               gplot.ylabel("'%s'" % labels[j-1])
@@ -391,11 +506,10 @@ EOD
               Sij = np.array([[Va[i-1,i-1], Va[i-1,j-1]],
                               [Va[j-1,i-1], Va[j-1,j-1]]])
               invSij = np.linalg.inv(Sij)
-              gplot.put("C11=%s; C22=%s; C12=%s" %  (invSij[0,0], invSij[1,1], invSij[0,1]))
-              #gplot.put("C11=%s; C22=%s; C12=%s" %  (W[i,i], W[j,j], W[i,j]))
+              gplot.var(C11=invSij[0,0], C22=invSij[1,1], C12=invSij[0,1])
               #gplot("[a-2*e_a:a+2*e_a][b-2*e_b:b+2*e_b] '++' us 1:2:(C11*($1-a)**2+C22*($2-b)**2+2*C12*($1-a)*($2-b)) w image", flush='')
               gplot.urange("[a-2*e_a:a+2*e_a]").vrange("[b-2*e_b:b+2*e_b]")
-              gplot("[a-2*e_a:a+2*e_a][b-2*e_b:b+2*e_b] '++' us 1:2:(C11*($1-a)**2+C22*($2-b)**2+2*C12*($1-a)*($2-b)) w image", flush='')
+              gplot-("[a-2*e_a:a+2*e_a][b-2*e_b:b+2*e_b] '++' us 1:2:(C11*($1-a)**2+C22*($2-b)**2+2*C12*($1-a)*($2-b)) w image")
            if 1:
               # contors
               gplot<("u=1, [0:2*pi] '+' us (a + x($1,rho)):(b+y($1,rho)) w l lc 'white', [0:2*pi] '+' us (a + 2*x($1,rho)):(b+2*y($1,rho)) w l lc 'white'")
@@ -422,8 +536,6 @@ if __name__=='__main__':
    except:
       case = None
    if not case:
-      # test all examples 
-      # ok in python 2, but failing in python3 but due to formaatting
       import doctest
       doctest.testmod()
    elif case == 1:
@@ -444,13 +556,14 @@ if __name__=='__main__':
       a_cf, cov_cf = curve_fit(trend, x, y, [0.0, 0.0], e)
       print(a_cf); cov_cf
 
-      # paraboloid 
+      # paraboloid
       # parameter and chi2 samples
       P = [[1,0], [0,0], [-1,0], [0,1], [0,-1], [1,-1]]
       # chi2map
       z = [np.dot((y-trend(x,*p))**2, 1/e**2) for p in P]
 
-      cov = covmat_fit(zip(*P), z, N=len(x))
+      pause()
+      cov = covmat_fit(P, z, N=len(x))
       #cov = covmat_fit(zip(*P), z)
       gplot+("%s+%s*x w l lc 3"% tuple(cov.Xc))
 
@@ -482,7 +595,7 @@ if __name__=='__main__':
       chi2map = [(ai, bi, np.sum((y-(ai+bi*x))**2/e_y**2)) for ai in np.arange(0,40) for bi in np.arange(180,220)]
       ai, bi, chi2map = zip(*chi2map)
 
-      cm = covmat_fit([ai,bi], chi2map)
+      cm = covmat_fit(zip(ai,bi), chi2map)
 
       # best fit parameters
       print('polyfit    a, b', a_pf, b_pf)
@@ -508,10 +621,10 @@ if __name__=='__main__':
    else:
       # Demo of corner
       # gnuplot-python bug: some plot/elements disappear when setting keytitles
-      x1 = np.random.rand(1000)*2-1
-      x2 = np.random.rand(1000)*20-10
-      x3 = np.random.rand(1000)*20-10
-      X = x1, x2, x3
+      x1 = np.random.uniform(-1, 1, 1000)
+      x2 = np.random.uniform(-10, 10, 1000)
+      x3 = np.random.uniform(-10, 10, 1000)
+      X = list(zip(x1, x2, x3))
 
       # parameter variances
       s = np.array([0.05, 0.3, 99.])
@@ -532,9 +645,10 @@ if __name__=='__main__':
       z = paraboloid(W, xc=[50, 2, 150])
       print("W\n", W)
 
-      gg = covmat(fit_paraboloid(X, z(*X)).W)
+      gg = covmat(fit_paraboloid((x1, x2, x3), z(X)).W)
       gg.corner()
       pause()
       #gg.p(*gg.Xc) # not tricky enough
       #gg.p(*zip([1]+ list(gg.Xc)))
+
 
