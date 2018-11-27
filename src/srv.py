@@ -12,6 +12,14 @@ try:
 except:
     print 'Cannot import gls'
 
+try:
+   import pyfits
+except:
+   try:
+      import astropy.io.fits as pyfits
+   except:
+      print 'Cannot import pyfits'
+
 import chi2map
 
 __author__ = 'Mathias Zechmeister'
@@ -52,6 +60,7 @@ class srv:
       self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')[sl]
       self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')[sl]
       self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')[sl]
+      self.halpha = np.genfromtxt(pre+'.halpha.dat')[sl]
       try:
          self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')[sl]
       except:
@@ -120,10 +129,32 @@ class srv:
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLW"'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+      arg += hypertext
+
       gplot.key('tit "%s"'%(self.keytitle))
       gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]"')
-      gplot(bjd-2450000, dLW, e_dLW, self.has_d, arg)
+
+      gplot(bjd-2450000, dLW, e_dLW, self.has_d, self.info, arg)
       pause('dLW ', self.tag)
+
+   def plot_halpha(self):
+      '''Show RVs over order for each observation.'''
+      bjd, halpha, e_halpha = self.halpha[0:3]
+      arg = ''
+      if not self.has_d.all():
+         arg += 'us 1:2:3 w e pt 6 lt 7 t "dLW no drift"'
+      if self.has_d.any():
+         if arg: arg += ', "" '
+         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLW"'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+      arg += hypertext
+
+      gplot.key('tit "%s"'%(self.keytitle))
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"Halpha index"')
+
+      gplot(bjd-2450000, halpha, e_halpha, e_halpha, self.info, arg)
+      pause('halpha ', self.tag)
 
    def drsrv(self):
       '''Show RVs over order for each observation.'''
@@ -268,8 +299,16 @@ class srv:
             # bottom panel
             gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
             gplot.unset('log')
-            hypertext = ' "" us 1:2:(sprintf("%d %s\\n%f\\n%f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
-            gplot(bjd-2450000, RVc, e_RVc, self.info, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
+            arg = ''
+            if not self.has_d.all():
+               arg += 'us 1:2:3 w e pt 6 lt 7 t "RV no drift",'
+            if self.has_d.any():
+               if arg: arg += ' "" '
+               arg += 'us 1:($2/$4):3 w e pt 7 lt 7 t "RVc",'
+            hypertext = '"" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+            arg += hypertext
+
+            gplot(bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg, [bjd[n]-2450000], [RVc[n]], [e_RVc[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
 
          gplot.xlabel('"order"').ylabel('"RV [m/s]"')
          #gplot(self.orders, self.rvc[n], self.e_rv[n], 'us 1:2:3 w e pt 7, %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.50 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
@@ -365,12 +404,11 @@ class srv:
             gplot.multiplot('layout 2,1')
             # bottom panel
             gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000(m/s)^2]"')
-            gplot.unset('log')
-            hypertext = ' "" us 1:2:(sprintf("%d %s\\n%f\\n%f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+            hypertext = ' "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
             gplot(bjd-2450000, dLW, e_dLW, self.info, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [dLW[n]], [e_dLW[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
 
          gplot.xlabel('"order"').ylabel('"dLW [m/s]"')
-         gplot(self.orders, dlw[n], self.e_rv[n]*0, 'us 1:2:3 w e pt 7')
+         gplot(self.orders, dlw[n,self.orders], self.e_rv[n]*0, 'us 1:2:3 w e pt 7')
          '''      , %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.50 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
          gplot.xlabel('"wavelength"').ylabel('"RV [m/s]"')
          gplot.autoscale('noextend')
@@ -394,6 +432,7 @@ class srv:
                n = self.N - 1
             else:
                n += 1
+
    def plotrv(self):
       '''Show RVs over order for each observation.'''
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
@@ -537,7 +576,6 @@ class srv:
    def ls(self, suf='_A_mod.fits'):
       '''Show last square fit form fits file.'''
       #prebjd, preRV, pree_RVc = self.tpre.T[0:3]
-      import pyfits
       #for n in range(self.N):
       gplot.key("Left left rev bottom title '%s'" % self.keytitle)
       '''
@@ -628,28 +666,28 @@ class srv:
       bjd, RVc, e_RVc = self.trvc[0:3]
       bjd, RV, e_RV, crx, e_crx, dwid, e_dwid = self.tsrv
 
-      datstyle = {'fmt':'r.', 'capsize':0}
+      datstyle = dict(fmt='r.', capsize=0, elinewidth=1., markeredgewidth=0.5, markeredgecolor='k')
       fig = plt.figure()
-      fig.subplots_adjust(hspace=0.15, wspace=0.08, right=0.97, top=0.95)
+      fig.subplots_adjust(hspace=0.10, wspace=0.08, right=0.98, top=0.98)
 
       # BJD-RV
       ax1 = fig.add_subplot(3, 2, 1)
       #ax.set_title("Normalized periodogram")
       plt.setp(ax1.get_xticklabels(), visible=False)
       ax1.set_ylabel("RV [m/s]")
-      ax1.errorbar(bjd, RVc, e_RVc, fmt='r.', capsize=0)
+      ax1.errorbar(bjd-2450000, RVc, e_RVc, **datstyle)
 
       # BJD-COL
       ax3 = fig.add_subplot(3, 2, 3, sharex=ax1)
       plt.setp(ax3.get_xticklabels(), visible=False)
       ax3.set_ylabel("chromatic index")
-      ax3.errorbar(bjd, crx, e_crx, **datstyle)
+      ax3.errorbar(bjd-2450000, crx, e_crx, **datstyle)
 
       # BJD-DLW
       ax5 = fig.add_subplot(3, 2, 5, sharex=ax1)
-      ax5.set_xlabel("BJD")
+      ax5.set_xlabel("BJD - 2 450 000")
       ax5.set_ylabel("dLW")
-      ax5.errorbar(bjd, dwid, e_dwid, **datstyle)
+      ax5.errorbar(bjd-2450000, dwid, e_dwid, **datstyle)
 
       # RV-COL
       ax4 = fig.add_subplot(3, 2, 4, sharey=ax3)
@@ -661,8 +699,8 @@ class srv:
       e_a = np.sqrt(cov_a[0,0])
       liney = [RVc.min(), RVc.max()]
       linex = np.polyval(a, liney)
+      ax4.plot(liney, linex, label='kappa: %.4g+/-%.4g'% (a[0], e_a), zorder=3)
       ax4.errorbar(RVc, crx, e_crx, xerr=e_RVc, **datstyle)
-      ax4.plot(liney, linex, label='kappa: %.4g+/-%.4g'% (a[0], e_a))
       ax4.legend(loc='upper right', frameon=False, framealpha=1, fontsize='small')
 
       # RV-DLW
@@ -670,6 +708,10 @@ class srv:
       plt.setp(ax6.get_yticklabels(), visible=False)
       ax6.set_xlabel("RV [m/s]")
       ax6.errorbar(RVc, dwid, e_dwid, xerr=e_RVc, **datstyle)
+
+      for x in fig.axes:
+         x.tick_params(direction='in', which='both', top=True, right=True)
+         x.minorticks_on()
 
       if hasattr(plt.get_current_fig_manager(), 'toolbar'):
          # check seems not needed when "TkAgg" is set
@@ -703,6 +745,7 @@ if __name__ == "__main__":
    argopt('-drs', help='plot DRS RV vs RVc', action='store_true')
    argopt('-gls', help='GLS periodogram', action='store_true')
    argopt('-i', help='interactive task selection', action='store_true')
+   argopt('-halpha', help='plot Halpha index', action='store_true')
    argopt('-ls', help='ls from fits file', action='store_true')
    argopt('-mlc', help='plot mlRVc vs RVc', action='store_true')
    argopt('-mlcrx', help='plot fitting of mlcrx', action='store_true')
@@ -750,6 +793,8 @@ if __name__ == "__main__":
             obj.spaghetti()
          if args.ls:
             obj.ls()
+         if args.halpha:
+            obj.plot_halpha()
          if args.x:
             obj.xcorr()
          if args.gls:
@@ -770,5 +815,6 @@ if __name__ == "__main__":
             obj.plot_dlwno()
          if args.postrv:
             obj.postrv()
+
 
 
