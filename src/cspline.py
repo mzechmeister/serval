@@ -626,7 +626,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
       mod.e_yk = np.sqrt(varmod())
 
    if plot:
-      gplot(mod.ofac(20), ' w l lt 1,',  # oversample the knots
+      gplot(mod.osamp(20), ' w l lt 1,',  # oversample the knots
             mod.xk, mod(), ' lt 1 pt 7,',
             x, y, mod(x), ' lt 3, "" us 1:3 w l lt 2')
 
