@@ -57,13 +57,19 @@ def bjdbrv(jd_utc, ra, dec, obsname=None, lat=0., lon=0., elevation=None,
    #times = time.Time(jd_utc, format='jd', scale='utc', location=loc)
    #ltt_bary = times.light_travel_time(targ)
    JDUTC = Time(jd_utc, format='jd', scale='utc')
-   ltt_bary = JDUTC.light_travel_time(targ, location=loc)
-   bjd = JDUTC.tdb + ltt_bary
-   
-   brv, (warning, error), status = barycorrpy.get_BC_vel(JDUTC, ra=ra, dec=dec, epoch=epoch, pmra=pmra,
+   if JDUTC.isscalar:
+      ltt_bary = JDUTC.light_travel_time(targ, location=loc)
+      # Does not work vectorised with numpy 1.14
+      # *** TypeError: For this input type lists must contain either int or Ellipsis
+      # https://github.com/astropy/astropy/issues/7051
+      bjd = JDUTC.tdb + ltt_bary
+   else:
+      bjd = [(jdutc.tdb + jdutc.light_travel_time(targ, location=loc)).value for jdutc in JDUTC]
+
+   brv, warning_and_error, status = barycorrpy.get_BC_vel(JDUTC, ra=ra, dec=dec, epoch=epoch, pmra=pmra,
                    pmdec=pmdec, px=parallax, lat=lat, longi=lon, alt=elevation, **kwargs)
-   
-   return bjd.value, brv[0]
+
+   return (bjd.value, brv[0]) if JDUTC.isscalar else (bjd, brv)
 
 
 # print bjdbrv(2457395.24563, 4.585590721,  44.02195596, 'ca', leap_update=False)
