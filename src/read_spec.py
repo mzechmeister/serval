@@ -12,7 +12,11 @@ import time
 import warnings
 from collections import namedtuple
 
-import pyfits
+
+try:
+   import pyfits
+except:
+   import astropy.io.fits as pyfits
 #import fitsio
 import numpy as np
 
@@ -126,6 +130,9 @@ class Spectrum:
       self.obj = self.header['OBJECT']
 
       ### Barycentric correction ###
+      # start and end computed only for WE and WEhtml
+      self.bjd_sart, self.berv_start = np.nan, np.nan
+      self.bjd_end, self.berv_end = np.nan, np.nan
 
       if targ and targ.name == 'cal':
          self.bjd, self.berv = self.drsbjd, 0.
@@ -142,16 +149,19 @@ class Spectrum:
             # export ASTRO_DATA=/home/raid0/zechmeister/
             #idl -e 'print, bjd2utc(2457395.24563d, 4.58559072, 44.02195596), fo="(D)"'
             jd_utc = [self.mjd + 2400000.5 + self.exptime*self.tmmean/24./3600]
+            jd_utcs = [self.mjd + 2400000.5, jd_utc[0], self.mjd + 2400000.5 + self.exptime/24./3600]
             ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15  # [deg]
             de = (targ.de[0] + np.copysign(targ.de[1]/60. + targ.de[2]/3600., targ.de[0]))       # [deg]
             obsname = {'CARM_VIS':'ca', 'CARM_NIR':'ca', 'FEROS':'eso', 'HARPS':'eso', 'HARPN':'lapalma'}[inst]
             if self.brvref == 'WE':
                # pure python version
                import brv_we14py
-               self.bjd, self.berv = brv_we14py.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
+               #self.bjd, self.berv = brv_we14py.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
+               (_, self.bjd, _), (self.berv_start, self.berv, self.berv_end) = brv_we14py.bjdbrv(jd_utc=jd_utcs, ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
             elif self.brvref == 'WEhtml':
                self.bjd = brv_we14html.utc2bjd(jd_utc=jd_utc, ra=ra, dec=de)
-               self.berv = brv_we14html.bvc(jd_utc=jd_utc, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de, obsname='ca', pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], raunits='hours', deunits='degrees')[0]
+               #self.berv = brv_we14html.bvc(jd_utc=jd_utc, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de, obsname='ca', pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], raunits='hours', deunits='degrees')[0]
+               self.berv_start, self.berv, self.berv_end = brv_we14html.bvc(jd_utc=jd_utcs, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de, obsname='ca', pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], raunits='hours', deunits='degrees')
             else:
                self.bjd, self.berv = brv_we14idl.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
 

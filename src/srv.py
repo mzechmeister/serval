@@ -60,7 +60,10 @@ class srv:
       self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')[sl]
       self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')[sl]
       self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')[sl]
-      self.halpha = np.genfromtxt(pre+'.halpha.dat')[sl]
+      try:
+         self.halpha = np.genfromtxt(pre+'.halpha.dat')[sl]
+      except:
+         pass
       try:
          self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')[sl]
       except:

@@ -196,10 +196,10 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    if 1: # chromatic slope
       gplot.xlabel('"BJD - 2 450 000"').ylabel('"chromatic index [m/s/Np]"')
       gplot('"'+obj+'/'+obj+'.srv'+fibsuf+'.dat" us ($1-2450000):4:5 w e pt 7')
-      if not safemode: pause('chromatic slope')
+      if not safemode: pause('chromatic index')
       gplot.xlabel('"RV [m/s]"').ylabel('"chromatic index [m/s/Np]"')
       gplot('"" us 2:4:3:5:($1-2450000)  w xyerr pt 7 palette')
-      if not safemode: pause('correlation RV - chromatic slope')
+      if not safemode: pause('correlation RV - chromatic index')
 
    snro = snr[:,2+orders]
    print "total SNR:", np.sum(snro**2)**0.5
@@ -693,7 +693,7 @@ def serval(*argv):
       fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
    else:
       print "object missing"
-      print "Example: "+sys.argv[0]+" gj699  dir_or_inputlist=/home/zechmeister/data/harps/gj699/path/ -restore omin=20 iset='1::2'"
+      print "Example: "+sys.argv[0]+" gj699  dir_or_inputlist=/home/zechmeister/data/harps/gj699/path/ -restore omin=20 nset='1::2'"
       return 1
 
    print description
@@ -788,7 +788,7 @@ def serval(*argv):
    spline_ev = {1: interpolate.splev,  2: cubicSpline.spl_ev, 3: cubicSpline.spl_evf}[spltype]
 
    print dir_or_inputlist
-   print 'tpl=%s pmin=%s iset=%s omin=%s omax=%s' % (tpl, pmin, iset, omin, omax)
+   print 'tpl=%s pmin=%s nset=%s omin=%s omax=%s' % (tpl, pmin, nset, omin, omax)
 
    ''' SELECT FILES '''
    files = sorted(glob.glob(dir_or_inputlist+os.sep+pat))
@@ -830,7 +830,7 @@ def serval(*argv):
       files = sorted(glob.glob(dir_or_inputlist+'/*ap08.*_ScSm.txt'))
       files = [s for s in files if '20_ap08.1_ScSm.txt' not in s and '20_ap08.2_ScSm.txt' not in s and '001_08_ap08.193_ScSm.txt' not in s ]
 
-   files = np.array(files)[iset]
+   files = np.array(files)[nset]
    nspec = len(files)
    if not nspec:
       print "no spectra found in", dir_or_inputlist, 'or using ', pat, inst
@@ -900,7 +900,10 @@ def serval(*argv):
 
    msksky = [0] * iomax
    if 1 and inst=='CARM_VIS':
-      import pyfits
+      try:
+         import pyfits
+      except:
+         import astropy.io.fits as pyfits
       msksky = flag.atm * pyfits.getdata(servallib + 'carm_vis_tel_sky.fits')
 
    if msklist: # convert line list to mask
@@ -961,7 +964,7 @@ def serval(*argv):
             spi = n
       else:
          print >>badfile, sp.bjd, sp.ccf.rvc, sp.ccf.err_rvc, sp.timeid, sp.flag
-      print >>bervfile, sp.bjd, sp.berv, sp.drsbjd, sp.drsberv, sp.drift, sp.timeid, sp.tmmean, sp.exptime
+      print >>bervfile, sp.bjd, sp.berv, sp.drsbjd, sp.drsberv, sp.drift, sp.timeid, sp.tmmean, sp.exptime, sp.berv_start, sp.berv_end
       infowriter.writerow([sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag, sp.airmass, sp.ra, sp.de])
       #print >>infofile, sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag
 
@@ -1437,7 +1440,7 @@ def serval(*argv):
                   BIC += [ chi + np.log(we[ind].size)*Ki]
 
                Ko = K[np.argmin(BIC)]
-               smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ki, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
+               smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ko, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
                print "K=%d" % Ko,
 
                if 0:
@@ -1474,15 +1477,15 @@ def serval(*argv):
                gplot.mxtics().mytics().xlabel("'ln {/Symbol l}'")
                gplot.x2label("'{/Symbol l} [A]'").x2tics().mx2tics().link('x via exp(x) inverse log(x)').xtics("nomirr")
                #gplot(wmod[ind],mod[ind], 1/np.sqrt(we[ind]), emod[ind], 'us 1:2:3 w e lt 2, "" us 1:2:4  w e pt 7 ps 0.5 lt 1')
-               gplot(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"', flush='')
-               ogplot(ww[o], ff[o], yfit, 'us 1:2 w lp lt 2 ps 0.5 t "spt", "" us 1:3 w l lt 3 t "template"', flush='')
+               gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"')
+               gplot<(ww[o], ff[o], yfit, 'us 1:2 w lp lt 2 ps 0.5 t "spt", "" us 1:3 w l lt 3 t "template"')
                if (~ind).any():
-                  ogplot(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"', flush='')
+                  gplot<(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"')
                if (ind<ind0).any():
-                  ogplot(wmod[ind<ind0], mod[ind<ind0], emod[ind<ind0].clip(0,1000),' w e lt 5 pt 7 ps 0.5 t "clipped"', flush='')
+                  gplot<(wmod[ind<ind0], mod[ind<ind0], emod[ind<ind0].clip(0,1000),' w e lt 5 pt 7 ps 0.5 t "clipped"')
                if tellind.any():
-                  ogplot(wmod[tellind],mod[tellind],' us 1:2 lt 6 pt 7 ps 0.5 t "atm"', flush='')
-               ogplot(wko, fko, eko.clip(0,fko.max()), 'w e lt 3 pt 7 t "template knots"')
+                  gplot<(wmod[tellind],mod[tellind],' us 1:2 lt 6 pt 7 ps 0.5 t "atm"')
+               gplot+(wko, fko, eko.clip(0,fko.max()), 'w e lt 3 pt 7 t "template knots"')
                if 0: # overplot normalised residuals
                   gplot_set('set y2tics; set ytics nomir; set y2range [-5*%f:35*%f]; set bar 0.5'%(sig,sig))
                   ogplot(wmod[ind], res,' w p pt 7 ps 0.5 lc rgb "black" axis x1y2')
@@ -1493,7 +1496,6 @@ def serval(*argv):
                   gplot(wmod[ind], res, -sig*ckappa[1], -sig, sig, sig*ckappa[1], 'us 1:2, "" us 1:3 w l lt 2, "" us 1:4 w l lt 3, "" us 1:5 w l lt 3, "" us 1:6 w l lt 2')
                   pause('lookt ',o)
 
-
             # apply the fit
             #ff[o][ind2] = yfit
             if ofacauto:
@@ -1501,7 +1503,7 @@ def serval(*argv):
                yfit = ff[o]* 0 # np.nan
                ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
                yfit[ind2] = smod(ww[o][ind2])
-               #pause()
+               # pause()
             ff[o] = yfit
             wk[o] = wko
             fk[o] = fko
@@ -1917,8 +1919,26 @@ def serval(*argv):
                   dy *= wmod
                   ddy *= wmod**2
                v = -c * np.dot(1/e2[keep]**2*dy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*dy[keep], dy[keep])
-               dsig = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
-               e_dsig = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
+               moon = 0
+               if moon:
+                  # simple moon contamination
+                  a1, a0 = np.polyfit(f2mod[keep], f2[keep], 1)
+                  print a1, a0
+                  if 0:
+                     gplot(w2[keep], f2mod[keep],'w lp,',w2[keep], f2[keep], ' w lp')
+                     gplot(f2mod[keep], f2[keep], w2[keep],' palette , x, %s+%s*x' %(a0,a1) )
+                     gplot(w2[keep], f2mod[keep],'w lp,',w2[keep], f2[keep], ' w lp,',w2[keep], (f2[keep]-a0)/a1, ' w lp')
+                     # residuals
+                     gplot(w2[keep], f2[keep]-f2mod[keep], ' w lp, ', w2[keep], f2[keep]-a1*f2mod[keep]-a0, 'w lp lc 3')
+                  #pause(o)
+
+                  f2 = f2c = (f2-a0)/a1 # correct observation
+
+                  dsig = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2c-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
+                  e_dsig = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
+               else:
+                  dsig = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
+                  e_dsig = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
                drchi = rms(((f2-f2mod) - dsig/c**2*ddy)[keep] / e2[keep])
                #print par.params[1],par.params[0], v, dsig*1000, e_dsig
                if np.isnan(dsig) and not safemode: pause()
@@ -2026,7 +2046,7 @@ def serval(*argv):
 
       if not diff_rv:
          # ML version of chromatic trend
-         oo = ~np.isnan(chi2map[:,0])
+         oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[i]) 
 
          gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst+')\\n'+sp.timeid, rchi=rchi[i], No=Nok[i], name='')
          mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
@@ -2168,7 +2188,7 @@ def serval(*argv):
          print >>irtunit[rvflag], sp.bjd, " ".join(map(str, lineindex(irt1[i], irt1a[i], irt1b[i]) + lineindex(irt2[i], irt2a[i], irt2b[i]) + lineindex(irt3[i], irt3a[i], irt3b[i])))
       if meas_NaD:
          print >>nadunit[rvflag], sp.bjd, " ".join(map(str, lineindex(nad1[i],nadr1[i],nadr2[i]) + lineindex(nad2[i],nadr2[i],nadr3[i])))
-   for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile:
+   for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit + srvunit + mlcunit + dlwunit:
       file.close(ifile)
 
    t2 = time.time() - t0
@@ -2216,7 +2236,6 @@ if __name__ == "__main__":
    argopt('-coadd', help='coadd method'+default, default='post3',
                    choices=['fly', 'post', 'post2', 'post3'])
    argopt('-coset', help='index for order in coadding (default: oset)', type=arg2slice)
-   #argopt('-coset', help='index for order in coadding'+default, type=arg2slqice, default=':')
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
    argopt('-deg',  help='degree for background polynomial', type=int, default=3)
@@ -2225,7 +2244,7 @@ if __name__ == "__main__":
    argopt('-fib',  help='fibre', choices=['', 'A', 'B', 'AB'], default='')
    argopt('-inst', help='instrument '+default, default='HARPS',
                    choices=['HARPS', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
-   argopt('-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
+   argopt('-nset', '-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
    argopt('-kapsig', help='kappa sigma clip value'+default, type=float, default=3.0)
    argopt('-last', help='use last template (-tpl <obj>/template.fits)', action='store_true')
    argopt('-look', help='slice of orders to view the fit [:]', nargs='?', default=[], const=':', type=arg2slice)
