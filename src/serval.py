@@ -769,7 +769,7 @@ def serval(*argv):
       pass
 
    ### SELECT TARGET ###
-   targ = type('TARG', (), {'name': targ, 'plx': targplx, 'sa': float('nan')})
+   targ = type('TARG', (), dict(name=targ, plx=targplx, rv=targrv, sa=float('nan')))
    targ.ra, targ.de = targrade
    targ.pmra, targ.pmde = targpm
 
