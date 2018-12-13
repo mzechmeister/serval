@@ -71,6 +71,7 @@ $SERVAL/src/serval.py --help
 If you have a ~/bin folder, a useful shortcut is:
 ```bash
 ln -s $SERVAL/src/serval.py ~/bin/serval
+ln -s $SERVAL/src/srv.py ~/bin/srv
 ```
 Otherwise, an alias can be create and included in `~/.bashrc`.
 ```bash
@@ -98,6 +99,11 @@ serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699
 ```
 
 `-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used)
+
+After serval has finished, you can inspect the results with `srv.py`, for instance
+```bash
+srv gj699 -rv -x
+```
 
 ### Tip
 
