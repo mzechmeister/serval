@@ -12,7 +12,7 @@ Currently, SERVAL can process data from CARM_VIS, CARM_NIR, HARPS, and HARPN.
 ## Install instruction
 
 Requirements:
-- python 2.7 + numpy, scipy, pyfits
+- python 2.7 + numpy, scipy, pyfits, astropy
 - gnuplot
 
 Setup the path:
@@ -58,7 +58,7 @@ A few c programs come precompiled. But probably it is necessary to compile (e.g.
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC cbspline.c; gcc -o cbspline.so -shared cbspline.o
-f2py -c -m spl_int spl_int.f
+python -m numpy.f2py -c -m spl_int spl_int.f
 cd $SERVAL/src/BarCor
 gfortran bary.f -o bary.e
 ```
