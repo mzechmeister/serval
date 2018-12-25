@@ -82,13 +82,6 @@ and you can run it as
 serval --help
 ```
 
-### Install problems and solution
-
-An alternative to pyfits might be (in ds9.py and read_spec.py):
-```python
-import astropy.io.fits as pyfits
-```
-
 ## SERVAL in action
 
 A basic example is:

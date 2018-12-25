@@ -1,5 +1,8 @@
 import numpy as np
-import pyfits
+try:
+   import pyfits
+except:
+   import astropy.io.fits as pyfits
 
 import cspline as spl
 import paraboloid
