@@ -31,6 +31,9 @@ SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
 ''' % (__version__, __author__)
 
 
+genfromtxt2d = lambda *x,**y: np.atleast_2d(np.genfromtxt(*x,**y))
+
+
 class srv:
    '''
    Analysis of SERVAL products.
