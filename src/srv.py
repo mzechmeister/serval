@@ -31,6 +31,7 @@ SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
 ''' % (__version__, __author__)
 
 
+# fix of keepdim capability of genfromtxt
 genfromtxt2d = lambda *x,**y: np.atleast_2d(np.genfromtxt(*x,**y))
 
 
@@ -52,23 +53,18 @@ class srv:
       self.rms = np.nan
 
       print pre+'.rvc'+fibsuf+'.dat'
-      self.allrv = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat')
-      sl = np.s_[:]
-      if self.allrv.ndim==1:
-         # reshape
-         sl = np.s_[np.newaxis,:]
-         self.allrv = self.allrv[sl]
-      self.allerr = np.genfromtxt(pre+'.rvo'+fibsuf+'.daterr')[sl]
-      sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0]) # as string
-      self.snr = np.genfromtxt(pre+'.snr'+fibsuf+'.dat')[sl]
-      self.dlw = np.genfromtxt(pre+'.dlw'+fibsuf+'.dat')[sl]
-      self.rchi = np.genfromtxt(pre+'.chi'+fibsuf+'.dat')[sl]
+      self.allrv = genfromtxt2d(pre+'.rvo'+fibsuf+'.dat')
+      self.allerr = genfromtxt2d(pre+'.rvo'+fibsuf+'.daterr')
+      sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0])   # as string
+      self.snr = genfromtxt2d(pre+'.snr'+fibsuf+'.dat')
+      self.dlw = genfromtxt2d(pre+'.dlw'+fibsuf+'.dat')
+      self.rchi = genfromtxt2d(pre+'.chi'+fibsuf+'.dat')
       try:
-         self.halpha = np.genfromtxt(pre+'.halpha.dat')[sl]
+         self.halpha = genfromtxt2d(pre+'.halpha.dat')
       except:
          pass
       try:
-         self.tpre = np.genfromtxt(pre+'.pre'+fibsuf+'.dat')[sl]
+         self.tpre = genfromtxt2d(pre+'.pre'+fibsuf+'.dat')
       except:
          print('warning: %s not found' % pre+'.pre'+fibsuf+'.dat')
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
@@ -92,19 +88,18 @@ class srv:
       if self.inst:
          self.keytitle += ' (' + self.inst.replace('_', ' ') + ')'
 
-      self.tcrx = np.genfromtxt(pre+'.crx.dat', dtype=None)[sl].T
+      self.tcrx = genfromtxt2d(pre+'.crx.dat', dtype=None).T
 
-      #bjd, self.dwid,self.e_dwid = np.genfromtxt(obj+'/'+obj+'.dfwhm.dat', dtype=None, usecols=(0,1,2)).T
       self.N = len(self.allrv)
       #if self.N == 1:
          #return   # just one line, e.g. drift
 
-      self.tsrv = np.genfromtxt(pre+'.srv.dat', dtype=None)[sl].T
+      self.tsrv = genfromtxt2d(pre+'.srv.dat', dtype=None).T
       self.trvc = self.bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa \
-                = np.genfromtxt(pre+'.rvc'+fibsuf+'.dat', dtype=None)[sl].T
-      self.drs = np.genfromtxt(pre+'.drs.dat')[sl]
+                = genfromtxt2d(pre+'.rvc'+fibsuf+'.dat', dtype=None).T
+      self.drs = genfromtxt2d(pre+'.drs.dat')
       try:
-         self.tmlc = np.genfromtxt(pre+'.mlc'+fibsuf+'.dat')[sl]
+         self.tmlc = genfromtxt2d(pre+'.mlc'+fibsuf+'.dat')
       except:
          pass
 
@@ -463,14 +458,10 @@ class srv:
       rv, e_rv = self.allrv[:,5+self.orders], self.allerr[:,5+self.orders]
       RV, e_RV = nanwsem(rv, e=e_rv, axis=1)
 
-      #d = sys.argv[1]
+      allrv = self.allrv
+      allerr = self.allerr
 
-      #obj = os.path.basename(d)
-      #print obj
-      allrv = self.allrv #np.genfromtxt(d+'/'+obj+'.rvo.dat')
-      allerr = self.allerr #np.genfromtxt(d+'/'+obj+'.rvo.daterr')
-
-      bjd, RVc, e_RVc, RVd, e_RVd, RV, e_RV, BRV, RVsa = self.trvc #np.genfromtxt(d+'/'+obj+'.rvc.dat', dtype=None).T
+      bjd, RVc, e_RVc, RVd, e_RVd, RV, e_RV, BRV, RVsa = self.trvc
 
       bjd, RV, e_RV, rv, e_rv = allrv[:,0], allrv[:,1], allrv[:,2], allrv[:,5:], allerr[:,5:]
       bjdmap = np.tile(bjd[:,np.newaxis], rv.shape[1])
