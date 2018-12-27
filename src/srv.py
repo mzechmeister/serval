@@ -23,7 +23,7 @@ except:
 import chi2map
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2017-06-28'
+__version__ = '2018-12-27'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -33,7 +33,7 @@ SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
 
 class srv:
    '''
-   Analysis of SERVAL products
+   Analysis of SERVAL products.
    
    '''
 
@@ -41,7 +41,7 @@ class srv:
       '''
       Load all SERVAL products into an object.
 
-      obj - Folder with the SERVAL products.
+      obj : Folder with the SERVAL products.
       '''
       self.dir = obj
       self.tag = tag = obj.rstrip('/').split('/')[-1]
@@ -754,9 +754,7 @@ if __name__ == "__main__":
    argopt('-mlcrx', help='plot fitting of mlcrx', action='store_true')
    argopt('-pre', help='plot preRV vs RVc', action='store_true')
    argopt('-postrv', help='kappa sigma clip value', action='store_true')
-   #argopt('-rv', help='plot rv', action='store_true')
    argopt('-rv', help='plot rv', action='store_true')
-   #argopt('-rv', help='plot rv', action='store_true')
    argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel ', action='store_true')
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
    argopt('-spaghetti', help='plot o-rvno colorcoded', action='store_true')

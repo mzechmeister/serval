@@ -277,7 +277,7 @@ def lineindex(l, r1, r2):
    if np.isnan(r1[0]) or np.isnan(r2[0]):
       return np.nan, np.nan
    s = l[0] / (r1[0]+r2[0]) * 2
-   # error propagation:
+   # error propagation
    e = s * np.sqrt((l[1]/l[0])**2 + (r1[1]**2+r2[1]**2)/(r1[0]+r2[0])**2)
    return s, e
 
@@ -289,7 +289,6 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
    """
    wcen, dv1, dv2 = {
          'Halpha': (6562.808, -15.5, 15.5),   # Kuerster et al. (2003, A&A, 403, 1077)
-         'Halpha': (6562.808, -80, 80),   # Kuerster et al. (2003, A&A, 403, 1077)
          'Halpha': (6562.808, -40., 40.),
          'Haleft': (6562.808, -300., -100.),
          'Harigh': (6562.808, 100, 300),
@@ -345,8 +344,8 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
 
    if plot==True or typ in plot:
       print typ, I, e_I
-      gplot(sp.w[o], fmod[o], sp.f[o],'us 1:2 w l lt 3 t "template", "" us 1:3 lt 1 t "obs"')
-      ogplot(sp.w[ind], sp.f[ind], mod, 'lt 1 pt 7 t"'+typ+'", "" us 1:3 w l t "model", "" us 1:($2-$3) t "residuals"')
+      gplot(sp.w[o], fmod[o], sp.f[o], 'us 1:2 w l lt 3 t "template", "" us 1:3 lt 1 t "obs"')
+      ogplot(sp.w[ind], sp.f[ind], mod, 'lt 1 pt 7 t "'+typ+'", "" us 1:3 w l t "model", "" us 1:($2-$3) t "residuals"')
       pause()
 
    return I, e_I
@@ -560,7 +559,7 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    else:
       e_v = 1. / a[2]**0.5
    if (plot==1 and np.isnan(e_v)) or plot==2:
-      gplot.yrange('[*:%f]'%SSR.max())
+      gplot.yrange('[*:%f]' % SSR.max())
       gplot(vgrid, SSR-SSR[k], " w lp, v1="+str(vgrid[k])+", %f+(x-v1)*%f+(x-v1)**2*%f," % tuple(a), [v,v], [0,SSR[1]], 'w l t "%f km/s"'%v)
       ogplot(vpeak, SSRpeak, ' lt 1 pt 6; set yrange [*:*]')
       pause(v)
@@ -602,7 +601,7 @@ def fitspec(wt, ft, tck, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, 
    clip : Kappa sigma clipping value.
    nclip : Number of clipping iterations (default: 0 if clip else 1).
    df : Derivative for drift measurement.
-   v_step - Number of v steps (only background polynomial => v_step = false).
+   v_step : Number of v steps (only background polynomial => v_step = false).
 
    """
    if keep is None: keep = np.arange(len(w2))
@@ -780,7 +779,6 @@ def serval(*argv):
       print ' using sa=', targ.sa, 'm/s/yr', 'ra=', targ.ra, 'de=', targ.de, 'pmra=', targ.pmra, 'pmde=', targ.pmde
    else:
       print 'using barycentric correction from DRS'
-   # if targ.plx is not None: targ.sa = ...
 
    # choose the interpolation type
    spltype = 3 # 3=> fast version
@@ -811,7 +809,7 @@ def serval(*argv):
            files = [f.replace('_A.fits','_B.fits') for f in files]
            print 'renaming', files
       else:
-         # works if dir_or_inputlist is one fits-file
+         # case if dir_or_inputlist is one fits-file
          files = [dir_or_inputlist]
 
    # handle tar, e2ds, fox
