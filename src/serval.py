@@ -22,7 +22,7 @@ import time
 
 import numpy as np
 from numpy import std,arange,zeros,where, polynomial,setdiff1d,polyfit,array, newaxis,average
-from scipy import interpolate,optimize
+from scipy import interpolate, optimize
 from scipy.optimize import curve_fit
 
 from gplot import *
@@ -1024,9 +1024,6 @@ def serval(*argv):
    print 'median SN:', snrmedian
    print 'template:', spt.timeid, 'SN55', spt.sn55, '#', spi, ' <e_rv>=%0.2fm/s, <Q>=%s' % (np.median(dv)*1000, np.median(Q))
 
-   if nspec>40 and coadd=='post':
-      print 'n>40 Forcing flying coadd'
-      coadd = 'fly'
 
    ################################
    ### create high S_N template ###
@@ -1167,7 +1164,7 @@ def serval(*argv):
          else:
             pause('pre RV file', prefile, 'does not exist')
          RV = -RV   # swapped template
-      else:  # measure pre-RVs and for fly mode improve template by coadding
+      else:  # measure pre-RVs
        if review>1: gplot('0')
        myunit = file(prefile, 'w')
 
@@ -1217,31 +1214,6 @@ def serval(*argv):
             e_rv[i,o] = par.perror[0] * stat['std'] * 1000
             if verb: print "%s-%02u %s %7.2f m/s %.2f  %5.1f %s" % (
                    i+1, o, sp.timeid, rvo, stat['std'], stat['snr'], par.niter)
-
-            if coadd == "post": # save everything temporarily
-               coeffs[i][o] = par.params
-               mod[i,o] = fmod
-               bmod[i,o] = (fmod<0) * flag.neg
-               (bmod[i,o])[tellmask(barshift(ww[o],-sp.berv))>0.01] |= flag.atm
-               #(emod[i,o])[bmod[i,o]==0] = (fmod[bmod[i,o]==0]/par.params[1])**0.5
-               emod[i,o] = par.params[1]/fmod * (1.- tellmask(barshift(ww[o],-sp.berv))) # weights!!!!
-
-               #gplot(w2,f2); ogplot(ww[o],fmod/par.params[1])
-            if coadd == "fly":
-               #norm[o] += 1./par.params[1]
-               #keep=~tellind
-               keep = arange(osize)   # ???????
-               norm[o] += norm[o]/par.params[1]
-               #bad = setdiff1d(range(len(ff[o])),keep)
-               bad = np.ones(osize, dtype=bool); bad[keep]=0
-               new = keep[nn[o][keep]==0]
-               nn[o][keep] += 1                                # number of used spexels
-               ff[o][keep] += fmod[keep]/par.params[1]         #
-               ff[o][bad] *= (1.+1./par.params[1])             # do not add bad
-               ff[o][new] = fmod[new]*(1.+1./par.params[1])    # replace when new
-               if review>1 and o==60:
-                  ogplot(ff[o]/max(ff[o]))
-                  pause()
 
          ind = e_rv[i] > 0.                  # do not use the failed orders
          RV[i], e_RV[i] = wsem(rv[i,ind], e=e_rv[i,ind])  # weight
@@ -1508,98 +1480,6 @@ def serval(*argv):
             ek[o] = eko
             bk[o] = bko
 
-      if coadd == "post2":
-         for o in corders:
-            mod = zeros((nspecok,osize))
-            emod = zeros((nspecok,osize))
-            bmod = zeros((nspecok,osize),dtype=int)
-            print "coadding order %02i" % o
-            for i,sp in enumerate(spoklist[tset]):
-               #sp = copy.deepcopy(sp)
-               sp = sp.get_data(pfits=2, orders=o)
-               pind, = where(bb[o]==0)
-               w2 = barshift(sp.w, sp.berv)
-               b2 = sp.bpmap
-               f2 = sp.f
-               #k2 = interpolate.splrep(w2,f2,s=0)
-               k2 = spline_cv(w2,f2)
-               if o==44: pause(o)
-               par,fmod,keep,stat = fitspec(
-                  w2, f2, k2, ww[o], ff[o], ee[o], v=RV[i]/1000., vfix=True, keep=pind, deg=deg)
-               mod[i] = fmod
-               bmod[i] = (fmod<0) * flag.neg
-               (bmod[i])[tellmask(barshift(ww[o],-sp.berv))>0.01] |= flag.atm
-               #(emod[i,o])[bmod[i,o]==0] = (fmod[bmod[i,o]==0]/par.params[1])**0.5
-               #emod[i] = par.params[1]/fmod * (1.- tellmask(barshift(ww[o],-sp.berv))) # weights!!!!
-               #emod[i] = 1./par.params[1]/fmod * (1.- tellmask(barshift(ww[o],-sp.berv))) # weights!!!! problematic: role template and obs is swapped:  use ff[o] instead of fmod;
-               stop()
-               emod[i] = par.params[1]/ff[o] * (1.- np.max(np.vstack(tellmask(barshift(ww[o],-sp.berv)), skymsk(barshift(ww[o],-sp.berv)), axis=1))) # weights!!!!  error = ff[o]/par.params[1]
-               if inst=='CARM': # work around
-                  # do not allow for negative and zero weights
-                  # for low S/N there is readout noise
-                  bla=(ff[o]/par.params[1]).clip(min=0)+0.01
-                  emod[i] = 1/bla * (1.- tellmask(barshift(ww[o],-sp.berv))) # weights!!!!  error = ff[o]/par.params[1]
-               print i,par.params[1]
-
-            emod[emod<0] *= 0.   #weights!!!
-            if  pspllam is not None:
-               #ff[o],rr,rg = spl._pspline3(np.tile(ww[o],(mod.shape[0],1)).flatten()*1, mod.flatten()*1,
-               ff[o] = spl._pspline3(np.tile(ww[o],(mod.shape[0],1)).flatten()*1, mod.flatten()*1,
-                                     ff[o].size, w=emod.flatten()+0.000000001, lam=pspllam, x0=ww[o],retcoeff=True)
-               if o==50: pause(o)
-            else:
-               weights=emod[:]
-               pixmask = np.sum(weights,axis=0) > 0
-               idx, = np.where(pixmask)
-               pixmask, = np.where(pixmask)
-               ff[o,pixmask] = average(mod[:,pixmask],weights=weights[:,pixmask],axis=0)
-
-            #gplot(pixmask,mod[1,pixmask],mod[2,pixmask],mod[5,pixmask], " us 1:2, '' us 1:3, '' us 1:4")
-            #idx = np.tile(idx,mod.shape[0])
-            #gg = pspline(idx,mod[:,pixmask].reshape(-1),K=10000,lam=0.01,w=weights[:,pixmask].reshape(-1))
-            #gg=pspline(idx,mod[:,pixmask].reshape(-1),K=10000,lam=0.01)
-            #gplot(idx,mod[:,pixmask].reshape(-1),np.sqrt(weights[:,pixmask].reshape(-1))*10,gg1, 'us 1:2:3 w circles lw 0.5,"" us 1:2  w l lt 1,"" us 1:4 w l')
-            #gplot(idx,mod[:,pixmask].reshape(-1),np.sqrt(weights[:,pixmask].reshape(-1))*100,gg1, 'us 1:2:3 w lp ps  variable,"" us 1:4 w l')
-            #gplot(idx,mod[:,pixmask].reshape(-1),gg, ' w p ps 0.5,"" us 1:3  w l lt 7')
-            #ogplot(pixmask,ff[o,pixmask],savitzky_golay(ff[o],21,5)[pixmask], ' us 1:2 w l t "av", "" us 1:3 w l t "SG"' )
-            #ogplot(idx,gg, 'w l')
-               ff[o] = savitzky_golay(ff[o],21,5) #interpolate.UnivariateSpline(ww[o],ff[o],w=weights,s=400000)
-               if pspllam is not None:
-                  ff[o] = spl._pspline3(1*ww[o],ff[o],ff[o].shape[0],w=ff[o]*0+1,lam=1.0)
-                #ff[o] = spl._pspline3(np.tile(ww[o],(21,1)).flatten(), mod.flatten(), ff[o].size,  w=weights.flatten()+0.000000001,lam=1.0, x0=ww[o])
-            #gplot(mod[0],mod[5],mod[10],mod[15],mod[20],mod[12],ff[o],"us 0:1 ps 0.5,'' us 0:2 ps 0.5,'' us 0:3 ps 0.5,'' us 0:4 ps 0.5,'' us 0:5 ps 0.5,'' us 0:6 ps 0.5,'' us 0:7  w l lt 7")
-            if 0:
-               gplot(np.tile(ww[o],(21,1)).flatten(),mod.flatten(),",",ww[o],mod[12],ff[o],"us 1:2 ps 0.5,'' us 1:3 w l lt 7")
-            #pause(o)
-
-
-      if coadd == "post":
-         emod[emod<0] *= 0.   #weights!!!
-         for o in orders:   # plot the new template and compare with the old
-           print "coadding order %02i" % o
-           #pause(o)
-           if review:
-              gplot(np.mean(mod[:,o],axis=0), "w lp pt 7 lt 1 ps 0.7 t 'mean'", flush='')
-              #pause()
-           #weights = 0.*bmod[:,o]
-           #weights[bmod[:,o]==0] = 1. /((emod[:,o])[bmod[:,o]==0])**2
-           weights = emod[:,o]
-           pixmask = np.sum(weights,axis=0) > 0
-           ff[o,pixmask] = average(mod[:,o,pixmask],weights=weights[:,pixmask],axis=0)
-           ff[o] =  savitzky_golay(ff[o],21,5)
-           #interpolate.UnivariateSpline(ww[o],ff[o],w=weights,s=400000)
-           ## ??????? interpolation over masked pixels?
-           #ff[o] = mean(mod[:,o],axis=0)
-           if review>0:
-              ogplot(ff[o], "w lp pt 7 lt 7 ps 0.7 t 'SG'", flush='')
-              #pause()
-              #ogplot(ff[o], "w lp pt 7 lt 3 ps 0.7; unset key")
-              for i,sp in enumerate(spoklist[tset]):
-                 #ogplot(mod[i,o], "w p ps 0.2 ")#/coeffs[i][o][1])
-                 #pause()
-                 ogplot(mod[i,o],bmod[i,o]==0, "us 0:1 w p ps 0.2, '' us 0:($1/$2) w p pt 1 lt 1 ps 1 ")
-                 pause(o,i)
-         del mod, emod, bmod
 
       if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
       spt.header['HIERARCH SERVAL COADD TYPE'] = (coadd, 'coadd method')
@@ -1611,7 +1491,6 @@ def serval(*argv):
       spt.header['HIERARCH SERVAL TARG RV'] = (targ.rv, '[km/s] RV from targ.cvs')
 
       write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
-      # only post3
       write_res(outdir+obj+'.fits', {'spec':fk, 'sig':ek, 'wave':wk, 'nmap':bk}, tfmt, spt.header, hdrref='', clobber=1)
       os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
       print '\ntemplate written to ', tpl
@@ -2232,7 +2111,7 @@ if __name__ == "__main__":
    argopt('-ccfmode', help='type for ccf template', nargs='?', default='box',
                       choices=['box', 'binless', 'gauss', 'trapeze'])
    argopt('-coadd', help='coadd method'+default, default='post3',
-                   choices=['fly', 'post', 'post2', 'post3'])
+                   choices=['post3'])
    argopt('-coset', help='index for order in coadding (default: oset)', type=arg2slice)
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
