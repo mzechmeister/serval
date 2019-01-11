@@ -22,7 +22,7 @@ import time
 
 import numpy as np
 from numpy import std,arange,zeros,where, polynomial,setdiff1d,polyfit,array, newaxis,average
-from scipy import interpolate,optimize
+from scipy import interpolate, optimize
 from scipy.optimize import curve_fit
 
 from gplot import *
@@ -344,8 +344,8 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
 
    if plot==True or typ in plot:
       print typ, I, e_I
-      gplot(sp.w[o], fmod[o], sp.f[o],'us 1:2 w l lt 3 t "template", "" us 1:3 lt 1 t "obs"')
-      ogplot(sp.w[ind], sp.f[ind], mod, 'lt 1 pt 7 t"'+typ+'", "" us 1:3 w l t "model", "" us 1:($2-$3) t "residuals"')
+      gplot(sp.w[o], fmod[o], sp.f[o], 'us 1:2 w l lt 3 t "template", "" us 1:3 lt 1 t "obs"')
+      ogplot(sp.w[ind], sp.f[ind], mod, 'lt 1 pt 7 t "'+typ+'", "" us 1:3 w l t "model", "" us 1:($2-$3) t "residuals"')
       pause()
 
    return I, e_I
@@ -559,7 +559,7 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    else:
       e_v = 1. / a[2]**0.5
    if (plot==1 and np.isnan(e_v)) or plot==2:
-      gplot.yrange('[*:%f]'%SSR.max())
+      gplot.yrange('[*:%f]' % SSR.max())
       gplot(vgrid, SSR-SSR[k], " w lp, v1="+str(vgrid[k])+", %f+(x-v1)*%f+(x-v1)**2*%f," % tuple(a), [v,v], [0,SSR[1]], 'w l t "%f km/s"'%v)
       ogplot(vpeak, SSRpeak, ' lt 1 pt 6; set yrange [*:*]')
       pause(v)
