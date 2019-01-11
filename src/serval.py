@@ -22,7 +22,7 @@ import time
 
 import numpy as np
 from numpy import std,arange,zeros,where, polynomial,setdiff1d,polyfit,array, newaxis,average
-from scipy import interpolate, optimize
+from scipy import interpolate,optimize
 from scipy.optimize import curve_fit
 
 from gplot import *
@@ -344,8 +344,8 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
 
    if plot==True or typ in plot:
       print typ, I, e_I
-      gplot(sp.w[o], fmod[o], sp.f[o], 'us 1:2 w l lt 3 t "template", "" us 1:3 lt 1 t "obs"')
-      ogplot(sp.w[ind], sp.f[ind], mod, 'lt 1 pt 7 t "'+typ+'", "" us 1:3 w l t "model", "" us 1:($2-$3) t "residuals"')
+      gplot(sp.w[o], fmod[o], sp.f[o],'us 1:2 w l lt 3 t "template", "" us 1:3 lt 1 t "obs"')
+      ogplot(sp.w[ind], sp.f[ind], mod, 'lt 1 pt 7 t"'+typ+'", "" us 1:3 w l t "model", "" us 1:($2-$3) t "residuals"')
       pause()
 
    return I, e_I
@@ -559,7 +559,7 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    else:
       e_v = 1. / a[2]**0.5
    if (plot==1 and np.isnan(e_v)) or plot==2:
-      gplot.yrange('[*:%f]' % SSR.max())
+      gplot.yrange('[*:%f]'%SSR.max())
       gplot(vgrid, SSR-SSR[k], " w lp, v1="+str(vgrid[k])+", %f+(x-v1)*%f+(x-v1)**2*%f," % tuple(a), [v,v], [0,SSR[1]], 'w l t "%f km/s"'%v)
       ogplot(vpeak, SSRpeak, ' lt 1 pt 6; set yrange [*:*]')
       pause(v)
@@ -1259,6 +1259,10 @@ def serval(*argv):
                bmod[i] = sp.bpmap | msksky[o]
                bmod[i][tellmask(sp.w)>0.01] |= flag.atm
                bmod[i][skymsk(sp.w)>0.01] |= flag.sky
+               # see https://github.com/mzechmeister/serval/issues/19#issuecomment-452661455
+               # note in this step the RVs have reverted signs.
+               bmod[i][tellmask(dopshift(redshift(sp.w, vo=sp.berv, ve=-RV[i]/1000.), spt.berv))>0.01] |= flag.badT
+
                w2 = redshift(sp.w, vo=sp.berv, ve=-RV[i]/1000.)   # correct also for stellar rv
                i0 = np.searchsorted(w2, ww[o].min()) - 1   # w2 must be oversized
                if i0<0:
@@ -1289,8 +1293,9 @@ def serval(*argv):
                mod[i] = sp.f / poly   # be careful if  poly<0
                emod[i] = sp.e / poly
                if 0:# o in lookt: #o==-29:
-                  gplot(sp.w,sp.f,poly, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
-                  pause()
+                  #gplot(sp.w,sp.f,poly, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
+                  gplot(w2,sp.f,poly, ',"" us 1:3,', w2[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
+                  pause(i)
               #(fmod<0) * flag.neg
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
             tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
@@ -1447,6 +1452,11 @@ def serval(*argv):
                gplot.mxtics().mytics().xlabel("'ln {/Symbol l}'")
                gplot.x2label("'{/Symbol l} [A]'").x2tics().mx2tics().link('x via exp(x) inverse log(x)').xtics("nomirr")
                #gplot(wmod[ind],mod[ind], 1/np.sqrt(we[ind]), emod[ind], 'us 1:2:3 w e lt 2, "" us 1:2:4  w e pt 7 ps 0.5 lt 1')
+               #hasflag = lambda array,flag: (array&flag)==flag
+               #hasflags = lambda array,flags: [hasflag(array,flag) for flag in flags]
+               #bmod[ind<ind0] |= flag.clip
+               #linecolor = np.array([0,1,6,4,4,5])[np.argmax([0*bmod, (bmod&~flag.badT)==0] + hasflags(bmod, [flag.atm, flag.out, flag.nan, flag.clip]), axis=0)]
+               #gplot2.bar(0)(wmod.ravel(), mod.ravel(), emod.ravel(), linecolor.ravel(), ' us 1:2:3:4  w e pt 7 ps 0.5 lc var t "data"')
                gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"')
                gplot<(ww[o], ff[o], yfit, 'us 1:2 w lp lt 2 ps 0.5 t "spt", "" us 1:3 w l lt 3 t "template"')
                if (~ind).any():

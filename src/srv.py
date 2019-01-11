@@ -536,7 +536,7 @@ class srv:
          #gplot(ovis, vis.rvc.ravel(), bjdvis.ravel(), ' lc variable pt 7 ps 0.5,', onir+60, nir.rvc.ravel(), bjdnir.ravel(), ' lc variable pt 7 ps 0.5')
          gplot.key('tit "%s"' % self.keytitle)
          gplot.palette('defined')
-         gplot.ylabel('"Order"').ylabel('"RV [m/s]"').cblabel('"BJD - 2 450 000"')
+         gplot.xlabel('"Order"').ylabel('"RV [m/s]"').cblabel('"BJD - 2 450 000"')
          gplot(o.ravel(), self.rvc.ravel(), bjd.ravel(), 'us 1:2:($3-2450000) palette')
          pause('spaghetti %s' % self.keytitle)
 
