@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2018-08-27'
+__version__ = '2019-02-17'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -28,7 +28,6 @@ from scipy.optimize import curve_fit
 from gplot import *
 from pause import pause, stop
 from wstat import wstd, wmean, wrms, rms, mlrms, iqr, wsem, nanwsem, nanwstd, naniqr, quantile
-from golay import *
 from read_spec import *   # flag, sflag, def_wlog
 from calcspec import *
 from targ import Targ
@@ -39,6 +38,7 @@ import phoenix_as_RVmodel
 from chi2map import Chi2Map
 
 gplot2 = Gplot() # for a second plot window
+gplot.bar(0).colors('classic')
 
 if 'gplot_set' in locals():
    raise ImportError('Please update new gplot.py.')
@@ -88,7 +88,6 @@ def nans(*args, **kwargs):
    return np.nan * np.empty(*args, **kwargs)
 
 # default values
-review = 0       # review template
 postiter = 3     # number of iterations for post rvs (postclip=3)
 debug = 0
 sp, fmod = None, None    # @getHalpha
@@ -141,6 +140,33 @@ class interp:
       yy = 0 * xx
       _pKolynomial.interpol1D(self.x, self.y, xx, yy, self.x.size, xx.size)
       return yy
+
+
+class Tpl:
+   def __init__(self, wk, fk, initfunc, evalfunc, mask=False, berv=None):
+      '''
+      wk : barycentric corrected wavelength
+      '''
+      ii = slice(None)
+      if mask:
+        ii = np.isfinite(fk)
+      self.wk = wk[ii]
+      self.fk = fk[ii]
+      self.berv = berv
+      self.funcarg = initfunc(self.wk, self.fk)
+      self.evalfunc = evalfunc
+   def __call__(self, w, der=0):
+      return self.evalfunc(w, self.funcarg, der=der)
+   def mskatm(self, w, msk):
+      # mask regions (atm, stellar) in template
+      # need target velocity and velocity range
+      if msk and self.berv:
+ #         bb[o][tellmask(barshift(ww[o],-spt.berv))>0.01] |= flag.atm   # mask as before berv correction
+#         bb[o][skymsk(barshift(ww[o],-spt.berv))>0.01] |= flag.sky   # mask as before berv correction
+     # mask as before berv correction
+         return msk(barshift(w,-self.berv)) > 0.01
+      else:
+         return slice(0,0) # empty
 
 
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
@@ -586,12 +612,12 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
    if vfix: v = 0.
    p, SSRmin, fmod = polyreg(x2, y2, e_y2, v, len(p))   # final call with v
 
-   if 0 and (np.isnan(e_v) or plot) and not safemode:
+   if 1 and (np.isnan(e_v) or plot) and not safemode:
       gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
       pause(v)
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
-def fitspec(wt, ft, tck, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
+def fitspec(tpl, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
    """
    Performs the robust least square fit via iterative clipping.
 
@@ -608,7 +634,7 @@ def fitspec(wt, ft, tck, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, 
    if e_y is None: e_y = np.mean(f2)**0.5 + 0*f2   # mean photon noise
    if clip is None: nclip = 0   # number of clip iterations; default 1
    calcspec.wcen = np.mean(w2[keep])
-   calcspec.tck = tck
+   calcspec.tpl = tpl
 
    p = np.array([v, 1.] + [0]*deg)   # => [v,1,0,0,0]
    fMod = np.nan * w2
@@ -658,9 +684,9 @@ def fitspec(wt, ft, tck, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, 
          else:
             fMod = calcspec(w2, *p)     # compute also at bad pixels
          gplot.y2tics().ytics('nomir; set y2range [-5:35];')
-         gplot(w2,fMod,' w lp pt 7 ps 0.5 t "fmod"',flush='');
-         ogplot(w2[keep],fMod[keep],' w lp pt 7 ps 0.5 t "fmod[keep]"',flush='');
-         ogplot(w2,f2,' w lp pt 7 ps 0.5 t "f2"',flush='');
+         gplot(w2,fMod,' w lp pt 7 ps 0.5 t "fmod"')
+         gplot+(w2[keep],fMod[keep],' w lp pt 7 ps 0.5 t "fmod[keep]"')
+         gplot+(w2,f2,' w lp pt 7 ps 0.5 t "f2"')
          #ogplot(w2[keep],fres[keep],' w lp pt 7 ps 0.5 lc rgb "red" axis x1y2 t "residuals"',flush='')
          ogplot(w2[keep],fres,' w lp pt 7 ps 0.5 lc rgb "black" axis x1y2, 0 w l lt 2 axis x1y2 t"", '+str(res_std)+' w l lt 1 axis x1y2, '+str(-res_std)+ ' w l lt 1 t "" axis x1y2')
          pause('large RV', par.params[0]*1000)
@@ -929,6 +955,7 @@ def serval(*argv):
          mask = np.insert(mask,i0+2,[ran[1],1.0],axis=0) # insert
          mask = np.insert(mask,i0+3,[ran[1]+0.0000001,0.0],axis=0) # insert
 
+
    ################################
    ### READ FITS FILES ############
    ################################
@@ -988,13 +1015,14 @@ def serval(*argv):
       print "WARNING: no good spectra"
       if not safemode: pause()   # ???
 
-   rvcmedian = np.median([sp.ccf.rvc for sp in spoklist])
    snrmedian = np.median([sp.sn55 for sp in spoklist])
    with open(outdir+obj+'.drs.dat', 'w') as myunit:
       for sp in spoklist:
          print >>myunit, sp.bjd, sp.ccf.rvc*1000., sp.ccf.err_rvc*1000., sp.ccf.fwhm, sp.ccf.bis, sp.ccf.contrast, sp.timeid
-         # print >>myunit, sp.bjd, sp.ccf.rvc-rvcmedian, sp.ccf.err_rvc, sp.ccf.fwhm, sp.ccf.bis, sp.ccf.contrast, sp.timeid
 
+   ################################
+   ### Template canditates ########
+   ################################
    if spi is None:
       print 'No highest S/N found; selecting first file as reference'
       spi = 0
@@ -1025,148 +1053,132 @@ def serval(*argv):
    print 'template:', spt.timeid, 'SN55', spt.sn55, '#', spi, ' <e_rv>=%0.2fm/s, <Q>=%s' % (np.median(dv)*1000, np.median(Q))
 
 
+   nord = len(spt.w)
+
+   RV = None
+   if vtfix:
+      # RV are zero
+      np.savetxt(prefile, np.array([(sp.bjd, 0., 0.) for sp in spoklist]))
+
+   if skippre or vtfix:
+      # restore the pre RVs
+      if os.path.isfile(prefile):
+         bjd, RV, e_RV = np.genfromtxt(prefile, dtype=None, unpack=True)
+      else:
+         pause('pre RV file', prefile, 'does not exist')
+
+
    ################################
-   ### create high S_N template ###
+   ### Select high S_N template ###
    ################################
    print ''
    ntpix = ptmax - ptmin
-   pixx = arange(ntpix)
    pixxx = arange((ntpix-1)*4+1) / 4.
-   nord = len(spt.w[:,0])
    osize = len(pixxx)
    ww = np.ones((nord,osize))
    ff = np.zeros((nord,osize))
-   ee = np.zeros((nord,osize))
-   bb = np.zeros((nord,osize), dtype=int)
-   nn = np.zeros((nord,osize))
 
-   # for post 3
-   nk = int(osize / (8 if inst=='FEROS' else 4) * ofac)
-   wk = nans((nord,nk))
-   fk = nans((nord,nk))
-   ek = nans((nord,nk))
-   bk = np.zeros((nord,nk))
-   #kk = zeros((nord,5,osize))
-   kk = [[0]]*nord
 
-   norm = np.ones((nord))
    if inst == 'FEROS':
       ww = [0] * nord
       ff = [0] * nord
-      ee = [0] * nord
-      bb = [0] * nord
-      nn = [0] * nord
       ntopix = ptomax - ptomin
 
-   rv, e_rv = nans((2, nspec, nord))
-   RV, e_RV = nans((2, nspec))
+   is_ech_tpl = True   # echelle or continuous spectrum
+   TPL = [None] * nord
 
-   if coadd == "post":
-      mod = zeros((nspecok,nord,osize))
-      emod = zeros((nspecok,nord,osize))
-      bmod = zeros((nspecok,nord,osize), dtype=int)
-      coeffs = zeros((nspecok,nord,5))
-
-   ordwrappedtemplate = True   # echelle or continuous spectrum
-
-   # skip preRVs and template creation for ccf, drift and restoring template
-   if ccf:
-      ccfmask = np.loadtxt(servallib + ccf)
-   elif driftref:
-      print driftref
-      spt = Spectrum(driftref, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
-      ww, ff = spt.w, spt.f
-   elif isinstance(tpl, str):
-      print "restoring template: ", tpl
-      try:
-         if 'phoe' in tpl:
-            ww, ff = phoenix_as_RVmodel.readphoenix(servallib + 'lte03900-5.00-0.0_carm.fits', wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
-            ww = lam2wave(ww)
-            kk = spline_cv(ww, ff)
-            ordwrappedtemplate = False
-            ww = [ww] * (omax+1)
-            ff = [ff] * (omax+1)
-            kk = [kk] * (omax+1)
-         elif tpl.endswith('template.fits') or os.path.isdir(tpl):
-            # read a spectrum stored order wise
-            ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
-            if 'HIERARCH SERVAL COADD NUM' in head:
-               print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
-               #if not 'PHOENIX-ACES-AGSS-COND' in tpl:
-               if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
-               if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
-         else:
-            spt = Spectrum(tpl, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
-            ww, ff = barshift(spt.w,spt.berv), spt.f
-      except:
-         print 'ERROR: could not read template:', tpl
-         exit()
-
-      if inst == 'FEROS':
-         www = [0] * len(ww)
-         fff = [0] * len(ww)
-         for o in range(len(ww)):
-            ind = ww[o] > 0 # remove padded zeros
-            if ind.any():
-               www[o] = ww[o][ind]
-               fff[o] = ff[o][ind]
-         ww = www
-         ff = fff
-   else:
-      '''set up a spline interpolated, oversampled template from spt'''
-      tpl = outdir + 'template_' +coadd + fibsuf + '.fits'
-      for o in sorted(set(orders) | set(corders)):
-         if inst == 'FEROS':
-            ptmin = ptomin[o]
-            ptmax = ptomax[o]
-            pixx = arange(ntopix[o])
-            pixxx = arange((ntopix[o]-1)*4+1)/4.
-            osize = len(pixxx)
-            bb[o] = np.zeros(osize,dtype=int)
-         pixx, = where((np.isfinite(spt.w) & np.isfinite(spt.f) & np.isfinite(spt.e))[o,ptmin:ptmax])
-         idx = pixx + ptmin
-         kktmp = spline_cv(pixx, barshift(spt.w[o,idx],spt.berv))
-         ww[o] = spline_ev(pixxx, kktmp)
-         kk[o] = spline_cv(barshift(spt.w[o,idx],spt.berv), spt.f[o,idx])
-         ff[o] = spline_ev(ww[o], kk[o])
-         # interpolate errors not good but needed for weighting!!!
-         kktmp = spline_cv(barshift(spt.w[o,idx],spt.berv), spt.e[o,idx])
-         ee[o] = spline_ev(ww[o], kktmp) # can give negative errors
-         ind = spt.bpmap[o,idx] == 0  # let out zero errors, interpolate over
-         ind[0] = True
-         ind[-1] = True
-         #ee[o,idx[ind]]= interpolate.interp1d(barshift(spt.w[o,idx][ind],spt.berv), spt.e[o,idx][ind])(ww[o,idx[ind]]) # linear
-         ee[o] = interpolate.interp1d(barshift(spt.w[o,idx][ind],spt.berv), spt.e[o,idx][ind], fill_value="extrapolate")(ww[o]) # linear, sometimes extrapolate at border might be required, if barshift(spt.w[o,idx][ind][-1],spt.berv) == ww[o][-5]
-
-         if 0 or o==-50:
-            gplot(ww[o],ff[o], ',', barshift(spt.w[o,ptmin:ptmax],spt.berv), spt.f[o,ptmin:ptmax])
-            pause(o)
-         bb[o][tellmask(barshift(ww[o],-spt.berv))>0.01] |= flag.atm   # mask as before berv correction
-         bb[o][skymsk(barshift(ww[o],-spt.berv))>0.01] |= flag.sky   # mask as before berv correction
-         bb[o][ee[o]<=0] |= flag.nan
-         bb[o][ww[o]<=spt.w[o,idx[0]]] |= flag.nan   # flag egdes where nan flux might occur
-         bb[o][ww[o]>=spt.w[o,idx[-1]]] |= flag.nan
-         # negative interpolated are occured once around a 0.0 value
-         if inst == 'FEROS':
-            # works with list so we do it here
-            bb[o][ff[o]<0] |= flag.neg
-
-      if inst != 'FEROS':
-         bb[ff<0] |= flag.neg
-      #ind = (bb&flag.neg)==0
-      #gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv),spt.f[o,ptmin:ptmax])
-      #ogplot(ww[o],ff[o]); pause()
+   if 1:
       to = time.time()
+      if ccf:
+         ccfmask = np.loadtxt(servallib + ccf)
+      elif driftref:
+         print driftref
+         spt = Spectrum(driftref, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
+         ww, ff = spt.w, spt.f
+      elif isinstance(tpl, str):
+         print "restoring template: ", tpl
+         try:
+            if 'phoe' in tpl:
+               #if 'PHOENIX-ACES-AGSS-COND' in tpl:
+               ww, ff = phoenix_as_RVmodel.readphoenix(servallib + 'lte03900-5.00-0.0_carm.fits', wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
+               ww = lam2wave(ww)
+               is_ech_tpl = False
+               TPL = [Tpl(ww, ff, spline_cv, spline_ev)] * nord
+            elif tpl.endswith('template.fits') or os.path.isdir(tpl):
+               # last option
+               # read a spectrum stored order wise
+               ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev) for wo,fo in zip(ww,ff)]
+               if 'HIERARCH SERVAL COADD NUM' in head:
+                  print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
+                  if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
+                  if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
+            else:
+               # a user specified other observation/star
+               spt = Spectrum(tpl, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
+               #ww, ff = barshift(spt.w,spt.berv), spt.f
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, mask=True, berv=spt.berv) for wo,fo in zip(barshift(spt.w,spt.berv),spt.f)]
+         except:
+            print 'ERROR: could not read template:', tpl
+            exit()
 
-      if skippre:   # restore the pre RVs
-         if os.path.isfile(prefile):
-            bjd, RV, e_RV = np.genfromtxt(prefile, dtype=None, unpack=True)
-         else:
-            pause('pre RV file', prefile, 'does not exist')
-         RV = -RV   # swapped template
-      else:  # measure pre-RVs
-       if review>1: gplot('0')
-       myunit = file(prefile, 'w')
+         if inst == 'FEROS':
+            www = [0] * len(ww)
+            fff = [0] * len(ww)
+            for o in range(len(ww)):
+               ind = ww[o] > 0 # remove padded zeros
+               if ind.any():
+                  www[o] = ww[o][ind]
+                  fff[o] = ff[o][ind]
+            ww = www
+            ff = fff
+      else:
+         '''set up a spline template from spt'''
+         for o in sorted(set(orders) | set(corders)):
+            if inst == 'FEROS':
+               ptmin = ptomin[o]
+               ptmax = ptomax[o]
+               pixxx = arange((ntopix[o]-1)*4+1)/4.
+               osize = len(pixxx)
+
+            pixx, = where((np.isfinite(spt.w) & np.isfinite(spt.f) & np.isfinite(spt.e))[o,ptmin:ptmax])
+            idx = pixx + ptmin
+            #ind = spt.bpmap[o,idx] == 0  # let out zero errors, interpolate over
+
+            # Smoothing with bspline
+            smod = spl.ucbspl_fit(barshift(spt.w[o,idx],spt.berv), spt.f[o,idx], K=idx.size/2, e_yk=True, lam=0.00001)
+
+            # Conversion to cardinal spline and then to fast spline
+            smod_spl = smod.to_spl()
+            #gplot(smod.osamp(10),',',wwo, ffo, ',', wwo,spline_ev(ww5,kko))
+            xk, kko = smod_spl.xk, smod_spl.a
+            yk = smod_spl()
+            kko = xk, yk, kko[1]/(xk[1:]-xk[:-1]), np.append(2*kko[2]/(xk[1:]-xk[:-1])**2, 0), kko[3]/(xk[1:]-xk[:-1])**3
+            TPL[o] = Tpl(xk, yk, spline_cv, spline_ev, mask=True, berv=spt.berv)
+            TPL[o].funcarg = kko # replace with original spline
+
+            if 0 or o==-50:
+               #gplot(ww[o],ff[o], ',', barshift(spt.w[o,ptmin:ptmax],spt.berv), spt.f[o,ptmin:ptmax])
+               gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv), spt.f[o,ptmin:ptmax], spt.e[o,idx],'w e pt 7,', smod.osamp(10), 'w l lc 3')
+               pause(o)
+
+            #bb[o][ww[o]<=spt.w[o,idx[0]]] |= flag.nan   # flag egdes where nan flux might occur
+            #bb[o][ww[o]>=spt.w[o,idx[-1]]] |= flag.nan
+
+            #if inst == 'FEROS':
+               # works with list so we do it here
+               #bb[o][ff[o]<0] |= flag.neg
+
+         #if inst != 'FEROS':
+            #bb[ff<0] |= flag.neg
+         #ind = (bb&flag.neg)==0
+         #gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv),spt.f[o,ptmin:ptmax])
+         #ogplot(ww[o],ff[o]); pause()
+         '''
+      if skippre:
+      else:
+       # measure pre-RVs
+       preunit = file(prefile, 'w')
 
        for i,sp in enumerate(spoklist[tset]):
         if sp.flag:
@@ -1181,33 +1193,49 @@ def serval(*argv):
             sp.bpmap[o][skymsk(sp.w[o])>0.01] |= flag.sky    # flag 16 for sky
             tellind = tellmask(barshift(ww[o], -sp.berv)) > 0.01
             skyind = skymsk(barshift(ww[o], -sp.berv)) > 0.01
-            #idx = sp.bpmap[o] np.searchsorted(w2,ww[o])
-            pind, = where(bb[o]|tellind|skyind == 0)  # masks telluric in both spectra
-            w2 = barshift(sp.w[o],sp.berv)
-            b2 = sp.bpmap[o] | msksky[o]  # not used; crashes if nan present
-            f2 = sp.f[o]
-            idx = where((b2 & flag.nan) == 0)
-            idx = where(b2 == 0)
-            k2 = spline_cv(w2[idx], f2[idx])
-            #gg = spl._pspline3(w2,f2, ff[o].size, w=we[ind], lam=0.002, x0=ww[o])
+
+            #pind, = where(bb[o]|tellind|skyind == 0)  # masks telluric in both spectra
             if inst == 'FEROS':   # filter
                hh = np.argsort(ff[o]); ii=hh[0:len(hh)*0.98]
                pind = np.intersect1d(pind, ii)
+
+            w2 = sp.w[o]
+            x2 = np.arange(w2.size)
+            f2 = sp.f[o]
+            e2 = sp.e[o]
+            b2 = sp.bpmap[o] | msksky[o]
+
+            b2[:pmin] |= flag.out
+            b2[pmax:] |= flag.out
+            wmod = barshift(w2, np.nan_to_num(sp.berv))   # berv can be NaN, e.g. calibration FP, ...
+
+            #if o==50:
+               #pause()
+            idx = where(TPL[o].mskatm(wmod,tellmask))
+            # broaden by vrange
+            idx
+            b2[idx] |= flag.badT
+
+            pind = x2[b2==0]
             if not len(pind): stop('no pind')
+
             if 0:#  in  ee[o][pind]: #-1 in look or o in look:
-               gplot(w2, f2, ' us 1:2 w lp, 0,', ww[o], ff[o], ' us 1:2')
-               gplot(spt.w[o],spt.f[o], 'us 0:2 w lp,',w2, f2,' us 0:2 w lp, 0,',w2, f2*(b2 == 0),' us 0:2')
+               #gplot(w2, f2, ' us 1:2 w lp, 0,', ww[o], ff[o], ' us 1:2')
+               #gplot(spt.w[o],spt.f[o], 'us 0:2 w lp,',w2, f2,' us 0:2 w lp, 0,',w2, f2*(b2 == 0),' us 0:2')
+               gplot(wmod, f2, ' us 1:2 w l, 0,', wmod[pind], f2[pind], ' us 1:2 pt 7 lc 1,', wmod, TPL[o](wmod)/2.2, ' us 1:2 w l lc 3')
                pause()
 
             # no clipping iterations?
-            par,fmod,keep,stat = fitspec(w2, f2, k2, ww[o],ff[o], e_y=ee[o],
+            par,fmod,keep,stat = fitspec(TPL[o], wmod,f2, e_y=e2,
                                          v=0., vfix=vtfix, keep=pind, deg=deg)
 
             if o in lookp: #i==3
-               gplot(ww[o], ff[o], ' t "ww,ff ",', ww[o][pind], ff[o][pind], ' t "ww[pind],ff[pind]"')
-               ogplot(ww[o][keep], ff[o][keep], ' t "ww[keep],ff[keep]"')
-               ogplot(barshift(spt.w[o],spt.berv), spt.f[o], 't "spt.w,spt.f"', flush='')
-               ogplot(ww[o], fmod,' t "ww[o],fmod"')
+               # to be  unified with plot of last RV fit
+               gplot.bar(0.5)
+               gplot-(wmod, f2, e2, 'w e t "wmod,f2" lc 1 pt 0,', wmod[pind], f2[pind], ' pt 4 t "wmod[pind],f2[pind]"')
+               gplot<(wmod[keep], f2[keep], ' t "wmod[keep],f2[keep]" pt 5 lc 1')
+               gplot<(barshift(spt.w[o],spt.berv), spt.f[o]*par.params[1], 't "spt.w,spt.f" pt 6 lc 5')
+               gplot+(wmod[pind], fmod[pind],' t "wmod[pind], fmod[pind]" w lp lc 3 pt 7 ps 0.5')
                pause(i, o, 'RV', par.params[0]*1000.)
 
             rv[i,o] = rvo = par.params[0]*1000. #+ sp.drift
@@ -1218,15 +1246,32 @@ def serval(*argv):
          ind = e_rv[i] > 0.                  # do not use the failed orders
          RV[i], e_RV[i] = wsem(rv[i,ind], e=e_rv[i,ind])  # weight
         print '%s/%s'%(i+1,nspecok), sp.bjd, sp.timeid, ' preRV =', RV[i], e_RV[i]
-        print >>myunit, sp.bjd, 0. if -RV[i]==0 else -RV[i], e_RV[i]   # -0.0 written as 0, and read back as int not float
-        myunit.flush()
+        print >>preunit, sp.bjd, 0. if -RV[i]==0 else RV[i], e_RV[i]   # -0.0 written as 0, and read back as int not float
+        preunit.flush()
         if i>2:
            gplot('"'+prefile+'" us ($1-2450000):2:3 w e pt 7')
-       myunit.close()
+       preunit.close()
        # end measure pre-RVs
+         '''
 
-      if coadd == 'post3':
+   for iterate in range(1, niter+1):
+
+      print '\nIteration %s / %s' % (iterate, niter)
+
+      if RV is not None:
+         ################################
+         ### create high S_N template ###
+         ################################
          print 'coadding method: post3'
+         coadd == 'post3'
+         tpl = outdir + 'template_' +coadd + fibsuf + '.fits'
+
+         nk = int(osize / (8 if inst=='FEROS' else 4) * ofac)
+         wk = nans((nord,nk))
+         fk = nans((nord,nk))
+         ek = nans((nord,nk))
+         bk = np.zeros((nord,nk))
+
          npix = len(spt.w[0,:])
          ntset = len(spoklist[tset])
          wmod = zeros((ntset,npix))
@@ -1261,13 +1306,16 @@ def serval(*argv):
                bmod[i][skymsk(sp.w)>0.01] |= flag.sky
                # see https://github.com/mzechmeister/serval/issues/19#issuecomment-452661455
                # note in this step the RVs have reverted signs.
-               bmod[i][tellmask(dopshift(redshift(sp.w, vo=sp.berv, ve=-RV[i]/1000.), spt.berv))>0.01] |= flag.badT
+               bmod[i][tellmask(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.), spt.berv))>0.01] |= flag.badT
 
-               w2 = redshift(sp.w, vo=sp.berv, ve=-RV[i]/1000.)   # correct also for stellar rv
-               i0 = np.searchsorted(w2, ww[o].min()) - 1   # w2 must be oversized
+               w2 = redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.)   # correct also for stellar rv
+               #i0 = np.searchsorted(w2, ww[o].min()) - 1   # w2 must be oversized
+               #wt = barshift(spt.w[o,idx], spt.berv)
+               i0 = np.searchsorted(w2, TPL[o].wk[0]) - 1   # w2 must be oversized
                if i0<0:
                   i0 = 0
-               ie = np.searchsorted(w2, ww[o].max())
+               #ie = np.searchsorted(w2, ww[o].max())
+               ie = np.searchsorted(w2,TPL[o].wk[-1])
                pind, = where(bmod[i][i0:ie] == 0)
                bmod[i][:i0] |= flag.out
                bmod[i][ie:] |= flag.out
@@ -1285,7 +1333,7 @@ def serval(*argv):
                   break
 
                # get poly from fit with mean RV
-               par, fmod, keep, stat = fitspec(ww[o], ff[o], kk[o],
+               par, fmod, keep, stat = fitspec(TPL[o],
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg)   # RV  (in dopshift instead of v=RV; easier masking?)
                poly = calcspec(w2, *par.params, retpoly=True)
                #gplot( w2,sp.fo/poly); ogplot( w2[i0:ie],fmod/poly[i0:ie],' w lp ps 0.5'); ogplot(ww[o], ff[o],'w l')
@@ -1314,7 +1362,7 @@ def serval(*argv):
                #we[tellind] *= (mod[tellind]/np.percentile(mod[ind+~tellind],95)).clip(0.02,1)**4 / 10
                fcont = np.abs(np.percentile(mod[ind&~tellind],95)*1.1)
                #fcont = quantile(mod[ind&~tellind], 0.95, w=1/emod[ind&~tellind])*1.1
- #              print fcont
+               print fcont
                #we[tellind] = 1/(5*emod[tellind]**2 + (mod[tellind]-fcont)**2)
                #we[tellind] = 0.1/emod[tellind]**2   # for low S/N # keeps the relative S/N properties of the data
                #we[tellind] = 1/(emod[tellind]**2 + (fcont*np.log(abs(mod[tellind]/fcont).clip(1e-6)))**2) # for high S/N
@@ -1326,10 +1374,10 @@ def serval(*argv):
                we[tellind] = 0.1 / ntset / (emod[tellind]**2 + np.median(emod[ind])**2)
             ind0 = ind*1
 
-            niter = 2
-            if inst == 'FEROS': niter = 3
-            for it in range(niter+1):   # clip 5 sigma outliers
-               ind2 = ww[o] < wmod[ind].max()  # but then the complement for ind2 in ff is from spt!!!
+            n_iter = 2
+            if inst == 'FEROS': n_iter = 3
+            for it in range(n_iter+1):   # clip 5 sigma outliers
+               #ind2 = ww[o] < wmod[ind].max()  # but then the complement for ind2 in ff is from spt!!!
                                                # maybe extrapolation better
 
                # B-spline fit for co-adding
@@ -1343,17 +1391,15 @@ def serval(*argv):
 
                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
 
-               yfit = ff[o]* 0 # np.nan
-               ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
-               yfit[ind2] = smod(ww[o][ind2])
+               #yfit = ww[o]* 0 # np.nan
+               #ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
+               #yfit[ind2] = smod(ww[o][ind2])
+               ww[o], yfit = smod.osamp(1.000000001*osize/smod.K)
                wko = smod.xk     # the knot positions
                fko = smod()      # the knot values
                eko = smod.e_yk   # the error estimates for knot values
                dko = smod.dk()   # ~second derivative at knots
 
-               #pause()
-               #hh = wko[1]-wko[0]
-               #gg = cubicSpline.spl_evf(ww[o][ind2],(wko,fko,bb[:-2]/hh/6,dko[:-1]/hh**2/6,dd[:-1]/hh**3/6))
                #gplot(ww[o][ind2], yfit, ',', wko, fko,',',ww[o][ind2], gg)
 
                # normalised residuals
@@ -1401,7 +1447,7 @@ def serval(*argv):
                print "%.5f (%d)" % (np.median(sig), np.sum(~okmap)),
                #gplot(wmod[ind], res,',', wmod[ind][tellind[ind]], res[tellind[ind]])
                #pause()
-               if it < niter: ind[ind] *=  okmap
+               if it < n_iter: ind[ind] *=  okmap
 
             if ofacauto:
                # BIC to get optimal knot spacing (smoothing)
@@ -1458,7 +1504,8 @@ def serval(*argv):
                #linecolor = np.array([0,1,6,4,4,5])[np.argmax([0*bmod, (bmod&~flag.badT)==0] + hasflags(bmod, [flag.atm, flag.out, flag.nan, flag.clip]), axis=0)]
                #gplot2.bar(0)(wmod.ravel(), mod.ravel(), emod.ravel(), linecolor.ravel(), ' us 1:2:3:4  w e pt 7 ps 0.5 lc var t "data"')
                gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"')
-               gplot<(ww[o], ff[o], yfit, 'us 1:2 w lp lt 2 ps 0.5 t "spt", "" us 1:3 w l lt 3 t "template"')
+               gplot<(TPL[o].wk, TPL[o].fk, 'us 1:2 w lp lt 2 ps 0.5 t "spt"')
+               gplot<(ww[o], yfit,' us 1:2 w l lt 3 t "template"')
                if (~ind).any():
                   gplot<(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"')
                if (ind<ind0).any():
@@ -1481,606 +1528,621 @@ def serval(*argv):
             if ofacauto:
                # replace template.fits with optimal knot spacing (smoothing) for RVs
                yfit = ff[o]* 0 # np.nan
-               ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
+               ind2 = (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
                yfit[ind2] = smod(ww[o][ind2])
                # pause()
             ff[o] = yfit
+            TPL[o] = Tpl(ww[o], ff[o], spline_cv, spline_ev)
             wk[o] = wko
             fk[o] = fko
             ek[o] = eko
             bk[o] = bko
 
+         if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
+         spt.header['HIERARCH SERVAL COADD TYPE'] = (coadd, 'coadd method')
+         spt.header['HIERARCH SERVAL COADD OMIN'] = (omin, 'minimum order for RV')
+         spt.header['HIERARCH SERVAL COADD OMAX'] = (omax, 'maximum order for RV')
+         spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
+         spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
+         spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
+         spt.header['HIERARCH SERVAL TARG RV'] = (targ.rv, '[km/s] RV from targ.cvs')
 
-      if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
-      spt.header['HIERARCH SERVAL COADD TYPE'] = (coadd, 'coadd method')
-      spt.header['HIERARCH SERVAL COADD OMIN'] = (omin, 'minimum order for RV')
-      spt.header['HIERARCH SERVAL COADD OMAX'] = (omax, 'maximum order for RV')
-      spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
-      spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
-      spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
-      spt.header['HIERARCH SERVAL TARG RV'] = (targ.rv, '[km/s] RV from targ.cvs')
+         # Oversampled template
+         write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
+         # Knot sampled template
+         write_res(outdir+obj+'.fits', {'spec':fk, 'sig':ek, 'wave':wk, 'nmap':bk}, tfmt, spt.header, hdrref='', clobber=1)
+         os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
+         print '\ntemplate written to ', tpl
+         if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
 
-      write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
-      write_res(outdir+obj+'.fits', {'spec':fk, 'sig':ek, 'wave':wk, 'nmap':bk}, tfmt, spt.header, hdrref='', clobber=1)
-      os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
-      print '\ntemplate written to ', tpl
-      if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
-
+         # end of coadding
       print "time: %s\n" % minsec(time.time()-to)
 
+      lstarmask = nomask # only 1D arrays
+      do_reg = False
+      if do_reg: reg = np.ones(ff.shape,dtype=bool)
 
-   if review:
-      for o in orders:   # plot the new template and compare with the old
-         #gplot(barshift(spt.w[o],spt.berv), spt.f[o], "w lp")#,flush='')
-         gplot(ww[o], ff[o]/norm[o], w='w lp pt 7 ps 0.5')
-         pause(o)
+      if ccf:
+         pass
+      elif is_ech_tpl:
+         for o in orders:
+            ii = np.isfinite(ff[o])
+            #kk[o] = spline_cv(ww[o][ii],ff[o][ii])
+            if do_reg:
+               print 'q factor masking order ', o
+               reg[o] = qfacmask(ww[o],ff[o]) #, plot=True)
 
+      if do_reg:
+         idx = reg!=-1
+         aa = ww[idx]
+         bb = 1.0 * reg[idx]
+         aaorg = 1.0 * aa.flatten()
+         bborg = 1.0 * bb.flatten()
+         idx = np.argsort(aa.flatten())
+         aa = aa.flatten()[idx]
+         bb = bb.flatten()[idx]
 
-   lstarmask = nomask # only 1D arrays
-   do_reg = False
-   if do_reg: reg = np.ones(ff.shape,dtype=bool)
+         #pos1, = where(bb)
+         #for i, posi in enumerate(pos1[:-1]):
+         #if (aa[pos1[i+1]]-aa[posi]) <(3./100000.): bb[posi:pos1[i+1]] = 1.0
+         #idx1g = aa[idx1[1:]]-aa[idx1[:-1]]<3./(100000.)
 
-   if ccf:
-      pass
-   elif ordwrappedtemplate:
-      for o in orders:
-         ii = np.isfinite(ff[o])
-         kk[o] = spline_cv(ww[o][ii],ff[o][ii])
-         if do_reg:
-            print 'q factor masking order ', o
-            reg[o] = qfacmask(ww[o],ff[o]) #, plot=True)
+         #compress mask
+         def compress(aa,bb):
+            '''keep only points with pre- or post-gradient'''
+            idx = np.empty_like(bb,dtype=bool)
+            idx[1:] = bb[1:]-bb[:-1] != 0      # pre-gradient
+            idx[:-1] += bb[:-1]-bb[1:] != 0    # or post-gradient
+            idx[[0,-1]] = True                 # keep always the endpoints
+            return aa[idx],bb[idx]
 
-   if do_reg:
-      idx = reg!=-1
-      aa = ww[idx]
-      bb = 1.0 * reg[idx]
-      aaorg = 1.0 * aa.flatten()
-      bborg = 1.0 * bb.flatten()
-      idx = np.argsort(aa.flatten())
-      aa = aa.flatten()[idx]
-      bb = bb.flatten()[idx]
+         aa, bb = compress(aa, bb)
 
-      #pos1, = where(bb)
-      #for i, posi in enumerate(pos1[:-1]):
-      #if (aa[pos1[i+1]]-aa[posi]) <(3./100000.): bb[posi:pos1[i+1]] = 1.0
-      #idx1g = aa[idx1[1:]]-aa[idx1[:-1]]<3./(100000.)
-
-      #compress mask
-      def compress(aa,bb):
-         '''keep only points with pre- or post-gradient'''
-         idx = np.empty_like(bb,dtype=bool)
-         idx[1:] = bb[1:]-bb[:-1] != 0      # pre-gradient
-         idx[:-1] += bb[:-1]-bb[1:] != 0    # or post-gradient
-         idx[[0,-1]] = True                 # keep always the endpoints
-         return aa[idx],bb[idx]
-
-      aa, bb = compress(aa, bb)
-
-      # remove too small masked continuum regions (likely in order overlap)
-      idx, = where(bb==1)
-      dw = aa[idx[1:]]-aa[idx[:-1]]
-      iidx = dw < (3./100000.)          # 3 resolution elements
-      iidx = np.concatenate((idx[iidx]+1,idx[1:][iidx]-1))
-      bb[iidx] = 1
-      aa, bb = compress(aa, bb)
-      #gplot(aaorg, bborg, 'w lp'); ogplot(aa,bb, 'w lp')
-      #gplot(aa,bb); ogplot(aa[idx],bb[idx], 'w lp')
-      #lstarmask = interp(ww.flatten()[idx], reg.flatten()[idx]*1.0) # only 1D arrays
-      aa[0]=1 # extend the range
-      aa[-1]=12
-      lstarmask = interp(aa,bb) # only 1D arrays
-      #lstarmask = interpolate.interp1d(aa, bb)
-      #pause()
-
-
-   ### Least square fitting
-   results = dict((sp.timeid,['']*nord) for sp in splist)
-   table = nans((7,nspec))
-   bjd, RV, e_RV, rvm, rvmerr, RVc, e_RVc = table   # get pointer to the columns
-   CRX, e_CRX = nans((2,nspec))   # get pointer to the columns
-   mlRV, e_mlRV = nans((2,nspec))
-   mlRVc, e_mlRVc = nans((2,nspec))
-   mlCRX, e_mlCRX = nans((2,nspec))
-   tCRX = np.rec.fromarrays(nans((5,nspec)), names='CRX,e_CRX,a,e_a,l_v' )   # get pointer to the columns
-   xo = nans((nspec,nord))
-
-   snr = nans((nspec,nord))
-   rchi = nans((nspec,nord))
-   Nok = nans((nspec,nord))
-
-   if tplrv == 'targ':
-      tplrv = targ.rv
-      print 'setting tplrv to simbad RV:', tplrv, 'km/s'
-   if tplrv == 'auto':
-      tplrv = spt.ccf.rvc
-      if np.isnan(tplrv):
-         print 'tplrv in spt is NaN, trying median'
-         rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
-         tplrv = np.median(rvdrs[np.isfinite(rvdrs)])
-      if np.isnan(tplrv):
-         print 'tplrv is NaN in all spec, simbad RV'
-         tplrv = targ.rv
-      print 'setting tplrv to:', tplrv, 'km/s'
-
-   meas_index = tplrv is not None and 'B' not in fib #and not 'th_mask' in ccf
-   meas_CaIRT = meas_index and inst=='CARM_VIS'
-   meas_NaD = meas_index and inst=='CARM_VIS'
-
-   if tplrv is None: tplrv = 0   # do this after setting meas_index
-   tplrv = float(tplrv)
-   if targrv is None:
-      targrv = tplrv
-
-   if meas_index:
-      halpha = []
-      haleft = []
-      harigh = []
-      cai = []
-      cak = []
-      cah = []
-      irt1 = []
-      irt1a = []
-      irt1b = []
-      irt2 = []
-      irt2a = []
-      irt2b = []
-      irt3 = []
-      irt3a = []
-      irt3b = []
-      nad1 = []
-      nad2 = []
-      nadr1 = []   # NaD Ref 1
-      nadr2 = []
-      nadr3 = []
-
-   rvccf, e_rvccf = zeros((nspec,nord)), zeros((nspec,nord))
-   diff_rv = bool(driftref)
-   chi2map = [None] * nord
-   #chi2map = nans((nord, int(np.ceil((v_hi-v_lo)/ v_step))))
-   chi2map = nans((nord, len(np.arange(targrv-tplrv+v_lo, targrv-tplrv+v_hi, v_step))))
-   diff_width = not (ccf or diff_rv)
-   dLWo, e_dLWo = nans((2, nspec, nord)) # differential width change
-   dLW, e_dLW = nans((2, nspec)) # differential width change
-
-   print "RV method: ", 'CCF' if ccf else 'DRIFT' if diff_rv else 'LEAST SQUARE'
-
-   for i,sp in enumerate(spoklist):
-      #if sp.flag:
-         #continue
-         # introduced for drift measurement? but then Halpha is not appended and writing halpha.dat will fail
-      sp = copy.deepcopy(sp)  # to prevent attaching the data to spoklist
-      if sp.filename.endswith('.gz') and sp.header:
-         # for gz and if deepcopy and if file already open (after coadding header still present) this will result in "AttributeError: 'GzipFile' object has no attribute 'offset'"
-         # deepcopy probably does not copy everything properly
-         sp.header = None
-      sp.read_data()
-      bjd[i] = sp.bjd
-
-      if wfix: sp.w = spt.w
-      fmod = sp.w * np.nan
-      for o in orders:
-         w2 = sp.w[o]
-         x2 = np.arange(w2.size)
-         f2 = sp.f[o]
-         e2 = sp.e[o]
-         b2 = sp.bpmap[o] | msksky[o]
-
-         if inst == 'FEROS':
-            pmin = pomin[o]
-            pmax = pomax[o]
-
-         #if inst=='FEROS' and fib!='B':  # filter
-            #hh = np.argsort(sp.f[o]); ii=hh[0:len(hh)*0.98]; pind=np.intersect1d(pind, ii)
-         b2[:pmin] |= flag.out
-         b2[pmax:] |= flag.out
-         b2[tellmask(w2)>0.01] |= flag.atm    # flag 8 for telluric
-         b2[skymsk(w2)>0.01] |= flag.sky    # flag 16 for telluric
-         b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag 128 for bad template
+         # remove too small masked continuum regions (likely in order overlap)
+         idx, = where(bb==1)
+         dw = aa[idx[1:]]-aa[idx[:-1]]
+         iidx = dw < (3./100000.)          # 3 resolution elements
+         iidx = np.concatenate((idx[iidx]+1,idx[1:][iidx]-1))
+         bb[iidx] = 1
+         aa, bb = compress(aa, bb)
+         #gplot(aaorg, bborg, 'w lp'); ogplot(aa,bb, 'w lp')
+         #gplot(aa,bb); ogplot(aa[idx],bb[idx], 'w lp')
+         #lstarmask = interp(ww.flatten()[idx], reg.flatten()[idx]*1.0) # only 1D arrays
+         aa[0]=1 # extend the range
+         aa[-1]=12
+         lstarmask = interp(aa,bb) # only 1D arrays
+         #lstarmask = interpolate.interp1d(aa, bb)
          #pause()
-         #if inst == 'HARPS':
-            #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
+
+
+      ### Least square fitting
+      results = dict((sp.timeid,['']*nord) for sp in splist)
+      table = nans((7,nspec))
+      bjd, RV, e_RV, rvm, rvmerr, RVc, e_RVc = table   # get pointer to the columns
+      CRX, e_CRX = nans((2,nspec))   # get pointer to the columns
+      mlRV, e_mlRV = nans((2,nspec))
+      mlRVc, e_mlRVc = nans((2,nspec))
+      mlCRX, e_mlCRX = nans((2,nspec))
+      tCRX = np.rec.fromarrays(nans((5,nspec)), names='CRX,e_CRX,a,e_a,l_v' )   # get pointer to the columns
+      xo = nans((nspec,nord))
+
+      snr = nans((nspec,nord))
+      rchi = nans((nspec,nord))
+      Nok = nans((nspec,nord))
+
+      if tplrv == 'targ':
+         tplrv = targ.rv
+         print 'setting tplrv to simbad RV:', tplrv, 'km/s'
+      if tplrv == 'auto':
+         tplrv = spt.ccf.rvc
+         if np.isnan(tplrv):
+            print 'tplrv in spt is NaN, trying median'
+            rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
+            tplrv = np.median(rvdrs[np.isfinite(rvdrs)])
+         if np.isnan(tplrv):
+            print 'tplrv is NaN in all spec, simbad RV'
+            tplrv = targ.rv
+         print 'setting tplrv to:', tplrv, 'km/s'
+
+      meas_index = tplrv is not None and 'B' not in fib #and not 'th_mask' in ccf
+      meas_CaIRT = meas_index and inst=='CARM_VIS'
+      meas_NaD = meas_index and inst=='CARM_VIS'
+
+      if tplrv is None: tplrv = 0   # do this after setting meas_index
+      tplrv = float(tplrv)
+      if targrv is None:
+         targrv = tplrv
+
+      if meas_index:
+         halpha = []
+         haleft = []
+         harigh = []
+         cai = []
+         cak = []
+         cah = []
+         irt1 = []
+         irt1a = []
+         irt1b = []
+         irt2 = []
+         irt2a = []
+         irt2b = []
+         irt3 = []
+         irt3a = []
+         irt3b = []
+         nad1 = []
+         nad2 = []
+         nadr1 = []   # NaD Ref 1
+         nadr2 = []
+         nadr3 = []
+
+      rvccf, e_rvccf = zeros((nspec,nord)), zeros((nspec,nord))
+      diff_rv = bool(driftref)
+      chi2map = [None] * nord
+      #chi2map = nans((nord, int(np.ceil((v_hi-v_lo)/ v_step))))
+      chi2map = nans((nord, len(np.arange(targrv-tplrv+v_lo, targrv-tplrv+v_hi, v_step))))
+      diff_width = not (ccf or diff_rv)
+      RV, e_RV = nans((2, nspec))
+      rv, e_rv = nans((2, nspec, nord))
+      dLW, e_dLW = nans((2, nspec)) # differential width change
+      dlw, e_dlw = nans((2, nspec, nord)) # differential width change
+
+      print 'Iteration %s / %s' % (iterate, niter)
+      print "RV method: ", 'CCF' if ccf else 'DRIFT' if diff_rv else 'LEAST SQUARE'
+
+      for i,sp in enumerate(spoklist):
+         #if sp.flag:
+            #continue
+            # introduced for drift measurement? but then Halpha is not appended and writing halpha.dat will fail
+         sp = copy.deepcopy(sp)  # to prevent attaching the data to spoklist
+         if sp.filename.endswith('.gz') and sp.header:
+            # for gz and if deepcopy and if file already open (after coadding header still present) this will result in "AttributeError: 'GzipFile' object has no attribute 'offset'"
+            # deepcopy probably does not copy everything properly
+            sp.header = None
+         sp.read_data()
+         bjd[i] = sp.bjd
+
+         if wfix: sp.w = spt.w
+         fmod = sp.w * np.nan
+         for o in orders:
+            w2 = sp.w[o]
+            x2 = np.arange(w2.size)
+            f2 = sp.f[o]
+            e2 = sp.e[o]
+            b2 = sp.bpmap[o] | msksky[o]
+
+            if inst == 'FEROS':
+               pmin = pomin[o]
+               pmax = pomax[o]
+
+            #if inst=='FEROS' and fib!='B':  # filter
+               #hh = np.argsort(sp.f[o]); ii=hh[0:len(hh)*0.98]; pind=np.intersect1d(pind, ii)
+            b2[:pmin] |= flag.out
+            b2[pmax:] |= flag.out
+            b2[tellmask(w2)>0.01] |= flag.atm
+            b2[skymsk(w2)>0.01] |= flag.sky
+            b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag for bad template
             #pause()
-         pind = x2[b2==0]
-
-         wmod = barshift(w2, np.nan_to_num(sp.berv))   # berv can be NaN, e.g. calibration FP, ...
-         if debug:   # check the input
-            gplot(dopshift(ww[o],tplrv), ff[o], ',', dopshift(wmod,targrv), f2)
-            pause(o)
-         rchio = 1
-
-         if ccf:
-            '''METHOD CCF'''
-            f2 *= b2==0
-            par, f2mod, vCCF, stat = CCF(lam2wave(ccfmask[:,0]), ccfmask[:,1], wmod, f2, targrv+v_lo, targrv+v_hi, e_y2=e2, keep=pind, plot=(o in look)+2*(o in lookssr), ccfmode=ccfmode)
-
-            rvccf[i,o] = par.params[0] * 1000
-            e_rvccf[i,o] = par.perror[0] * 1000
-            keep = pind
-            rchio = 1
-            #pause(rvccf[i,o], e_rvccf[i,o])
-         elif diff_rv:
-            '''METHOD DRIFT MEASUREMENT'''
-            # Correlate the residuals with the first derivative.
-            # spt.w[o] and wmod are ignored, i.e. correction for sp.berv
-            # We estimate the gradients using finite differences. NaN will propagate to neighbours!?
-            #stop()
-            #toosharp = spt.bpmap[o] * 0
-            # flag template with too sharp pixels and likely cosmics or overspill
-            spt.bpmap[o][1:] |= (0.15*spt.f[o][1:] > np.abs(spt.f[o][:-1])) * flag.sat
-            spt.bpmap[o][:-1] |= (0.15*spt.f[o][:-1] > np.abs(spt.f[o][1:])) * flag.sat
-
-            b2[np.where(spt.bpmap[o][1:])[0]] |= flag.badT    # flag pixels with bad neighbours resulting in bad gradients
-            b2[np.where(spt.bpmap[o][:-1])[0]+1] |= flag.badT
-            # flag also the overnext, espcially if using derivative from spline ( ringing, CARM_VIS overspill)
-            b2[np.where(spt.bpmap[o][2:] & flag.sat)[0]] |= flag.badT
-            b2[np.where(spt.bpmap[o][:-2] & flag.sat)[0]+2] |= flag.badT
+            #if inst == 'HARPS':
+               #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
+               #pause()
             pind = x2[b2==0]
-            if 1:
-               # robust pre-filtering
-               rr = sp.f[o]/spt.f[o]   # spectrum ratio
-               qq = quantile(rr[pind], [0.25,0.5,0.75])
-               clip_lo = qq[1] - 5*(qq[1]-qq[0])
-               clip_hi = qq[1] + 5*(qq[2]-qq[1])
-               #gplot(pind, rr[pind], ', %s,%s,%s,%s,%s' % (tuple(qq)+(clip_lo, clip_hi)))
-               b2[(b2==0) & ((rr < clip_lo) | (rr > clip_hi))] |= flag.clip
-               # print 'pre-clipped:', np.sum((b2 & flag.clip) >0)
-               sp.f[o][pind]/spt.f[o][pind]
-               pind = x2[b2==0]
-               #pause('pre-clip', o)
 
-            if 0:
-               # derivative from gradient (one side numerial derivative)
-               dy = np.gradient(spt.f[o], np.gradient(spt.w[o]))
-               ddy = np.gradient(dy, np.gradient(spt.w[o]))
-            elif 1:
-               # symmetric numerical derivative
-               # may underestimate gradients
-               #dy = 0 * spt.f[o]
-               #dy[1:-1] = (spt.f[o][2:]-spt.f[o][:-2]) / (spt.w[o][2:]-spt.w[o][:-2])
-               if tuple(map(int,np.__version__.split("."))) < (1,13):
-                  dy = np.gradient(spt.f[o], np.gradient(spt.w[o]))
-               else:
-                  dy = np.gradient(spt.f[o], spt.w[o])
-               ddy = 0 * spt.f[o]
-               # ddy[1:-1] = (spt.f[o][2:]-2*spt.f[o][1:-1]+spt.f[o][:-2]) / ((spt.w[o][2:]-spt.w[o][:-2])**2 / 4) # assumes dw_i ~ dw_(i+1)
-               # ddy = ((f(x+h2)-f(x))/h2 - (f(x)-f(x-h1))/h1) / ((h1+h2)/2)
-               ddy[1:-1] = ((spt.f[o][2:]-spt.f[o][1:-1])/(spt.w[o][2:]-spt.w[o][1:-1]) - (spt.f[o][1:-1]-spt.f[o][:-2]) / (spt.w[o][1:-1]-spt.w[o][:-2])) / ((spt.w[o][2:]-spt.w[o][:-2])/2)
-            else:
-               # first and second derivative from spline interpolation
-               # may overestimate gradients
-               # ringing may influence gradients
-               kkk = interpolate.splrep(spt.w[o], spt.f[o])
-               dy = interpolate.splev(spt.w[o], kkk, der=1)
-               ddy = interpolate.splev(spt.w[o], kkk, der=2)
-            if 0:#o==29:
-               gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
+            wmod = barshift(w2, np.nan_to_num(sp.berv))   # berv can be NaN, e.g. calibration FP, ...
+            if debug:   # check the input
+               gplot(dopshift(ww[o],tplrv), ff[o], ',', dopshift(wmod,targrv), f2)
                pause(o)
-
-            par, f2mod, keep, stat = fitspec(spt.w[o],spt.f[o],kk[o], wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
-
-            e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
-            e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
-            #print np.abs(e_vi[keep]).min(), e_vi_min
             rchio = 1
-            # compare both gradients
-            #gplot(keep,e_vi[keep])
-            #gplot(spt.f[o][keep], dy[keep]/((sp.f[o][2:]-sp.f[o][:-2]) / (sp.w[o][2:]-sp.w[o][:-2]))[keep-1])
-            #gplot(keep, dy[keep]/((sp.f[o][2:]-sp.f[o][:-2]) / (sp.w[o][2:]-sp.w[o][:-2]))[keep-1]*50, ',', keep,sp.f[o][keep],spt.f[o][keep], ', "" us 1:3')
-            #pause()
 
-            #v = -c * np.dot(1/e2[keep]**2*dy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*dy[keep], dy[keep]) / A**2
-            #dsig = c**2 *np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep]) / A**2
-            #e_dsig = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep]) / A**2)
-            #rchi = rms(((f2-f2mod)-dsig/c**2*ddy)[keep]/e2[keep])
-            #e_dsig *= 1000*rchi
-            #print par.params[1],par.params[0], v, dsig*1000, e_dsig
+            if ccf:
+               '''METHOD CCF'''
+               f2 *= b2==0
+               par, f2mod, vCCF, stat = CCF(lam2wave(ccfmask[:,0]), ccfmask[:,1], wmod, f2, targrv+v_lo, targrv+v_hi, e_y2=e2, keep=pind, plot=(o in look)+2*(o in lookssr), ccfmode=ccfmode)
 
-         else:
-            '''DEFAULT METHOD: LEAST SQUARE'''
-            if 0:
-               gplot(ww[o], ff[o], 'w l,', wmod,f2/np.mean(f2)*np.mean(ff[o]),'w lp')
-               pause(o)
+               rvccf[i,o] = par.params[0] * 1000
+               e_rvccf[i,o] = par.perror[0] * 1000
+               keep = pind
+               rchio = 1
+               #pause(rvccf[i,o], e_rvccf[i,o])
+            elif diff_rv:
+               '''METHOD DRIFT MEASUREMENT'''
+               # Correlate the residuals with the first derivative.
+               # spt.w[o] and wmod are ignored, i.e. correction for sp.berv
+               # We estimate the gradients using finite differences. NaN will propagate to neighbours!?
+               #stop()
+               #toosharp = spt.bpmap[o] * 0
+               # flag template with too sharp pixels and likely cosmics or overspill
+               spt.bpmap[o][1:] |= (0.15*spt.f[o][1:] > np.abs(spt.f[o][:-1])) * flag.sat
+               spt.bpmap[o][:-1] |= (0.15*spt.f[o][:-1] > np.abs(spt.f[o][1:])) * flag.sat
 
-            # pause()
-            if o==41: pind=pind[:-9]   # @CARM_NIR?
-            par, f2mod, keep, stat, chi2mapo = fitspec(ww[o], ff[o], kk[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
+               b2[np.where(spt.bpmap[o][1:])[0]] |= flag.badT    # flag pixels with bad neighbours resulting in bad gradients
+               b2[np.where(spt.bpmap[o][:-1])[0]+1] |= flag.badT
+               # flag also the overnext, espcially if using derivative from spline ( ringing, CARM_VIS overspill)
+               b2[np.where(spt.bpmap[o][2:] & flag.sat)[0]] |= flag.badT
+               b2[np.where(spt.bpmap[o][:-2] & flag.sat)[0]+2] |= flag.badT
+               pind = x2[b2==0]
+               if 1:
+                  # robust pre-filtering
+                  rr = sp.f[o]/spt.f[o]   # spectrum ratio
+                  qq = quantile(rr[pind], [0.25,0.5,0.75])
+                  clip_lo = qq[1] - 5*(qq[1]-qq[0])
+                  clip_hi = qq[1] + 5*(qq[2]-qq[1])
+                  #gplot(pind, rr[pind], ', %s,%s,%s,%s,%s' % (tuple(qq)+(clip_lo, clip_hi)))
+                  b2[(b2==0) & ((rr < clip_lo) | (rr > clip_hi))] |= flag.clip
+                  # print 'pre-clipped:', np.sum((b2 & flag.clip) >0)
+                  sp.f[o][pind]/spt.f[o][pind]
+                  pind = x2[b2==0]
+                  #pause('pre-clip', o)
 
-            if diff_width:
-               '''we need the model at the observation and oversampled since we need the second derivative including the polynomial'''
-               #f2mod = calcspec(wmod, *par.params) #calcspec does not work when w < wtmin
-               #ftmod_tmp = calcspec(ww[o], *par.params) #calcspec does not work when w < wtmin
-               i0 = np.searchsorted(dopshift(ww[o],par.params[0]), ww[o][0])
-               i1 = np.searchsorted(dopshift(ww[o],par.params[0]), ww[o][-1]) - 1
-               ftmod_tmp = 0*ww[o]
-               ftmod_tmp[i0:i1] = calcspec(ww[o][i0:i1], *par.params) #calcspec does not work when w < wtmin
-               ftmod_tmp[0:i0] = ftmod_tmp[i0]
-               ftmod_tmp[i1:] = ftmod_tmp[i1-1]
-
-               '''estimate differential changes in line width ("FWHM")
-                  correlate the residuals with the second derivative'''
-               #kkk = interpolate.splrep(ww[o], ftmod_tmp)  # oversampled grid
-               kkk = interpolate.splrep(ww[o][i0:i1], ftmod_tmp[i0:i1])  # oversampled grid
-               dy = interpolate.splev(wmod, kkk, der=1)
-               ddy = interpolate.splev(wmod, kkk, der=2)
-               if not def_wlog:
-                  dy *= wmod
-                  ddy *= wmod**2
-               v = -c * np.dot(1/e2[keep]**2*dy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*dy[keep], dy[keep])
-               moon = 0
-               if moon:
-                  # simple moon contamination
-                  a1, a0 = np.polyfit(f2mod[keep], f2[keep], 1)
-                  print a1, a0
-                  if 0:
-                     gplot(w2[keep], f2mod[keep],'w lp,',w2[keep], f2[keep], ' w lp')
-                     gplot(f2mod[keep], f2[keep], w2[keep],' palette , x, %s+%s*x' %(a0,a1) )
-                     gplot(w2[keep], f2mod[keep],'w lp,',w2[keep], f2[keep], ' w lp,',w2[keep], (f2[keep]-a0)/a1, ' w lp')
-                     # residuals
-                     gplot(w2[keep], f2[keep]-f2mod[keep], ' w lp, ', w2[keep], f2[keep]-a1*f2mod[keep]-a0, 'w lp lc 3')
-                  #pause(o)
-
-                  f2 = f2c = (f2-a0)/a1 # correct observation
-
-                  dsig = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2c-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
-                  e_dsig = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
-               else:
-                  dsig = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
-                  e_dsig = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
-               drchi = rms(((f2-f2mod) - dsig/c**2*ddy)[keep] / e2[keep])
-               #print par.params[1],par.params[0], v, dsig*1000, e_dsig
-               if np.isnan(dsig) and not safemode: pause()
-               dLWo[i,o] = dsig * 1000       # convert from (km/s) to m/s km/s
-               e_dLWo[i,o] = e_dsig * 1000 * drchi
                if 0:
-                  gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,', wmod[keep],(f2-f2mod)[keep], 'us 1:2')
-                  ogplot(wmod,dsig/c**2*ddy); #ogplot(wmod,f2, 'axis x1y2')
-                  pause(o, 'dLW', dLWo[i,o])
+                  # derivative from gradient (one side numerial derivative)
+                  dy = np.gradient(spt.f[o], np.gradient(spt.w[o]))
+                  ddy = np.gradient(dy, np.gradient(spt.w[o]))
+               elif 1:
+                  # symmetric numerical derivative
+                  # may underestimate gradients
+                  #dy = 0 * spt.f[o]
+                  #dy[1:-1] = (spt.f[o][2:]-spt.f[o][:-2]) / (spt.w[o][2:]-spt.w[o][:-2])
+                  if tuple(map(int,np.__version__.split("."))) < (1,13):
+                     dy = np.gradient(spt.f[o], np.gradient(spt.w[o]))
+                  else:
+                     dy = np.gradient(spt.f[o], spt.w[o])
+                  ddy = 0 * spt.f[o]
+                  # ddy[1:-1] = (spt.f[o][2:]-2*spt.f[o][1:-1]+spt.f[o][:-2]) / ((spt.w[o][2:]-spt.w[o][:-2])**2 / 4) # assumes dw_i ~ dw_(i+1)
+                  # ddy = ((f(x+h2)-f(x))/h2 - (f(x)-f(x-h1))/h1) / ((h1+h2)/2)
+                  ddy[1:-1] = ((spt.f[o][2:]-spt.f[o][1:-1])/(spt.w[o][2:]-spt.w[o][1:-1]) - (spt.f[o][1:-1]-spt.f[o][:-2]) / (spt.w[o][1:-1]-spt.w[o][:-2])) / ((spt.w[o][2:]-spt.w[o][:-2])/2)
+               else:
+                  # first and second derivative from spline interpolation
+                  # may overestimate gradients
+                  # ringing may influence gradients
+                  kkk = interpolate.splrep(spt.w[o], spt.f[o])
+                  dy = interpolate.splev(spt.w[o], kkk, der=1)
+                  ddy = interpolate.splev(spt.w[o], kkk, der=2)
+               if 0:#o==29:
+                  gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
+                  pause(o)
 
-         fmod[o] = f2mod
-         if par.perror is None: par.perror = [0.,0.,0.,0.]
-         results[sp.timeid][o] = par
-         rv[i,o] = rvo = par.params[0] * 1000. #- sp.drift
-         snr[i,o] = stat['snr']
-         rchi[i,o] = stat['std']
-         Nok[i,o] = len(keep)
+               par, f2mod, keep, stat = fitspec((spt.w[o],spt.f[o],kk[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
+
+               e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
+               e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
+               #print np.abs(e_vi[keep]).min(), e_vi_min
+               rchio = 1
+               # compare both gradients
+               #gplot(keep,e_vi[keep])
+               #gplot(spt.f[o][keep], dy[keep]/((sp.f[o][2:]-sp.f[o][:-2]) / (sp.w[o][2:]-sp.w[o][:-2]))[keep-1])
+               #gplot(keep, dy[keep]/((sp.f[o][2:]-sp.f[o][:-2]) / (sp.w[o][2:]-sp.w[o][:-2]))[keep-1]*50, ',', keep,sp.f[o][keep],spt.f[o][keep], ', "" us 1:3')
+               #pause()
+
+               #v = -c * np.dot(1/e2[keep]**2*dy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*dy[keep], dy[keep]) / A**2
+               #dlwo = c**2 *np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep]) / A**2
+               #e_dlwo = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep]) / A**2)
+               #rchi = rms(((f2-f2mod)-dlwo/c**2*ddy)[keep]/e2[keep])
+               #e_dlwo *= 1000*rchi
+               #print par.params[1],par.params[0], v, dlwo*1000, e_dlwo
+
+            else:
+               '''DEFAULT METHOD: LEAST SQUARE'''
+               if 0:
+                  gplot(ww[o], ff[o], 'w l,', wmod,f2/np.mean(f2)*np.mean(ff[o]),'w lp')
+                  pause(o)
+
+               # pause()
+               if o==41: pind=pind[:-9]   # @CARM_NIR?
+               #par, f2mod, keep, stat, chi2mapo = fitspec((ww[o], ff[o], kk[o]), wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
+               par, f2mod, keep, stat, chi2mapo = fitspec(TPL[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
+
+               if diff_width:
+                  '''we need the model at the observation and oversampled since we need the second derivative including the polynomial'''
+                  #f2mod = calcspec(wmod, *par.params) #calcspec does not work when w < wtmin
+                  #ftmod_tmp = calcspec(ww[o], *par.params) #calcspec does not work when w < wtmin
+                  #wo = TPL[o]
+                  #i0 = np.searchsorted(dopshift(ww[o],par.params[0]), ww[o][0])
+                  #i1 = np.searchsorted(dopshift(ww[o],par.params[0]), ww[o][-1]) - 1
+                  #ftmod_tmp = 0*ww[o]
+                  #ftmod_tmp[i0:i1] = calcspec(ww[o][i0:i1], *par.params) #calcspec does not work when w < wtmin
+                  #ftmod_tmp[0:i0] = ftmod_tmp[i0]
+                  #ftmod_tmp[i1:] = ftmod_tmp[i1-1]
+                  poly = calcspec(wmod, *par.params, retpoly=True)
+
+
+                  '''estimate differential changes in line width ("FWHM")
+                     correlate the residuals with the second derivative
+                  We want to scale the residuals (without the poly) to the second derivative 
+                  f = p * t
+                  t = f/p
+                  a*ddt ~ y/p - t = (y-pt)/p = r/p
+                  r = p*a*ddt
+                  '''
+                  dy = poly * TPL[o](dopshift(wmod, par.params[0]), der=1)
+                  ddy = poly * TPL[o](dopshift(wmod, par.params[0]), der=2)
+
+                  if not def_wlog:
+                     dy *= wmod
+                     ddy *= wmod**2
+                  v = -c * np.dot(1/e2[keep]**2*dy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*dy[keep], dy[keep])
+
+                  moon = 0
+                  if moon:
+                     # simple moon contamination
+                     a1, a0 = np.polyfit(f2mod[keep], f2[keep], 1)
+                     print a1, a0
+                     if 0:
+                        gplot(w2[keep], f2mod[keep],'w lp,',w2[keep], f2[keep], ' w lp')
+                        gplot(f2mod[keep], f2[keep], w2[keep],' palette , x, %s+%s*x' %(a0,a1) )
+                        gplot(w2[keep], f2mod[keep],'w lp,',w2[keep], f2[keep], ' w lp,',w2[keep], (f2[keep]-a0)/a1, ' w lp')
+                        # residuals
+                        gplot(w2[keep], f2[keep]-f2mod[keep], ' w lp, ', w2[keep], f2[keep]-a1*f2mod[keep]-a0, 'w lp lc 3')
+                     #pause(o)
+
+                     f2 = f2c = (f2-a0)/a1 # correct observation
+
+                     dlwo = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2c-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
+                     e_dlwo = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
+                  else:
+                     dlwo = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
+                     e_dlwo = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
+                  drchi = rms(((f2-f2mod) - dlwo/c**2*ddy)[keep] / e2[keep])
+                  #print par.params[1],par.params[0], v, dlwo*1000, e_dlwo
+                  if np.isnan(dlwo) and not safemode: pause()
+                  dlw[i,o] = dlwo * 1000       # convert from (km/s) to m/s km/s
+                  e_dlw[i,o] = e_dlwo * 1000 * drchi
+                  if 0:
+                     gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,', wmod[keep],(f2-f2mod)[keep], 'us 1:2')
+                     ogplot(wmod,dlwo/c**2*ddy); #ogplot(wmod,f2, 'axis x1y2')
+                     pause(o, 'dLW', dlw[i,o])
+
+            fmod[o] = f2mod
+            if par.perror is None: par.perror = [0.,0.,0.,0.]
+            results[sp.timeid][o] = par
+            rv[i,o] = rvo = par.params[0] * 1000. #- sp.drift
+            snr[i,o] = stat['snr']
+            rchi[i,o] = stat['std']
+            Nok[i,o] = len(keep)
+
+            if not diff_rv:
+               vgrid = chi2mapo[0]
+               chi2map[o] = chi2mapo[1] # chi2mapo[1].min() - (a[0]+a[1]*v+a[2]*v**2)
+               # pause(o, chi2map[o].min())
+               # for
+               ##chi2map[o] = chi2mapo[1].min() + ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
+               ##chi2map[o] =  2*np.log(np.pi*par.perror[0]) - ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
+               #chi2map[o] = ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
+               #pause(o)
+
+            e_rv[i,o] = par.perror[0] * stat['std'] * 1000
+            if verb: print "%s-%02u  %s  %7.2f +/- %5.2f m/s %5.2f %5.1f it=%s %s" % (i+1, o, sp.timeid, rvo, par.perror[0]*1000., stat['std'], stat['snr'], par.niter, np.size(keep))
+
+            clipped = np.sort(list(set(pind).difference(set(keep))))
+            if len(clipped):
+               b2[clipped] = flag.clip
+            if o in look or (not safemode and (abs(rvo/1000-targrv+tplrv)>rvwarn and not sp.flag) or debug>1):
+               if def_wlog: w2 = np.exp(w2)
+               res = np.nan * f2
+               res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
+               b = str(stat['std'])
+               gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2fm/s)"'%(obj,o,rvo))
+               gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
+               gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
+               gplot('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
+               ogplot(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"', flush='')
+               ogplot(x2,w2, f2mod,(b2==0)*0.5, 'us (column(i)):3:4 w lp lt 3 pt 7 ps var t "Fmod"', flush='')
+               ogplot(x2,w2, res, b2, "us (column(i)):3:4 w lp pt 7 ps 0.5 lc var axis x1y2 t 'residuals'", flush='')
+               # legend with translation of bpmap, plot dummy using NaN function
+               ogplot(", ".join(["NaN w p pt 7 ps 0.5 lc "+str(f) +" t '"+str(f)+" "+",".join(flag.translate(f))+"'" for f in np.unique(b2)]), flush='')
+
+               ogplot("0 axis x1y2 lt 3 t'',"+b+" axis x1y2 lt 1,-"+b+" axis x1y2 lt 1 t ''", flush='')
+
+               ogplot(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"', flush='')
+               ogplot(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
+               pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi[i,o]))
+         # end loop over orders
+
+         # ind = setdiff1d(where(e_rv[i]>0.)[0],[71]) # do not use the failed and last order
+         ind, = where(np.isfinite(e_rv[i])) # do not use the failed and last order
+         rvm[i], rvmerr[i] = np.median(rv[i,ind]), std(rv[i,ind])
+         if len(ind) > 1: rvmerr[i] /= (len(ind)-1)**0.5
+
+         # Mean RV
+         RV[i], e_RV[i] = wsem(rv[i,ind], e=e_rv[i,ind])
+         RVc[i] = RV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
+         e_RVc[i] = np.sqrt(e_RV[i]**2 + np.nan_to_num(sp.e_drift)**2)
+         print i+1, '/', nspec, sp.timeid, sp.bjd, RV[i], e_RV[i]
+
+         # Chromatic trend
+         if 1:
+            # scipy version
+            #np.polynomial.polyval(x,[a,b])
+            def func(x, a, b): return a + b*x #  np.polynomial.polyval(x,a)
+            #
+            # x = np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)    # lambda
+            # x = 1/np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)  # 1/lambda
+            x = np.mean(spt.w if def_wlog else np.log(spt.w), axis=1)  # ln(lambda)
+            xc = np.mean(x[ind])   # only to center the trend fit
+            # fit trend with curve_fit to get parameter error
+            pval, cov = curve_fit(func, x[ind]-xc, rv[i][ind], [0.0, 0.0], e_rv[i][ind])
+            perr = np.sqrt(np.diag(cov))
+            #print cov, pval
+            #pval, cov = np.polyfit(x[ind]-xc, rv[i][ind], 1, w=1/e_rv[i][ind], cov=True)
+            #print cov, pval
+
+            l_v = np.exp(-(pval[0]-RV[i])/pval[1]+xc)
+            CRX[i], e_CRX[i], xo[i] = pval[1], perr[1], x
+            tCRX[i] = CRX[i], e_CRX[i], pval[0], perr[0], l_v
+
+            # manual regression
+            lhs = np.array([1/e_rv[i][ind], (x[ind]-xc)/e_rv[i][ind]]).T
+            cov = np.linalg.inv(np.dot(lhs.T, lhs))
+            #e_CRX[i] = np.sqrt(cov[1,1])
+
+            # with scaling
+            scale = np.sqrt((lhs*lhs).sum(axis=0))
+            cov = np.linalg.inv(np.dot((lhs/scale).T, lhs/scale)) / np.outer(scale, scale)
+
+            #pause(e_CRX[i])
+
+            #coli,stat = polynomial.polyfit(arange(len(rv[i]))[ind],rv[i][ind], 1, w=1./e_rv[i][ind], full=True)
+            if 0:   # show trend in each order
+               gplot.log('x; set autoscale xfix; set xtic add (0'+(",%i"*10)%tuple((np.arange(10)+1)*1000)+')')
+               gplot(np.exp(x[ind]), rv[i][ind], e_rv[i][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[i], pval[1],l_v,RV[i]))
+               pause()
 
          if not diff_rv:
-            vgrid = chi2mapo[0]
-            chi2map[o] = chi2mapo[1] # chi2mapo[1].min() - (a[0]+a[1]*v+a[2]*v**2)
-            # pause(o, chi2map[o].min())
-            # for
-            ##chi2map[o] = chi2mapo[1].min() + ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
-            ##chi2map[o] =  2*np.log(np.pi*par.perror[0]) - ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
-            #chi2map[o] = ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
-            #pause(o)
+            # ML version of chromatic trend
+            oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[i]) 
 
-         e_rv[i,o] = par.perror[0] * stat['std'] * 1000
-         if verb: print "%s-%02u  %s  %7.2f +/- %5.2f m/s %5.2f %5.1f it=%s %s" % (i+1, o, sp.timeid, rvo, par.perror[0]*1000., stat['std'], stat['snr'], par.niter, np.size(keep))
+            gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst+')\\n'+sp.timeid, rchi=rchi[i], No=Nok[i], name='')
+            mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
 
-         clipped = np.sort(list(set(pind).difference(set(keep))))
-         if len(clipped):
-            b2[clipped] = flag.clip
-         if not safemode and (o in look or (abs(rvo/1000-targrv+tplrv)>rvwarn and not sp.flag) or debug>1):
-            if def_wlog: w2 = np.exp(w2)
-            res = np.nan * f2
-            res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
-            b = str(stat['std'])
-            gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2fm/s)"'%(obj,o,rvo))
-            gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
-            gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
-            gplot('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
-            ogplot(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"', flush='')
-            ogplot(x2,w2, f2mod,(b2==0)*0.5, 'us (column(i)):3:4 w lp lt 3 pt 7 ps var t "Fmod"', flush='')
-            ogplot(x2,w2, res, b2, "us (column(i)):3:4 w lp pt 7 ps 0.5 lc var axis x1y2 t 'residuals'", flush='')
-            # legend with translation of bpmap, plot dummy using NaN function
-            ogplot(", ".join(["NaN w p pt 7 ps 0.5 lc "+str(f) +" t '"+str(f)+" "+",".join(flag.translate(f))+"'" for f in np.unique(b2)]), flush='')
+            mlRVc[i] = mlRV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
+            e_mlRVc[i] = np.sqrt(e_mlRV[i]**2 + np.nan_to_num(sp.e_drift)**2)
 
-            ogplot("0 axis x1y2 lt 3 t'',"+b+" axis x1y2 lt 1,-"+b+" axis x1y2 lt 1 t ''", flush='')
+            if lookmlRV:
+               gg.plot()
+               pause(i, mlRV[i], e_mlRV[i])
 
-            ogplot(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"', flush='')
-            ogplot(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
-            pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi[i,o]))
-      # end loop over orders
+            mlCRX[i], e_mlCRX[i] = gg.mlcrx(x, xc, oo)
 
-      # ind = setdiff1d(where(e_rv[i]>0.)[0],[71]) # do not use the failed and last order
-      ind, = where(np.isfinite(e_rv[i])) # do not use the failed and last order
-      rvm[i], rvmerr[i] = np.median(rv[i,ind]), std(rv[i,ind])
-      if len(ind) > 1: rvmerr[i] /= (len(ind)-1)**0.5
-
-      # Mean RV
-      RV[i], e_RV[i] = wsem(rv[i,ind], e=e_rv[i,ind])
-      RVc[i] = RV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
-      e_RVc[i] = np.sqrt(e_RV[i]**2 + np.nan_to_num(sp.e_drift)**2)
-      print i+1, '/', nspec, sp.timeid, sp.bjd, RV[i], e_RV[i]
-
-      # Chromatic trend
-      if 1:
-         # scipy version
-         #np.polynomial.polyval(x,[a,b])
-         def func(x, a, b): return a + b*x #  np.polynomial.polyval(x,a)
-         #
-         # x = np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)    # lambda
-         # x = 1/np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)  # 1/lambda
-         x = np.mean(spt.w if def_wlog else np.log(spt.w), axis=1)  # ln(lambda)
-         xc = np.mean(x[ind])   # only to center the trend fit
-         # fit trend with curve_fit to get parameter error
-         pval, cov = curve_fit(func, x[ind]-xc, rv[i][ind], [0.0, 0.0], e_rv[i][ind])
-         perr = np.sqrt(np.diag(cov))
-         #print cov, pval
-         #pval, cov = np.polyfit(x[ind]-xc, rv[i][ind], 1, w=1/e_rv[i][ind], cov=True)
-         #print cov, pval
-
-         l_v = np.exp(-(pval[0]-RV[i])/pval[1]+xc)
-         CRX[i], e_CRX[i], xo[i] = pval[1], perr[1], x
-         tCRX[i] = CRX[i], e_CRX[i], pval[0], perr[0], l_v
-
-         # manual regression
-         lhs = np.array([1/e_rv[i][ind], (x[ind]-xc)/e_rv[i][ind]]).T
-         cov = np.linalg.inv(np.dot(lhs.T, lhs))
-         #e_CRX[i] = np.sqrt(cov[1,1])
-
-         # with scaling
-         scale = np.sqrt((lhs*lhs).sum(axis=0))
-         cov = np.linalg.inv(np.dot((lhs/scale).T, lhs/scale)) / np.outer(scale, scale)
-
-         #pause(e_CRX[i])
-
-         #coli,stat = polynomial.polyfit(arange(len(rv[i]))[ind],rv[i][ind], 1, w=1./e_rv[i][ind], full=True)
-         if 0:   # show trend in each order
-            gplot.log('x; set autoscale xfix; set xtic add (0'+(",%i"*10)%tuple((np.arange(10)+1)*1000)+')')
-            gplot(np.exp(x[ind]), rv[i][ind], e_rv[i][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[i], pval[1],l_v,RV[i]))
-            pause()
-
-      if not diff_rv:
-         # ML version of chromatic trend
-         oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[i]) 
-
-         gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst+')\\n'+sp.timeid, rchi=rchi[i], No=Nok[i], name='')
-         mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
-
-         mlRVc[i] = mlRV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
-         e_mlRVc[i] = np.sqrt(e_mlRV[i]**2 + np.nan_to_num(sp.e_drift)**2)
-
-         if lookmlRV:
-            gg.plot()
-            pause(i, mlRV[i], e_mlRV[i])
-
-         mlCRX[i], e_mlCRX[i] = gg.mlcrx(x, xc, oo)
-
-         if lookmlCRX:
-            gg.plot_fit()
-            pause(i, CRX[i], mlCRX[i])
+            if lookmlCRX:
+               gg.plot_fit()
+               pause(i, CRX[i], mlCRX[i])
 
 
-      # Line Indices
-      vabs = tplrv + RV[i]/1000.
-      kwargs = {'inst': inst, 'plot':looki}
+         # Line Indices
+         vabs = tplrv + RV[i]/1000.
+         kwargs = {'inst': inst, 'plot':looki}
+         if meas_index:
+            halpha += [getHalpha(vabs, 'Halpha', **kwargs)]
+            haleft += [getHalpha(vabs, 'Haleft', **kwargs)]
+            harigh += [getHalpha(vabs, 'Harigh', **kwargs)]
+            cai += [getHalpha(vabs, 'CaI', **kwargs)]
+            cak += [getHalpha(vabs, 'CaK', **kwargs)] if inst=='HARPS' else [(np.nan,np.nan)]
+            cah += [getHalpha(vabs, 'CaH', **kwargs)] if inst=='HARPS' else [(np.nan,np.nan)]
+         if meas_CaIRT:
+            irt1 +=  [getHalpha(vabs, 'CaIRT1', **kwargs)]
+            irt1a += [getHalpha(vabs, 'CaIRT1a', **kwargs)]
+            irt1b += [getHalpha(vabs, 'CaIRT1b', **kwargs)]
+            irt2 +=  [getHalpha(vabs, 'CaIRT2', **kwargs)]
+            irt2a += [getHalpha(vabs, 'CaIRT2a', **kwargs)]
+            irt2b += [getHalpha(vabs, 'CaIRT2b', **kwargs)]
+            irt3 +=  [getHalpha(vabs, 'CaIRT3', **kwargs)]
+            irt3a += [getHalpha(vabs, 'CaIRT3a', **kwargs)]
+            irt3b += [getHalpha(vabs, 'CaIRT3b', **kwargs)]
+         if meas_NaD:
+            nad1 += [getHalpha(vabs, 'NaD1', **kwargs)]
+            nad2 += [getHalpha(vabs, 'NaD2', **kwargs)]
+            nadr1 += [getHalpha(vabs, 'NaDref1', **kwargs)]
+            nadr2 += [getHalpha(vabs, 'NaDref2', **kwargs)]
+            nadr3 += [getHalpha(vabs, 'NaDref3', **kwargs)]
+
+         if diff_width:
+            ind, = where(np.isfinite(e_dlw[i]))
+            dLW[i], e_dLW[i] = wsem(dlw[i,ind], e=e_dlw[i,ind])
+
+         if 0: # plot RVs of all orders
+            gplot.key('title "rv %i:  %s"' %(i+1,sp.timeid))
+            gplot(orders,rv[i,orders],e_rv[i,orders],rvccf[i,orders],e_rvccf[i,orders],'us 1:2:3 w e, "" us 1:4:5 w e t "ccf", {0}, {0} - {1}, {0}+{1} lt 2'.format(RV[i],e_RV[i]))
+            pause('rvo')
+         if 0: # plot dLW of all orders
+            gplot.key('title "dLW %i:  %s"' %(i+1,sp.timeid))
+            gplot(orders, dlw[i][orders], e_dlw[i][orders], ' w e, %f, %f, %f lt 2'%(dLW[i]+e_dLW[i],dLW[i],dLW[i]-e_dLW[i]))
+            pause('dlw')
+
+         if outfmt and not np.isnan(RV[i]):   # write residuals
+            data = {'fmod': fmod, 'wave': sp.w, 'spec': sp.f,
+                    'err': sp.e, 'bpmap': sp.bpmap}
+            outfile = os.path.basename(sp.filename)
+            outfile = os.path.splitext(outfile)[0] + outsuf
+            if 'res' in outfmt: data['res'] = sp.f - fmod
+            if 'ratio' in outfmt: data['ratio'] = sp.f / fmod
+
+            sph = Spectrum(sp.filename, inst=inst, pfits=True, drs=drs, fib=fib, targ=targ).header
+            sph['HIERARCH SERVAL RV'] = (RV[i], '[m/s] Radial velocity')
+            sph['HIERARCH SERVAL E_RV'] = (e_RV[i], '[m/s] RV error estimate')
+            sph['HIERARCH SERVAL RVC'] = (RVc[i], '[m/s] RV drift corrected')
+            sph['HIERARCH SERVAL E_RVC'] = (e_RVc[i], '[m/s] RVC error estimate')
+            write_res(outdir+'res/'+outfile, data, outfmt, sph, clobber=1)
+
+         if outchi and not np.isnan(RV[i]):   # write residuals
+            gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
+            gplot.xlabel('"v [m/s]"; set ylabel "chi^2/max(chi^2)"; set cblabel "order"')
+            #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
+            if 0:
+               gplot(chi2map.T /chi2map.max(axis=1), ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
+            outfile = os.path.basename(sp.filename)
+            outfile = os.path.splitext(outfile)[0] + '_chi2map.fits'
+            hdr = spt.header[0:10]
+            hdr.insert('COMMENT', ('CDELT1', v_step))
+            hdr['CTYPE1'] = 'linear'
+            hdr['CUNIT1'] = 'km/s'
+            hdr['CRVAL1'] = v_lo
+            hdr['CRPIX1'] = 1
+            hdr['CDELT1'] = v_step
+            hdr['CTYPE2'] = 'linear'
+            hdr['CRVAL2'] = 1
+            hdr['CRPIX2'] = 1
+            hdr['CDELT2'] = 1
+            write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
+
+         if i>0 and not safemode:
+            # plot time series
+            gplot(bjd-2450000, RV, e_RV, ' us 1:2:3 w e pt 7') # explicitly specify columns to deal with NaNs
+         #pause()
+
+      # end of loop over spectra
+
+      if iterate < niter:
+         np.savetxt(prefile, list(zip(bjd[:nspecok], RV[:nspecok], e_RV[:nspecok])), fmt="%s")
+         continue
+      # write final results
+      rvfile = outdir+obj+fibsuf+'.dat'
+      rvcfile = outdir+obj+'.rvc'+fibsuf+'.dat'
+      crxfile = outdir+obj+'.crx'+fibsuf+'.dat'
+      mlcfile = outdir+obj+'.mlc'+fibsuf+'.dat' # maximum likehood estimated RVCs and CRX
+      srvfile = outdir+obj+'.srv'+fibsuf+'.dat' # serval top-level file
+      rvunit = [file(rvfile, 'w'), file(outdir+obj+'.badrv'+fibsuf+'.dat', 'w')]
+      rvounit = [file(rvofile, 'w'), file(rvofile+'bad', 'w')]
+      rvcunit = [file(rvcfile, 'w'), file(rvcfile+'bad', 'w')]
+      crxunit = [file(crxfile, 'w'), file(crxfile+'bad', 'w')]
+      mlcunit = [file(mlcfile, 'w'), file(mlcfile+'bad', 'w')]
+      srvunit = [file(srvfile, 'w'), file(srvfile+'bad', 'w')]
+      mypfile = [file(rvofile+'err', 'w'), file(rvofile+'errbad', 'w')]
+      snrunit = [file(snrfile, 'w'), file(snrfile+'bad', 'w')]
+      chiunit = [file(chifile, 'w'), file(chifile+'bad', 'w')]
+      dlwunit = [file(dfwfile, 'w'), file(dfwfile+'bad', 'w')]
       if meas_index:
-         halpha += [getHalpha(vabs, 'Halpha', **kwargs)]
-         haleft += [getHalpha(vabs, 'Haleft', **kwargs)]
-         harigh += [getHalpha(vabs, 'Harigh', **kwargs)]
-         cai += [getHalpha(vabs, 'CaI', **kwargs)]
-         cak += [getHalpha(vabs, 'CaK', **kwargs)] if inst=='HARPS' else [(np.nan,np.nan)]
-         cah += [getHalpha(vabs, 'CaH', **kwargs)] if inst=='HARPS' else [(np.nan,np.nan)]
+         halunit = [file(halfile, 'w'), file(halfile+'bad', 'w')]
       if meas_CaIRT:
-         irt1 +=  [getHalpha(vabs, 'CaIRT1', **kwargs)]
-         irt1a += [getHalpha(vabs, 'CaIRT1a', **kwargs)]
-         irt1b += [getHalpha(vabs, 'CaIRT1b', **kwargs)]
-         irt2 +=  [getHalpha(vabs, 'CaIRT2', **kwargs)]
-         irt2a += [getHalpha(vabs, 'CaIRT2a', **kwargs)]
-         irt2b += [getHalpha(vabs, 'CaIRT2b', **kwargs)]
-         irt3 +=  [getHalpha(vabs, 'CaIRT3', **kwargs)]
-         irt3a += [getHalpha(vabs, 'CaIRT3a', **kwargs)]
-         irt3b += [getHalpha(vabs, 'CaIRT3b', **kwargs)]
+         irtunit = [file(irtfile, 'w'), file(irtfile+'bad', 'w')]
       if meas_NaD:
-         nad1 += [getHalpha(vabs, 'NaD1', **kwargs)]
-         nad2 += [getHalpha(vabs, 'NaD2', **kwargs)]
-         nadr1 += [getHalpha(vabs, 'NaDref1', **kwargs)]
-         nadr2 += [getHalpha(vabs, 'NaDref2', **kwargs)]
-         nadr3 += [getHalpha(vabs, 'NaDref3', **kwargs)]
+         nadunit = [file(nadfile, 'w'), file(nadfile+'bad', 'w')]
+      for i,sp in enumerate(spoklist):
+         if np.isnan(rvm[i]): sp.flag |= sflag.rvnan
+         rvflag = int((sp.flag&(sflag.eggs+sflag.iod+sflag.rvnan)) > 0)
+         if rvflag: 'nan RV for file: '+sp.filename
+         print >>rvunit[int(rvflag or np.isnan(sp.drift))], sp.bjd, RVc[i], e_RVc[i]
+         print >>rvounit[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,rv[i]))
+         print >>mypfile[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,e_rv[i]))
+         print >>rvcunit[rvflag], sp.bjd, RVc[i], e_RVc[i], sp.drift, sp.e_drift, RV[i], e_RV[i], sp.berv, sp.sa
+         print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tCRX[i]) + map(str,xo[i]))
+         print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], CRX[i], e_CRX[i], dLW[i], e_dLW[i]
+         print >>mlcunit[rvflag], sp.bjd, mlRVc[i], e_mlRVc[i], mlCRX[i], e_mlCRX[i], dLW[i], e_dLW[i]
+         print >>dlwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dlw[i]))
+         print >>snrunit[rvflag], sp.bjd, np.nansum(snr[i]**2)**0.5, " ".join(map(str,snr[i]))
+         print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi[i]))
+         if meas_index:
+            print >>halunit[rvflag], sp.bjd, " ".join(map(str, lineindex(halpha[i],harigh[i],haleft[i]) + halpha[i] + haleft[i] + harigh[i] + lineindex(cai[i],harigh[i],haleft[i])))  #,cah[i][0],cah[i][1]
+         if meas_CaIRT:
+            print >>irtunit[rvflag], sp.bjd, " ".join(map(str, lineindex(irt1[i], irt1a[i], irt1b[i]) + lineindex(irt2[i], irt2a[i], irt2b[i]) + lineindex(irt3[i], irt3a[i], irt3b[i])))
+         if meas_NaD:
+            print >>nadunit[rvflag], sp.bjd, " ".join(map(str, lineindex(nad1[i],nadr1[i],nadr2[i]) + lineindex(nad2[i],nadr2[i],nadr3[i])))
+      for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit + srvunit + mlcunit + dlwunit:
+         file.close(ifile)
 
-      if diff_width:
-         ind, = where(np.isfinite(e_dLWo[i]))
-         dLW[i], e_dLW[i] = wsem(dLWo[i,ind], e=e_dLWo[i,ind])
+      t2 = time.time() - t0
+      print
+      print nspec, 'spectra processed', rvfile+"  (total %s, compu %s)\n" %(minsec(t2), minsec(t2-t1))
 
-      if 0: # plot RVs of all orders
-         gplot.key('title "rv %i:  %s"' %(i+1,sp.timeid))
-         gplot(orders,rv[i,orders],e_rv[i,orders],rvccf[i,orders],e_rvccf[i,orders],'us 1:2:3 w e, "" us 1:4:5 w e t "ccf", {0}, {0} - {1}, {0}+{1} lt 2'.format(RV[i],e_RV[i]))
-         pause('rvo')
-      if 0: # plot dLW of all orders
-         gplot.key('title "dLW %i:  %s"' %(i+1,sp.timeid))
-         gplot(orders, dLWo[i][orders], e_dLWo[i][orders], ' w e, %f, %f, %f lt 2'%(dLW[i]+e_dLW[i],dLW[i],dLW[i]-e_dLW[i]))
-         pause('dLWo')
-
-      if outfmt and not np.isnan(RV[i]):   # write residuals
-         data = {'fmod': fmod, 'wave': sp.w, 'spec': sp.f,
-                 'err': sp.e, 'bpmap': sp.bpmap}
-         outfile = os.path.basename(sp.filename)
-         outfile = os.path.splitext(outfile)[0] + outsuf
-         if 'res' in outfmt: data['res'] = sp.f - fmod
-         if 'ratio' in outfmt: data['ratio'] = sp.f / fmod
-
-         sph = Spectrum(sp.filename, inst=inst, pfits=True, drs=drs, fib=fib, targ=targ).header
-         sph['HIERARCH SERVAL RV'] = (RV[i], '[m/s] Radial velocity')
-         sph['HIERARCH SERVAL E_RV'] = (e_RV[i], '[m/s] RV error estimate')
-         sph['HIERARCH SERVAL RVC'] = (RVc[i], '[m/s] RV drift corrected')
-         sph['HIERARCH SERVAL E_RVC'] = (e_RVc[i], '[m/s] RVC error estimate')
-         write_res(outdir+'res/'+outfile, data, outfmt, sph, clobber=1)
-
-      if outchi and not np.isnan(RV[i]):   # write residuals
-         gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
-         gplot.xlabel('"v [m/s]"; set ylabel "chi^2/max(chi^2)"; set cblabel "order"')
-         #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
-         if 0:
-            gplot(chi2map.T /chi2map.max(axis=1), ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
-         outfile = os.path.basename(sp.filename)
-         outfile = os.path.splitext(outfile)[0] + '_chi2map.fits'
-         hdr = spt.header[0:10]
-         hdr.insert('COMMENT', ('CDELT1', v_step))
-         hdr['CTYPE1'] = 'linear'
-         hdr['CUNIT1'] = 'km/s'
-         hdr['CRVAL1'] = v_lo
-         hdr['CRPIX1'] = 1
-         hdr['CDELT1'] = v_step
-         hdr['CTYPE2'] = 'linear'
-         hdr['CRVAL2'] = 1
-         hdr['CRPIX2'] = 1
-         hdr['CDELT2'] = 1
-         write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
-
-      if i>0 and not safemode:
-         # plot time series
-         gplot(bjd-2450000, RV, e_RV, 'us 1:2:3 w e pt 7') # explicitly specify columns to deal with NaNs
-      #pause()
-
-   rvfile = outdir+obj+fibsuf+'.dat'
-   rvcfile = outdir+obj+'.rvc'+fibsuf+'.dat'
-   crxfile = outdir+obj+'.crx'+fibsuf+'.dat'
-   mlcfile = outdir+obj+'.mlc'+fibsuf+'.dat' # maximum likehood estimated RVCs and CRX
-   srvfile = outdir+obj+'.srv'+fibsuf+'.dat' # serval top-level file
-   rvunit = [file(rvfile, 'w'), file(outdir+obj+'.badrv'+fibsuf+'.dat', 'w')]
-   rvounit = [file(rvofile, 'w'), file(rvofile+'bad', 'w')]
-   rvcunit = [file(rvcfile, 'w'), file(rvcfile+'bad', 'w')]
-   crxunit = [file(crxfile, 'w'), file(crxfile+'bad', 'w')]
-   mlcunit = [file(mlcfile, 'w'), file(mlcfile+'bad', 'w')]
-   srvunit = [file(srvfile, 'w'), file(srvfile+'bad', 'w')]
-   mypfile = [file(rvofile+'err', 'w'), file(rvofile+'errbad', 'w')]
-   snrunit = [file(snrfile, 'w'), file(snrfile+'bad', 'w')]
-   chiunit = [file(chifile, 'w'), file(chifile+'bad', 'w')]
-   dlwunit = [file(dfwfile, 'w'), file(dfwfile+'bad', 'w')]
-   if meas_index:
-      halunit = [file(halfile, 'w'), file(halfile+'bad', 'w')]
-   if meas_CaIRT:
-      irtunit = [file(irtfile, 'w'), file(irtfile+'bad', 'w')]
-   if meas_NaD:
-      nadunit = [file(nadfile, 'w'), file(nadfile+'bad', 'w')]
-   for i,sp in enumerate(spoklist):
-      if np.isnan(rvm[i]): sp.flag |= sflag.rvnan
-      rvflag = int((sp.flag&(sflag.eggs+sflag.iod+sflag.rvnan)) > 0)
-      if rvflag: 'nan RV for file: '+sp.filename
-      print >>rvunit[int(rvflag or np.isnan(sp.drift))], sp.bjd, RVc[i], e_RVc[i]
-      print >>rvounit[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,rv[i]))
-      print >>mypfile[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,e_rv[i]))
-      #stop()
-      print >>rvcunit[rvflag], sp.bjd, RVc[i], e_RVc[i], sp.drift, sp.e_drift, RV[i], e_RV[i], sp.berv, sp.sa
-      print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tCRX[i]) + map(str,xo[i]))
-      print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], CRX[i], e_CRX[i], dLW[i], e_dLW[i]
-      print >>mlcunit[rvflag], sp.bjd, mlRVc[i], e_mlRVc[i], mlCRX[i], e_mlCRX[i], dLW[i], e_dLW[i]
-      print >>dlwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dLWo[i]))
-      print >>snrunit[rvflag], sp.bjd, np.nansum(snr[i]**2)**0.5, " ".join(map(str,snr[i]))
-      print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi[i]))
-      if meas_index:
-         print >>halunit[rvflag], sp.bjd, " ".join(map(str, lineindex(halpha[i],harigh[i],haleft[i]) + halpha[i] + haleft[i] + harigh[i] + lineindex(cai[i],harigh[i],haleft[i])))  #,cah[i][0],cah[i][1]
-      if meas_CaIRT:
-         print >>irtunit[rvflag], sp.bjd, " ".join(map(str, lineindex(irt1[i], irt1a[i], irt1b[i]) + lineindex(irt2[i], irt2a[i], irt2b[i]) + lineindex(irt3[i], irt3a[i], irt3b[i])))
-      if meas_NaD:
-         print >>nadunit[rvflag], sp.bjd, " ".join(map(str, lineindex(nad1[i],nadr1[i],nadr2[i]) + lineindex(nad2[i],nadr2[i],nadr3[i])))
-   for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit + srvunit + mlcunit + dlwunit:
-      file.close(ifile)
-
-   t2 = time.time() - t0
-   print
-   print nspec, 'spectra processed', rvfile+"  (total %s, compu %s)\n" %(minsec(t2), minsec(t2-t1))
+   # end of iterate loop
 
    if not driftref and nspec>1:
       x = analyse_rv(obj, postiter=postiter, fibsuf=fibsuf, safemode=safemode)
@@ -2142,6 +2204,7 @@ if __name__ == "__main__":
    argopt('-lookmlRV', help='chi2map and master', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
+   argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'FTS':':'}, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"17,18,19,20,21,36,37,38,39,40,41,42", "else":[]}, type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
@@ -2153,10 +2216,9 @@ if __name__ == "__main__":
    argopt('-pmin', help='Minimum pixel'+default, default=300, type=int)
    argopt('-pmax', help='Maximum pixel'+default, default={'CARM_NIR':1800, 'else':3800}, type=int)
    argopt('-pspline', help='pspline as coadd filter [smooth value]', nargs='?', const=0.0000001, dest='pspllam', type=float)
-   argopt('-pmu', help='analog to GP mean. DEfault no GP penalty. Without the mean in each order. Otherwise this value.', nargs='?', const=True, type=float)
+   argopt('-pmu', help='analog to GP mean. Default no GP penalty. Without the mean in each order. Otherwise this value.', nargs='?', const=True, type=float)
    argopt('-pe_mu', help='analog to GP mean deviation', default=5., type=float)
    argopt('-reana', help='flag reanalyse only', action='store_true')
-   argopt('-review', help='level of review template', nargs='?', type=int)
    argopt('-rvwarn', help='[km/s] warning threshold in debug'+default, default=2., type=float)
    argopt('-safemode', help='does not pause or stop, optional level 1  2 (reana)', nargs='?', type=int, const=1, default=False)
    argopt('-skippre', help='Skip pre-RVs.', action='store_true')
@@ -2171,7 +2233,6 @@ if __name__ == "__main__":
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
    argopt('-vrange', help='[km/s] velocity grid around targrv (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
    argopt('-vtfix', help='fix RV in template creation', action='store_true')
-
    argopt('-wfix', help='fix wavelength solution', action='store_true')
    argopt('-debug', help='debug flag', nargs='?', default=0, const=1)
    argopt('-bp',   help='break points', nargs='*', type=int)
@@ -2195,6 +2256,9 @@ if __name__ == "__main__":
    if isinstance(tplrv, dict): tplrv = tplrv[inst] if inst in tplrv else tplrv['else']
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl
+
+   if skippre or vtfix:
+      niter -= 1
 
    if dir_or_inputlist is None:
       ## execute last command
@@ -2248,7 +2312,7 @@ if __name__ == "__main__":
          sys.exit(serval())
       except:
          print 'ex'
-         import pdb, sys
+         import pdb
          e, m, tb = sys.exc_info()
          sys.stdout = sys.__stdout__
          pdb.post_mortem(tb)

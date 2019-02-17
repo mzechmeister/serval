@@ -73,7 +73,7 @@ def calcspec(x2, v, *a, **kwargs):
    #fmod = spline_ev(dopshift(x2,v), globvar.tck)
    # static variables calcspec.tck calcspec.wcen must be preset
    if not kwargs.get('retpoly'):
-      fmod = kwargs.get('fmod', cubicSpline.spl_evf(dopshift(x2,v),calcspec.tck)) # parsed fmod or new
+      fmod = kwargs.get('fmod', calcspec.tpl(dopshift(x2,v))) # parsed fmod or new
    x2 = x2 - calcspec.wcen
    # Use a Horner schema to evaluate the polynom
    # poly = a_0 + a_1 x + a_2 x^2 + ... = a_0 + x (a_1 + x (a_2+ ...))

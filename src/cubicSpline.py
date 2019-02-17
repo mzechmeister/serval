@@ -1,4 +1,4 @@
-## module cubicSpline
+# module cubicSpline
 ''' k = curvatures(xData,yData).
     Returns the curvatures of cubic spline at its knots.
 
@@ -18,8 +18,8 @@ k=cubicSpline.curvatures(x,y)
 yy=cubicSpline.evalSpline(x,y,k,xx)
 yy
 '''
-#from numarray import zeros,ones,Float64,array
-import numpy
+
+import numpy as np
 import LUdecomp3
 from numpy import logical_and, asarray,zeros_like,floor,append
 from numpy.core.umath import sqrt, exp, greater, less, cos, add, sin, \
@@ -33,8 +33,8 @@ def spl_c(x,y):
    input: x,y data knots
    returns: tuple (datax, datay, curvature coeffients at knots)
    '''
-   n = numpy.size(x)
-   if numpy.size(y)==n:
+   n = np.size(x)
+   if np.size(y)==n:
       return spl_int.spl_int(x,y,n)
 
 
@@ -44,19 +44,66 @@ def spl_ev(xx,xyk):
    '''
    #import pdb; pdb.set_trace()
    #x,y,k=xyk
-   #return spl_int.spl_ev(x,y,k,numpy.size(x),xx,numpy.size(xx))
-   return spl_int.spl_ev(xyk[0],xyk[1],xyk[2],numpy.size(xyk[0]),xx,numpy.size(xx))
+   #return spl_int.spl_ev(x,y,k,np.size(x),xx,np.size(xx))
+   return spl_int.spl_ev(xyk[0],xyk[1],xyk[2],np.size(xyk[0]),xx,np.size(xx))
 
 def spl_cf(x,y):
-   '''returns a xyk tuple with x,y, y', y'', y
+   '''Fast creation of a cubic Spline.
+
+   Endpoints.
+
+   Returns
+   -------
+   xyk : tuple with knots and knot derivatives y, y', y'', y
+   
    '''
-   n = numpy.size(x)
-   if numpy.size(y)==n:
-      return spl_int.spl_intf(x,y,n)
+   n = np.size(x)
+   if np.size(y)==n:
+      return spl_int.spl_intf(x, y, n)
 
-def spl_evf(xx,xyk):
-   return spl_int.spl_evf(xyk[0],xyk[1],xyk[2],xyk[3],xyk[4],numpy.size(xyk[0]),xx,numpy.size(xx))
+def spl_evf(xx, xyk, der=0):
+   """
+   der : derivative
 
+   Example
+   -------
+   >>> x = np.arange(9)
+   >>> y = x**2
+   >>> xyk = spl_cf(x, y)
+   >>> spl_evf(x, xyk)
+
+   Notes
+   -----
+   y(x) = a + bx + cx**2 + dx**3
+   y'(x) = b + 2cx + 3dx**2
+   y''(x) = 2c + 6dx
+   y'''(x) = 6d
+
+   Endpoint:
+   y_n(1) = a + b + c + d = y_n
+   b_n(1) = b + 2c + 3d
+   k_n(1) = 0
+   d(1) = 6d
+   """
+   xx = np.array(xx)
+   x, a, b, k, d = xyk
+   b_n = b[-1] + k[-2] + 3*d[-1]  # dummy endpoints
+   d_n = 0
+   if der==0:
+      # y(x) = a + bx + cx**2 + dx**3
+      pass
+   elif der==1:
+      # y'(x) = b + 2cx + 3dx**2
+      a, b, k, d = np.append(b, b_n), k[:-1], 3*np.append(d,d_n), 0*d
+   elif der==2:
+      # y''(x) = 2c + 6dx = k + 6dx
+      # c = k/2
+      a, b, k, d = k, 6*d, 0*k, 0*d
+   elif der==3:
+      a, b, k, d  = 6*np.append(d, d_n), 0*b, 0*k, 0*d
+   else:
+      raise Exception('Derivative %s not implemented.'%der)
+   return spl_int.spl_evf(x, a, b, k, d, np.size(xyk[0]), xx, np.size(xx))
 
 
 def spl_eq_c(x,y):
@@ -65,8 +112,8 @@ def spl_eq_c(x,y):
    input: x,y data knots
    returns: tuple (datax, datay, curvature coeffients at knots)
    '''
-   n = numpy.size(x)
-   if numpy.size(y)==n:
+   n = np.size(x)
+   if np.size(y)==n:
       return spl_int.spl_eq_int(x,y,n)
 
 def spl_eq_ev(xx,xyk):
@@ -74,7 +121,7 @@ def spl_eq_ev(xx,xyk):
    evalutes spline at xx
    xyk tuple with data knots and curvature from spl_c
    '''
-   return spl_int.spl_eq_ev(xyk[0],xyk[1],xyk[2],numpy.size(xyk[0]),xx,numpy.size(xx))
+   return spl_int.spl_eq_ev(xyk[0],xyk[1],xyk[2],np.size(xyk[0]),xx,np.size(xx))
 
 
 def curva(x,y):
@@ -127,10 +174,10 @@ def curva_slow(x,y):
 
 def curvatures(xData,yData):
     n = len(xData) - 1
-    c = numpy.zeros((n),dtype=float)
-    d = numpy.ones((n+1),dtype=float)
-    e = numpy.zeros((n),dtype=float)
-    k = numpy.zeros((n+1),dtype=float)
+    c = np.zeros((n),dtype=float)
+    d = np.ones((n+1),dtype=float)
+    e = np.zeros((n),dtype=float)
+    k = np.zeros((n+1),dtype=float)
     c[0:n-1] = xData[0:n-1] - xData[1:n]
     d[1:n] = 2.0*(xData[0:n-1] - xData[2:n+1])
     e[1:n] = xData[1:n] - xData[2:n+1]
@@ -142,10 +189,10 @@ def curvatures(xData,yData):
 
 def curvatures_org(xData,yData):
     n = len(xData) - 1
-    c = numpy.zeros((n),dtype=float)
-    d = numpy.ones((n+1),dtype=float)
-    e = numpy.zeros((n),dtype=float)
-    k = numpy.zeros((n+1),dtype=float)
+    c = np.zeros((n),dtype=float)
+    d = np.ones((n+1),dtype=float)
+    e = np.zeros((n),dtype=float)
+    k = np.zeros((n+1),dtype=float)
     c[0:n-1] = xData[0:n-1] - xData[1:n]
     d[1:n] = 2.0*(xData[0:n-1] - xData[2:n+1])
     e[1:n] = xData[1:n] - xData[2:n+1]
@@ -180,7 +227,7 @@ def curvatures_org(xData,yData):
 def evalSpline_for(xData,yData,k,xx):
    # very slow
    h = xData[1]-xData[0]
-   n=numpy.arange(len(xData)-1)
+   n=np.arange(len(xData)-1)
    for i,x in enumerate(xx):
       a = (x - (i+1))/h
       b = a+1
@@ -191,7 +238,7 @@ def evalSpline_for(xData,yData,k,xx):
 
 def evalSpline_vec(xData,yData,k,xx):
    h = xData[1]-xData[0]
-   n=numpy.arange(len(xx))
+   n=np.arange(len(xx))
    AA = (xx - (n+1))/h
    BB = AA+1
    return ((AA-AA**3)*k[:-1] - (BB-BB**3)*k[1:])/6.0*h*h   \
@@ -200,11 +247,11 @@ def evalSpline_vec(xData,yData,k,xx):
 def evalSpline_gen(xData,yData,k,xx):
    # generator expression
    h = xData[1]-xData[0]
-   n=numpy.arange(len(xx))
+   n=np.arange(len(xx))
    AA = (xx - (n+1))/h
    BB = AA+1
    return (((AA[i]-AA[i]**3)*k[i] - (BB[i]-BB[i]**3)*k[i+1])*h*h/6.0  \
-         - (yData[i]*AA[i] - yData[i+1]*BB[i]) for i in numpy.arange(len(xx)))
+         - (yData[i]*AA[i] - yData[i+1]*BB[i]) for i in np.arange(len(xx)))
 
 
 def evalSpline(xData,yData,k,xx):
@@ -216,15 +263,15 @@ def evalSpline(xData,yData,k,xx):
    # d_i= (z_(i+1)-z_i)/6/h_i
    # x=x-x_i=x-i = > S=a+x*(b+x*(c+x*d))
    h = xData[1]-xData[0]
-   n=numpy.arange(len(xData)-1)
+   n=np.arange(len(xData)-1)
    AA = (xx - (n+1))/h
    BB = AA+1
-   return ( yData[i]+x*( -k[i+1]/6. - k[i]/3 + (yData[i+1]-yData[i]) + x*(k[i]/2 +x *(k[i+1]-k[i])/6))  for i,x in enumerate(xx-numpy.arange(len(xx))) )
+   return ( yData[i]+x*( -k[i+1]/6. - k[i]/3 + (yData[i+1]-yData[i]) + x*(k[i]/2 +x *(k[i+1]-k[i])/6))  for i,x in enumerate(xx-np.arange(len(xx))) )
 
 #def evalSpline(xData,yData,k,xx):
    ## generator expression
    #h = xData[1]-xData[0]
-   #n=numpy.arange(len(xData)-1)
+   #n=np.arange(len(xData)-1)
    #AA = (xx - (n+1))/h
    #BB = AA+1
    #return (((a-a**3)*k0 - (b-b**3)*k1)/6.0*h*h   \
@@ -232,7 +279,7 @@ def evalSpline(xData,yData,k,xx):
 
 
 def evalSpline_old2(xData,yData,k,xx):
-   y = numpy.empty_like(xx)
+   y = np.empty_like(xx)
    iLeft = 0
    iRight = len(xData)- 1
    m=-1
@@ -270,7 +317,7 @@ def evalSpline_old(xData,yData,k,xx):
        - yData[i+1]*(x - xData[i]))/h
     yy.append(y)
     if i<10: print i,y,x, k[i],x - xData[i]
-   return numpy.array(yy)
+   return np.array(yy)
 
 
 

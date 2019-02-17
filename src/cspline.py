@@ -198,6 +198,25 @@ class spl:
 
    >>> gplot(x, s(x), ',', x, s.to_cbspl()(x), ',', s.xk, s())
 
+   Spline derivatives.
+   nat should be set to False. Otherwise the boundary condition is to strong.
+
+   >>> x = np.arange(10.)
+   >>> y = x
+   >>> s = ucbspl_fit(x, y, K=5, nat=False).to_spl()
+   >>> s(x, der=1)
+   array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
+
+   >>> y = x**2
+   >>> s = ucbspl_fit(x, y, K=5, nat=False).to_spl()
+   >>> s(x, der=2)
+   array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.])
+
+   >>> y = x**3
+   >>> s = ucbspl_fit(x, y, K=5, nat=False).to_spl()
+   >>> s(x, der=3)
+   array([6., 6., 6., 6., 6., 6., 6., 6., 6., 6.])
+
    '''
    def __init__(self, a, b, c, d, xmin=0., xmax=None):
       self.a = a, b, c, d
@@ -207,9 +226,23 @@ class spl:
       self.xk = np.linspace(xmin, self.xmax, num=K)
 
    def __call__(self, x=None, der=0, border='extrapolate'):
+      """
+      y(x) = a + bx + cx**2 + dx**3
+      y'(x) = b + 2cx + 3dx**2
+      y"(x) = 2c + 6dx
+      """
+      A = a, b, c, d = self.a
+      if der==1:
+         A = b, 2*c, 3*d, 0*d
+      elif der==2:
+         A = 2*c, 6*d, 0*d, 0*d
+      elif der==3:
+         A = 6*d,
+
       if x is None:
-         # for last knot append end of last interval a+b*1+c*1^2+d*1^3
-         return np.r_[self.a[0], np.sum(zip(*self.a)[-1])]
+         # return knot values 
+         # for last knot append the end point of last interval a + b*1 + c*1^2 + d*1^3
+         y = np.r_[A[0], np.sum(zip(*A)[-1])]
       else:
          x = (self.K-1)/(self.xmax-self.xmin) * (x-self.xmin)
          k, p = divmod(x, 1)
@@ -222,18 +255,21 @@ class spl:
             ii, = np.where(k > self.K-2)
             p[ii], k[ii] = x[ii]-(self.K-2), self.K-2
          # use Horner schema y = a + x (b+ x (c + xd)) in a slightly different way
-         y = self.a[-1][k]   # init with d (not 0.)
-         for ci in self.a[-2::-1]:
+         y = A[-1][k]   # init with d (not 0.)
+         for ci in A[-2::-1]:
             y *= p; y += ci[k]
-         return y
+      if der:
+         # rescale dy/dx = dy/dh * dh/dx
+         y *= ((self.K-1)/(self.xmax-self.xmin))**der
+      return y
 
-   def osamp(self, ofac=1):
+   def osamp(self, ofac=1, **kwargs):
       '''
       Compute an oversampled spline curve.
 
       Parameters
       ----------
-      ofac : oversampling factor.
+      ofac : Oversampling factor.
 
       Returns
       -------
@@ -243,7 +279,7 @@ class spl:
          Spline values.
       '''
       x = np.linspace(self.xmin, self.xmax, num=self.K*ofac)
-      return x, self(x)
+      return x, self(x, **kwargs)
 
    def to_cbspl(self):
       '''
