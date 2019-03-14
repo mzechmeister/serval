@@ -1284,7 +1284,7 @@ def serval(*argv):
          for o in corders:
             print "coadding o %02i:" % o,     # continued below in iteration loop
             for i,sp in enumerate(spoklist[tset]):
-             '''get the polynomials'''
+             '''normalisation, get the polynomials'''
              if not sp.flag:
                sp = sp.get_data(pfits=2, orders=o)
                if inst == 'FEROS':
@@ -1336,6 +1336,7 @@ def serval(*argv):
                par, fmod, keep, stat = fitspec(TPL[o],
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg)   # RV  (in dopshift instead of v=RV; easier masking?)
                poly = calcspec(w2, *par.params, retpoly=True)
+
                #gplot( w2,sp.fo/poly); ogplot( w2[i0:ie],fmod/poly[i0:ie],' w lp ps 0.5'); ogplot(ww[o], ff[o],'w l')
                wmod[i] = w2
                mod[i] = sp.f / poly   # be careful if  poly<0
@@ -1345,10 +1346,13 @@ def serval(*argv):
                   gplot(w2,sp.f,poly, ',"" us 1:3,', w2[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
                   pause(i)
               #(fmod<0) * flag.neg
-            ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
-            tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
+            # normalisation done
+
+            # prepare weighting and iteration for coadding
+            ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0   # not valid
+            tellind = (bmod&(flag.atm+flag.sky)) > 0         # down weighted
             #emod[tellind] *= 1000
-            ind *= emod > 0.0
+            ind &= emod > 0.0
             we = 0*mod
             we[ind] = 1. / emod[ind]**2
             if atmfile and ('UNe' in atmfile or 'UAr' in atmfile or 'ThNe' in atmfile or 'ThAr' in atmfile): # old downweight scheme
@@ -1372,7 +1376,7 @@ def serval(*argv):
                #gplot(wmod[ind],mod[ind], 1/np.sqrt(we[ind]), emod[ind], 'us 1:2:3 w e, "" us 1:2:4 w e')
             else:
                we[tellind] = 0.1 / ntset / (emod[tellind]**2 + np.median(emod[ind])**2)
-            ind0 = ind*1
+            ind0 = ind*1 # mask before clipping
 
             n_iter = 2
             if inst == 'FEROS': n_iter = 3
@@ -1447,7 +1451,9 @@ def serval(*argv):
                print "%.5f (%d)" % (np.median(sig), np.sum(~okmap)),
                #gplot(wmod[ind], res,',', wmod[ind][tellind[ind]], res[tellind[ind]])
                #pause()
+               # update good pixel map
                if it < n_iter: ind[ind] *=  okmap
+            # end of coadding iteration
 
             if ofacauto:
                # BIC to get optimal knot spacing (smoothing)
