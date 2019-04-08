@@ -289,7 +289,7 @@ def covmat_fit(X, z, **kwargs):
    Parameters
    ----------
    X : samples
-   z : likelihood values
+   z : chi square values (or -2*lnL log likelihood values)
 
    Example
    -------
