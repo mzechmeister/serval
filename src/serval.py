@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2019-02-17'
+__version__ = '2019-04-08'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -19,6 +19,8 @@ import resource
 import stat as os_stat
 import sys
 import time
+
+import importlib
 
 import numpy as np
 from numpy import std,arange,zeros,where, polynomial,setdiff1d,polyfit,array, newaxis,average
@@ -397,7 +399,7 @@ def polyreg(x2, y2, e_y2, v, deg=1, retmod=True):   # polynomial regression
          ii, = np.where((e_y2<=0) & (fmod>0.01))
          print 'WARNING: Matrix is not positive definite.', 'Zero or negative yerr values for ', ii.size, 'at', ii
          p = 0*p
-         pause(0)
+         #pause(0)
 
       if 0: #abs(v)>200./1000.:
          gplot(x2,y2,calcspec(x2, v, *p), ' w lp,"" us 1:3 w l, "" us 1:($2-$3) t "res [v=%f,SSR=%f]"'%(v, SSR))
@@ -611,6 +613,9 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
       print " Setting  v=" % v
    if vfix: v = 0.
    p, SSRmin, fmod = polyreg(x2, y2, e_y2, v, len(p))   # final call with v
+   if p[0] < 0:
+      e_v = np.nan
+      print "Negative scale value. Setting  e_v= %f" % e_v
 
    if 1 and (np.isnan(e_v) or plot) and not safemode:
       gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
@@ -725,28 +730,27 @@ def serval(*argv):
 
    ### SELECT INSTRUMENTAL FORMAT ###
    # general default values
-   pat = '*tar' # default search pattern
-   maskfile = servallib + 'telluric_mask_atlas_short.dat'
+   pat = getattr(inst, 'pat', '*tar')  # default search pattern
+   maskfile = servallib + getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')
 
    # instrument specific default values
-   if inst == 'CARM_VIS':
+   pmax = getattr(inst, 'pmax', pmax)
+   iomax = inst.iomax
+
+   if inst.name == 'CARM_VIS':
       if fib == '': fib = 'A'
-      iomax = 61 # NAXIS2
-      # pat = '*pho*_x2d_'+fib+'.fits'
       pat = '*-vis_' + fib + '.fits'
       maskfile = servallib + 'telluric_mask_carm_short.dat'
-   elif inst == 'CARM_NIR':
+   elif inst.name == 'CARM_NIR':
       if fib == '': fib = 'A'
-      iomax = 28
-      iomax *= 2 # reshaping
       pat = '*-nir_' + fib + '.fits'
       maskfile = servallib + 'telluric_mask_carm_short.dat'
-   elif 'HARP' in inst:
+   elif 'HARP' in inst.name:
       if fib == '': fib = 'A'
-      if fib == 'A': iomax = 72
+      #if fib == 'A': iomax = 72
       if fib == 'B': iomax = 71
       if inst=='HARPN': iomax = 68
-   elif inst == 'FEROS':
+   elif inst.name == 'FEROS':
       iomax = 38
       if fib == '': fib = 'A'
       if fib == 'B': maskfile = servallib + 'feros_mask_short.dat'
@@ -762,10 +766,11 @@ def serval(*argv):
       pomax = ptomax - 300
       pmin = pomin.min()
       pmax = pomin.max()
-   elif inst == 'FTS':
+   elif inst.name == 'FTS':
       iomax = 70
       pmin = 300
       pmax = 50000/5 - 500
+
 
    ptmin = pmin - 100   # oversize the template
    ptmax = pmax + 100
@@ -839,18 +844,18 @@ def serval(*argv):
          files = [dir_or_inputlist]
 
    # handle tar, e2ds, fox
-   if 'HARP' in inst and not files:
+   if 'HARP' in inst.name and not files:
       files = sorted(glob.glob(dir_or_inputlist+'/*e2ds_'+fib+'.fits'))
       if not files:
          files = sorted(glob.glob(dir_or_inputlist+'/*e2ds_'+fib+'.fits.gz'))
    drs = bool(len(files))
-   if 'HARPS' in inst and not drs:  # fox
+   if 'HARPS' in inst.name and not drs:  # fox
       files = sorted(glob.glob(dir_or_inputlist+'/*[0-9]_'+fib+'.fits'))
-   if 'CARM' in inst and not files:
+   if 'CARM' in inst.name and not files:
       files = sorted(glob.glob(dir_or_inputlist+'/*pho*_'+fib+'.fits'))
-   if 'FEROS' in inst:
+   if 'FEROS' in inst.name:
       files += sorted(glob.glob(dir_or_inputlist+'/f*'+('1' if fib=='A' else '2')+'0001.mt'))
-   if 'FTS' in inst:
+   if 'FTS' in inst.name:
       files = sorted(glob.glob(dir_or_inputlist+'/*ap08.*_ScSm.txt'))
       files = [s for s in files if '20_ap08.1_ScSm.txt' not in s and '20_ap08.2_ScSm.txt' not in s and '001_08_ap08.193_ScSm.txt' not in s ]
 
@@ -916,14 +921,14 @@ def serval(*argv):
          mask[:,1] = mask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means flagged and bad)
 
    if skyfile:
-      if skyfile=='auto' and inst=='CARM_NIR':
+      if skyfile=='auto' and inst.name=='CARM_NIR':
          skyfile = servallib + 'sky_carm_nir'
          sky = np.genfromtxt(skyfile, dtype=None)
          skymsk = interp(lam2wave(sky[:,0]), sky[:,1])
 
 
    msksky = [0] * iomax
-   if 1 and inst=='CARM_VIS':
+   if 1 and inst.name=='CARM_VIS':
       try:
          import pyfits
       except:
@@ -962,18 +967,18 @@ def serval(*argv):
    splist = []
    spi = None
    SN55best = 0.
-   print "    # %*s %*s OBJECT    BJD        SN  DRSBERV  DRSdrift flag calmode" % (-len(inst)-6, "inst_mode", -len(os.path.basename(files[0])), "timeid")
+   print "    # %*s %*s OBJECT    BJD        SN  DRSBERV  DRSdrift flag calmode" % (-len(inst.name)-6, "inst_mode", -len(os.path.basename(files[0])), "timeid")
    infowriter = csv.writer(infofile, delimiter=';', lineterminator="\n")
 
    for n,filename in enumerate(files):   # scanning fitsheader
       print '%3i/%i' % (n+1, nspec),
-      sp = Spectrum(filename, inst=inst, pfits=2 if 'HARP' in inst else True, drs=drs, fib=fib, targ=targ, verb=True)
+      sp = Spectrum(filename, inst=inst, pfits=2 if 'HARPS' in inst.name else True, drs=drs, fib=fib, targ=targ, verb=True)
       splist.append(sp)
       if use_drsberv:
          sp.bjd, sp.berv = sp.drsbjd, sp.drsberv
       sp.sa = targ.sa / 365.25 * (sp.bjd-splist[0].bjd)
       sp.header = None   # saves memory(?), but needs re-read (?)
-      if inst == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
+      if inst.name == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
       if sp.sn55 < snmin: sp.flag |= sflag.lowSN
       if sp.sn55 > snmax: sp.flag |= sflag.hiSN
       if distmax and sp.ra and sp.de:
@@ -1079,7 +1084,7 @@ def serval(*argv):
    ff = np.zeros((nord,osize))
 
 
-   if inst == 'FEROS':
+   if inst.name == 'FEROS':
       ww = [0] * nord
       ff = [0] * nord
       ntopix = ptomax - ptomin
@@ -1122,7 +1127,7 @@ def serval(*argv):
             print 'ERROR: could not read template:', tpl
             exit()
 
-         if inst == 'FEROS':
+         if inst.name == 'FEROS':
             www = [0] * len(ww)
             fff = [0] * len(ww)
             for o in range(len(ww)):
@@ -1135,7 +1140,7 @@ def serval(*argv):
       else:
          '''set up a spline template from spt'''
          for o in sorted(set(orders) | set(corders)):
-            if inst == 'FEROS':
+            if inst.name == 'FEROS':
                ptmin = ptomin[o]
                ptmax = ptomax[o]
                pixxx = arange((ntopix[o]-1)*4+1)/4.
@@ -1165,98 +1170,19 @@ def serval(*argv):
             #bb[o][ww[o]<=spt.w[o,idx[0]]] |= flag.nan   # flag egdes where nan flux might occur
             #bb[o][ww[o]>=spt.w[o,idx[-1]]] |= flag.nan
 
-            #if inst == 'FEROS':
+            #if inst .name== 'FEROS':
                # works with list so we do it here
                #bb[o][ff[o]<0] |= flag.neg
 
-         #if inst != 'FEROS':
+         #if inst.name != 'FEROS':
             #bb[ff<0] |= flag.neg
          #ind = (bb&flag.neg)==0
          #gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv),spt.f[o,ptmin:ptmax])
          #ogplot(ww[o],ff[o]); pause()
-         '''
-      if skippre:
-      else:
-       # measure pre-RVs
-       preunit = file(prefile, 'w')
-
-       for i,sp in enumerate(spoklist[tset]):
-        if sp.flag:
-           print "\nNot using flagged spectrum:", i, sp.filename, 'flag:', sp.flag
-        else:
-         if inst!='FEROS': sp = copy.deepcopy(sp)  # for FEROS no single orders reading, store everything
-         sp.read_data(pfits=2)   # use the faster version
-         mem = Using('pre')
-         if mem>3000: pause('MEM>', 3000,' MB')
-         for o in orders:
-            sp.bpmap[o][tellmask(sp.w[o])>0.01] |= flag.atm    # flag 4 for telluric
-            sp.bpmap[o][skymsk(sp.w[o])>0.01] |= flag.sky    # flag 16 for sky
-            tellind = tellmask(barshift(ww[o], -sp.berv)) > 0.01
-            skyind = skymsk(barshift(ww[o], -sp.berv)) > 0.01
-
-            #pind, = where(bb[o]|tellind|skyind == 0)  # masks telluric in both spectra
-            if inst == 'FEROS':   # filter
-               hh = np.argsort(ff[o]); ii=hh[0:len(hh)*0.98]
-               pind = np.intersect1d(pind, ii)
-
-            w2 = sp.w[o]
-            x2 = np.arange(w2.size)
-            f2 = sp.f[o]
-            e2 = sp.e[o]
-            b2 = sp.bpmap[o] | msksky[o]
-
-            b2[:pmin] |= flag.out
-            b2[pmax:] |= flag.out
-            wmod = barshift(w2, np.nan_to_num(sp.berv))   # berv can be NaN, e.g. calibration FP, ...
-
-            #if o==50:
-               #pause()
-            idx = where(TPL[o].mskatm(wmod,tellmask))
-            # broaden by vrange
-            idx
-            b2[idx] |= flag.badT
-
-            pind = x2[b2==0]
-            if not len(pind): stop('no pind')
-
-            if 0:#  in  ee[o][pind]: #-1 in look or o in look:
-               #gplot(w2, f2, ' us 1:2 w lp, 0,', ww[o], ff[o], ' us 1:2')
-               #gplot(spt.w[o],spt.f[o], 'us 0:2 w lp,',w2, f2,' us 0:2 w lp, 0,',w2, f2*(b2 == 0),' us 0:2')
-               gplot(wmod, f2, ' us 1:2 w l, 0,', wmod[pind], f2[pind], ' us 1:2 pt 7 lc 1,', wmod, TPL[o](wmod)/2.2, ' us 1:2 w l lc 3')
-               pause()
-
-            # no clipping iterations?
-            par,fmod,keep,stat = fitspec(TPL[o], wmod,f2, e_y=e2,
-                                         v=0., vfix=vtfix, keep=pind, deg=deg)
-
-            if o in lookp: #i==3
-               # to be  unified with plot of last RV fit
-               gplot.bar(0.5)
-               gplot-(wmod, f2, e2, 'w e t "wmod,f2" lc 1 pt 0,', wmod[pind], f2[pind], ' pt 4 t "wmod[pind],f2[pind]"')
-               gplot<(wmod[keep], f2[keep], ' t "wmod[keep],f2[keep]" pt 5 lc 1')
-               gplot<(barshift(spt.w[o],spt.berv), spt.f[o]*par.params[1], 't "spt.w,spt.f" pt 6 lc 5')
-               gplot+(wmod[pind], fmod[pind],' t "wmod[pind], fmod[pind]" w lp lc 3 pt 7 ps 0.5')
-               pause(i, o, 'RV', par.params[0]*1000.)
-
-            rv[i,o] = rvo = par.params[0]*1000. #+ sp.drift
-            e_rv[i,o] = par.perror[0] * stat['std'] * 1000
-            if verb: print "%s-%02u %s %7.2f m/s %.2f  %5.1f %s" % (
-                   i+1, o, sp.timeid, rvo, stat['std'], stat['snr'], par.niter)
-
-         ind = e_rv[i] > 0.                  # do not use the failed orders
-         RV[i], e_RV[i] = wsem(rv[i,ind], e=e_rv[i,ind])  # weight
-        print '%s/%s'%(i+1,nspecok), sp.bjd, sp.timeid, ' preRV =', RV[i], e_RV[i]
-        print >>preunit, sp.bjd, 0. if -RV[i]==0 else RV[i], e_RV[i]   # -0.0 written as 0, and read back as int not float
-        preunit.flush()
-        if i>2:
-           gplot('"'+prefile+'" us ($1-2450000):2:3 w e pt 7')
-       preunit.close()
-       # end measure pre-RVs
-         '''
 
    for iterate in range(1, niter+1):
 
-      print '\nIteration %s / %s' % (iterate, niter)
+      print '\nIteration %s / %s (%s)' % (iterate, niter, obj)
 
       if RV is not None:
          ################################
@@ -1266,7 +1192,7 @@ def serval(*argv):
          coadd == 'post3'
          tpl = outdir + 'template_' +coadd + fibsuf + '.fits'
 
-         nk = int(osize / (8 if inst=='FEROS' else 4) * ofac)
+         nk = int(osize / (8 if inst.name=='FEROS' else 4) * ofac)
          wk = nans((nord,nk))
          fk = nans((nord,nk))
          ek = nans((nord,nk))
@@ -1274,7 +1200,7 @@ def serval(*argv):
 
          npix = len(spt.w[0,:])
          ntset = len(spoklist[tset])
-         wmod = zeros((ntset,npix))
+         wmod = nans((ntset,npix))
          mod = zeros((ntset,npix))
          emod = zeros((ntset,npix))
          bmod = zeros((ntset,npix), dtype=int)
@@ -1284,10 +1210,10 @@ def serval(*argv):
          for o in corders:
             print "coadding o %02i:" % o,     # continued below in iteration loop
             for i,sp in enumerate(spoklist[tset]):
-             '''normalisation, get the polynomials'''
+             '''get the polynomials'''
              if not sp.flag:
                sp = sp.get_data(pfits=2, orders=o)
-               if inst == 'FEROS':
+               if inst.name == 'FEROS':
                   thisnpix = len(sp.bpmap)
                   # spectra can have different size
                   if thisnpix < npix:
@@ -1319,8 +1245,14 @@ def serval(*argv):
                pind, = where(bmod[i][i0:ie] == 0)
                bmod[i][:i0] |= flag.out
                bmod[i][ie:] |= flag.out
+               if np.sum(sp.f[pind]<0) > 0.4*pind.size:
+                  print 'too many negative data points in n=%s, o=%s, RV=%s; skipping order' % (i, o, RV[i])
+                  wmod[i] = np.nan
+                  mod[i] = np.nan
+                  emod[i] = np.nan
+                  continue
 
-               if inst == 'FEROS':
+               if inst.name == 'FEROS':
                    uind = pind*1
                    hh = np.argsort(sp.f[i0:ie])
                    ii = hh[0:len(hh)*0.98]
@@ -1329,14 +1261,13 @@ def serval(*argv):
                #if o==29 and i==4: stop()
                if not len(pind):
                   print 'no valid points in n=%s, o=%s, RV=%s; skipping order' % (i, o, RV[i])
-                  pause()
+                  if not safemode: pause()
                   break
 
                # get poly from fit with mean RV
                par, fmod, keep, stat = fitspec(TPL[o],
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg)   # RV  (in dopshift instead of v=RV; easier masking?)
                poly = calcspec(w2, *par.params, retpoly=True)
-
                #gplot( w2,sp.fo/poly); ogplot( w2[i0:ie],fmod/poly[i0:ie],' w lp ps 0.5'); ogplot(ww[o], ff[o],'w l')
                wmod[i] = w2
                mod[i] = sp.f / poly   # be careful if  poly<0
@@ -1346,13 +1277,10 @@ def serval(*argv):
                   gplot(w2,sp.f,poly, ',"" us 1:3,', w2[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
                   pause(i)
               #(fmod<0) * flag.neg
-            # normalisation done
-
-            # prepare weighting and iteration for coadding
-            ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0   # not valid
-            tellind = (bmod&(flag.atm+flag.sky)) > 0         # down weighted
+            ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
+            tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
             #emod[tellind] *= 1000
-            ind &= emod > 0.0
+            ind *= emod > 0.0
             we = 0*mod
             we[ind] = 1. / emod[ind]**2
             if atmfile and ('UNe' in atmfile or 'UAr' in atmfile or 'ThNe' in atmfile or 'ThAr' in atmfile): # old downweight scheme
@@ -1376,10 +1304,10 @@ def serval(*argv):
                #gplot(wmod[ind],mod[ind], 1/np.sqrt(we[ind]), emod[ind], 'us 1:2:3 w e, "" us 1:2:4 w e')
             else:
                we[tellind] = 0.1 / ntset / (emod[tellind]**2 + np.median(emod[ind])**2)
-            ind0 = ind*1 # mask before clipping
+            ind0 = ind*1
 
             n_iter = 2
-            if inst == 'FEROS': n_iter = 3
+            if inst.name == 'FEROS': n_iter = 3
             for it in range(n_iter+1):   # clip 5 sigma outliers
                #ind2 = ww[o] < wmod[ind].max()  # but then the complement for ind2 in ff is from spt!!!
                                                # maybe extrapolation better
@@ -1451,9 +1379,7 @@ def serval(*argv):
                print "%.5f (%d)" % (np.median(sig), np.sum(~okmap)),
                #gplot(wmod[ind], res,',', wmod[ind][tellind[ind]], res[tellind[ind]])
                #pause()
-               # update good pixel map
                if it < n_iter: ind[ind] *=  okmap
-            # end of coadding iteration
 
             if ofacauto:
                # BIC to get optimal knot spacing (smoothing)
@@ -1651,8 +1577,8 @@ def serval(*argv):
          print 'setting tplrv to:', tplrv, 'km/s'
 
       meas_index = tplrv is not None and 'B' not in fib #and not 'th_mask' in ccf
-      meas_CaIRT = meas_index and inst=='CARM_VIS'
-      meas_NaD = meas_index and inst=='CARM_VIS'
+      meas_CaIRT = meas_index and inst.name=='CARM_VIS'
+      meas_NaD = meas_index and inst.name=='CARM_VIS'
 
       if tplrv is None: tplrv = 0   # do this after setting meas_index
       tplrv = float(tplrv)
@@ -1692,14 +1618,15 @@ def serval(*argv):
       dLW, e_dLW = nans((2, nspec)) # differential width change
       dlw, e_dlw = nans((2, nspec, nord)) # differential width change
 
-      print 'Iteration %s / %s' % (iterate, niter)
+      print 'Iteration %s / %s (%s)' % (iterate, niter, obj)
       print "RV method: ", 'CCF' if ccf else 'DRIFT' if diff_rv else 'LEAST SQUARE'
 
       for i,sp in enumerate(spoklist):
          #if sp.flag:
             #continue
             # introduced for drift measurement? but then Halpha is not appended and writing halpha.dat will fail
-         sp = copy.deepcopy(sp)  # to prevent attaching the data to spoklist
+         #sp = copy.deepcopy(sp)  # to prevent attaching the data to spoklist
+         sp = copy.copy(sp)  # to prevent attaching the data to spoklist
          if sp.filename.endswith('.gz') and sp.header:
             # for gz and if deepcopy and if file already open (after coadding header still present) this will result in "AttributeError: 'GzipFile' object has no attribute 'offset'"
             # deepcopy probably does not copy everything properly
@@ -1716,11 +1643,11 @@ def serval(*argv):
             e2 = sp.e[o]
             b2 = sp.bpmap[o] | msksky[o]
 
-            if inst == 'FEROS':
+            if inst.name == 'FEROS':
                pmin = pomin[o]
                pmax = pomax[o]
 
-            #if inst=='FEROS' and fib!='B':  # filter
+            #if inst.name=='FEROS' and fib!='B':  # filter
                #hh = np.argsort(sp.f[o]); ii=hh[0:len(hh)*0.98]; pind=np.intersect1d(pind, ii)
             b2[:pmin] |= flag.out
             b2[pmax:] |= flag.out
@@ -1728,10 +1655,11 @@ def serval(*argv):
             b2[skymsk(w2)>0.01] |= flag.sky
             b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag for bad template
             #pause()
-            #if inst == 'HARPS':
+            #if inst.name == 'HARPS':
                #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
                #pause()
             pind = x2[b2==0]
+            if not pind.size: continue
 
             wmod = barshift(w2, np.nan_to_num(sp.berv))   # berv can be NaN, e.g. calibration FP, ...
             if debug:   # check the input
@@ -1926,7 +1854,7 @@ def serval(*argv):
                res = np.nan * f2
                res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
                b = str(stat['std'])
-               gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2fm/s)"'%(obj,o,rvo))
+               gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2f+/-%.2f m/s)"'%(obj,o,rvo, e_rv[i,o]))
                gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
                gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
                gplot('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
@@ -1996,7 +1924,7 @@ def serval(*argv):
             # ML version of chromatic trend
             oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[i]) 
 
-            gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst+')\\n'+sp.timeid, rchi=rchi[i], No=Nok[i], name='')
+            gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst.name+')\\n'+sp.timeid, rchi=rchi[i], No=Nok[i], name='')
             mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
 
             mlRVc[i] = mlRV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
@@ -2015,14 +1943,14 @@ def serval(*argv):
 
          # Line Indices
          vabs = tplrv + RV[i]/1000.
-         kwargs = {'inst': inst, 'plot':looki}
+         kwargs = {'inst': inst.name, 'plot':looki}
          if meas_index:
             halpha += [getHalpha(vabs, 'Halpha', **kwargs)]
             haleft += [getHalpha(vabs, 'Haleft', **kwargs)]
             harigh += [getHalpha(vabs, 'Harigh', **kwargs)]
             cai += [getHalpha(vabs, 'CaI', **kwargs)]
-            cak += [getHalpha(vabs, 'CaK', **kwargs)] if inst=='HARPS' else [(np.nan,np.nan)]
-            cah += [getHalpha(vabs, 'CaH', **kwargs)] if inst=='HARPS' else [(np.nan,np.nan)]
+            cak += [getHalpha(vabs, 'CaK', **kwargs)] if inst.name=='HARPS' else [(np.nan,np.nan)]
+            cah += [getHalpha(vabs, 'CaH', **kwargs)] if inst.name=='HARPS' else [(np.nan,np.nan)]
          if meas_CaIRT:
             irt1 +=  [getHalpha(vabs, 'CaIRT1', **kwargs)]
             irt1a += [getHalpha(vabs, 'CaIRT1a', **kwargs)]
@@ -2163,6 +2091,13 @@ def arg2slice(arg):
       arg = eval('np.s_['+arg+']')
    return [arg] if isinstance(arg, int) else arg
 
+def flexdefault(arg):
+   """Convert string argument to a slice."""
+   # We want four cases for indexing: None, int, list of ints, slices.
+   # Use [] as default, so 'in' can be used.
+   if isinstance(arg, str):
+      arg = eval('np.s_['+arg+']')
+   return [arg] if isinstance(arg, int) else arg
 
 if __name__ == "__main__":
    default = " (default: %(default)s)."
@@ -2170,6 +2105,9 @@ if __name__ == "__main__":
    usage example:
    %(prog)s tag dir_or_filelist -targ gj699 -snmin 10 -oset 40:
    """
+   insts = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
+   #osets = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
+
    parser = argparse.ArgumentParser(description=description, epilog=epilog, add_help=False)
    argopt = parser.add_argument   # function short cut
    argopt('obj', help='Tag, output directory and file prefix (e.g. Object name).')
@@ -2197,8 +2135,7 @@ if __name__ == "__main__":
    argopt('-distmax', help='[arcsec] Max distance telescope position from target coordinates.', nargs='?', type=float, const=30.)
    argopt('-driftref', help='reference file for drift mode', type=str)
    argopt('-fib',  help='fibre', choices=['', 'A', 'B', 'AB'], default='')
-   argopt('-inst', help='instrument '+default, default='HARPS',
-                   choices=['HARPS', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
+   argopt('-inst', help='instrument '+default, default='HARPS', choices=insts)
    argopt('-nset', '-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
    argopt('-kapsig', help='kappa sigma clip value'+default, type=float, default=3.0)
    argopt('-last', help='use last template (-tpl <obj>/template.fits)', action='store_true')
@@ -2211,7 +2148,7 @@ if __name__ == "__main__":
    argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
-   argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'FTS':':'}, type=arg2slice)
+   argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'else':':'}, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"17,18,19,20,21,36,37,38,39,40,41,42", "else":[]}, type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=1., type=float)
@@ -2248,18 +2185,21 @@ if __name__ == "__main__":
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
    #parser.__dict__['_option_string_actions']['-h'].__dict__['option_strings'] += ['-?', '-help']
 
+
    for i, arg in enumerate(sys.argv):   # allow to parse negative floats
       if len(arg) and arg[0]=='-' and arg[1].isdigit(): sys.argv[i] = ' ' + arg
    print sys.argv
    args = parser.parse_args()
    globals().update(vars(args))
+
+   inst = importlib.import_module('inst_'+inst)
    Spectrum.brvref = brvref
 
    if tpl and tpl.isdigit(): tpl = int(tpl)
-   if isinstance(oset, dict): oset = arg2slice(oset[inst])
-   if isinstance(o_excl, dict): o_excl = arg2slice(o_excl[inst]) if inst in o_excl else []
-   if isinstance(pmax, dict): pmax = pmax[inst] if inst in pmax else pmax['else']
-   if isinstance(tplrv, dict): tplrv = tplrv[inst] if inst in tplrv else tplrv['else']
+   if isinstance(oset, dict): oset = arg2slice(oset[inst.name] if inst.name in oset else oset['else'])
+   if isinstance(o_excl, dict): o_excl = arg2slice(o_excl[inst.name]) if inst.name in o_excl else []
+   if isinstance(pmax, dict): pmax = pmax[inst.name] if inst.name in pmax else pmax['else']
+   if isinstance(tplrv, dict): tplrv = tplrv[inst.name] if inst.name in tplrv else tplrv['else']
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl
 

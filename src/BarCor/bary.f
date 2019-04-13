@@ -27,6 +27,8 @@ C                          = -70.404167 -24.627222
 C     16.. Calar Alto 3.5m 
 C     17.. HARPN GEOELEV     17 53 20.6 W   28 45 14.4 N   2387.2m  @MZ from header
 C                          =  -17.88905555  28.754000   2387.2m
+C     18.. HPF GEOELEV      104 00 53 W     30 40 53 N     2026.m  @MZ from wiki
+C                          = -104.014722  30.681444   2026.m
 C
 C     b) file with dates of exposure (free format):
 C        records containing:
@@ -37,7 +39,7 @@ C
 C============================================================================
 C
       IMPLICIT DOUBLE PRECISION(A-H,O-Z)
-      DOUBLE PRECISION OBS(17),DEL(17),SIR(17),VYS(17),VORBP(3),VROTP(3)
+      DOUBLE PRECISION OBS(18),DEL(18),SIR(18),VYS(18),VORBP(3),VROTP(3)
       DOUBLE PRECISION VALS(400),RRD(6),RR(3),SS(3),CVAL(400),ET2(2)
       DOUBLE PRECISION JD,JDBAR,DPREC(3,3),DP(3),DPP(3),DELTAT(538)
       DOUBLE PRECISION PVSUN(6),LMST
@@ -80,22 +82,22 @@ C
       DATA OBS/8HONDREJOV,8HVICTORIA,8H  LICK  ,8H OKAYAMA,8H DUNLAP ,
      1         8H   OHP  ,8H  KRYM  ,8HZELENCUK,8H  KPNO  ,8H  CFHT  ,
      2         8H  TAUTEN,8H  WHT   ,8H     NOT,
-     3         8H ESO3p6m,8H ESOUVES,8HCAHA3p5m,8H HARPN  /
+     3         8H ESO3p6m,8H ESOUVES,8HCAHA3p5m,8H HARPN  ,8H HPF    /
       DATA DEL/4.106481481D-2,-3.428240741D-1,-3.379050926D-1,
      1         3.711018519D-1,-2.206168981D-1,1.5972222D-2,9.4444444D-2,
      2         1.151041600D-1,-3.097222222D-1,-4.3186728395D-1,
      3         3.2531019D-2,-4.9672222D-2,-4.968079D-2,
      4         -1.9648472222D-1,-1.95567130555556D-1,-0.0707305555D-1, !@MZ -70.7345/360, -70.404167/360,  -2.5463/360
-     5         -4.9691820972222D-2/                                    ! -17.88905555/360
+     5         -4.9691820972222D-2, -0.288929783333333/                                    ! -17.88905555/360
       DATA SIR/8.712053368D-1,8.468531456D-1,6.517107908D-1,
      1         6.034281963D-1,7.65549891D-1,7.66781317D-1,7.80743951D-1,
      2         7.618943961D-1,5.57632695D-1,3.460309168D-1,8.8977079D-1,
      3         5.0171337D-1,5.0190918D-1,
      4         -5.10655414D-1,-4.29826109519583D-1,6.4967437944536D-1, !@MZ [rad] -29.2584/180*pi, -24.627222/180*pi, 37.2236/180*pi
-     5         5.0185197311845D-1/                                     !          28.754000/180*pi
+     5         5.0185197311845D-1, 5.35492217066259D-1/                                     !          28.754000/180*pi
       DATA VYS/527.0D0,229.0D0,1290.0D0,372.0D0,245.0D0,684.0D0,650.0D0,
      1         2070.0D0,2120.0D0,4215.0D0,341.0D0,2332.0D0,2382.0D0,
-     2         2400.0D0, 2635.0D0, 2168.0D0, 2387.2D0/ !@MZ
+     2         2400.0D0, 2635.0D0, 2168.0D0, 2387.2D0, 2026.0D0/ !@MZ
       DATA CD,CS/2.6179938779914943333D-1,1.745329251994329556D-2/ ! @MZ CD = pi/12=2pi/24;  CS = pi/180
 C
 C     DATA TT = Terrestrial - UT1 Time

@@ -49,7 +49,7 @@ def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.
    rammss - (ra,mm,ss) or 'ra:mm:ss' or ra
    demmss - (de,mm,ss)
    '''
-   instnum = {'HARPS':14, 'HARPN':17, 'CARM_VIS':16, 'CARM_NIR':16}[inst]
+   instnum = {'HARPS':14, 'HARPN':17,  'HPF':18, 'CARM_VIS':16, 'CARM_NIR':16, 'FIES':16}[inst]
 
    if type(rammss) is str:
       if ':' in rammss:
