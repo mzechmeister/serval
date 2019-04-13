@@ -105,6 +105,7 @@ class Chi2Map:
    def mlcrx(self, x, xc, ind):
       '''Maximum likelihood'''
       self.xarg = x, xc, ind
+      self.crx, self.e_crx = np.nan, np.nan
 
       chi2map = self.chi2map #- self.chi2map.min(axis=1)[:,np.newaxis]
       v_lo, v_step =self.vrange
@@ -178,36 +179,38 @@ class Chi2Map:
          #cov = paraboloid.covmat_fit([X,Y], z, N=self.No[ind].sum())
          #cov =bbi paraboloid.covmat_fit([X,Y], z)
 
-         # setup a grid around the start guess mlRv and mlCRX=0
-         par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-1, self.mlRV/1000.+1,0.2), np.arange(-500,500,50)/1000.))
-         # par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-0.1, self.mlRV/1000.+.1,0.02), np.arange(-500,500,50)/1000.))
+         try:
+            # setup a grid around the start guess mlRv and mlCRX=0
+            par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-1, self.mlRV/1000.+1,0.2), np.arange(-500,500,50)/1000.))
+            # par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-0.1, self.mlRV/1000.+.1,0.02), np.arange(-500,500,50)/1000.))
 
-         z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
-
-         # gplot.splot(par, z, ' palette')
-         #pause()
-         cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
-
-         zmod = cov.p(zip(*par))
-         #pause("\n", cov.Va*1000**2, cov.Xc*1000)
-         #cov = paraboloid.covmat_fit(par, z)
-         #cov = paraboloid.covmat_fit(par, z, N=self.No[ind].sum())
-
-         v, b = cov.Xc
-         e_v, e_b = cov.e_a
-         #gplot.splot(par, z, ' palette,', v,b, cov.min); pause("v", v, "b", b)
-         #gplot.splot(par, z, zmod, ' palette, "" us 1:2:4 palette pt 6 , "" us 1:2:(($3-$4)*10),', v,b, cov.min); pause("v", v, "b", b)
-
-         if -1<v<1 and -0.5<b<0.5 and np.isfinite(cov.e_a).all():
-            # refit closer to minimum
-            par = map(np.ravel, np.meshgrid(np.arange(v-3*e_v, v+3*e_v, e_v/2), np.arange(b-3*e_b, b+3*e_b, e_b/2)))
             z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
-            zmod = cov.p(zip(*par))
+
+            # gplot.splot(par, z, ' palette')
+            #pause()
             cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
 
-         self.crx = cov.Xc[1] * 1000
-         self.e_crx = cov.e_a[1] * 1000
-         #print self.crx, self.e_crx
+            zmod = cov.p(zip(*par))
+            #pause("\n", cov.Va*1000**2, cov.Xc*1000)
+            #cov = paraboloid.covmat_fit(par, z)
+            #cov = paraboloid.covmat_fit(par, z, N=self.No[ind].sum())
+
+            v, b = cov.Xc
+            e_v, e_b = cov.e_a
+            #gplot.splot(par, z, ' palette,', v,b, cov.min); pause("v", v, "b", b)
+            #gplot.splot(par, z, zmod, ' palette, "" us 1:2:4 palette pt 6 , "" us 1:2:(($3-$4)*10),', v,b, cov.min); pause("v", v, "b", b)
+
+            if -1<v<1 and -0.5<b<0.5 and np.isfinite(cov.e_a).all():
+               # refit closer to minimum
+               par = map(np.ravel, np.meshgrid(np.arange(v-3*e_v, v+3*e_v, e_v/2), np.arange(b-3*e_b, b+3*e_b, e_b/2)))
+               z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
+               zmod = cov.p(zip(*par))
+               cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
+
+            self.crx = cov.Xc[1] * 1000
+            self.e_crx = cov.e_a[1] * 1000
+         except:
+            print "warning: mlCRX failed."
 
       if 0:
       # scipy optimisation
@@ -243,7 +246,6 @@ class Chi2Map:
          nlnL0 = lnL0.T /lnL0.max(axis=1)
          mm = nlnL0.sum(axis=1)
 
-         #pause()
          # left panel: the lnL parabolas in RV[km/s]
          gplot(nlnL0, ' matrix us ($1*%s+%s):3:2 w l palette,'%(vv[1]-vv[0], vv[0]),
                nlnL0.min(axis=0), rv, e_rv, 'us 2:1:3 w xe pt 6 lc 7, ',
