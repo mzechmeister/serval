@@ -53,10 +53,10 @@ def scan(self, s, pfits=True):
    if self.dateobs[:10] in ('2016-01-13', '2016-01-14', '2016-01-22', '2016-01-23'):
       self.sn55 = min(self.sn55, 10.) # bug in NIR fits file
    self.blaze = '' #hdr[HIERARCH+'ESO DRS BLAZE FILE']
-   self.drift = hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan)
-   self.e_drift = hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan)
-   #self.drift = hdr.get(HIERARCH+'CARACAL SERVAL FP RV', hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan))
-   #self.e_drift = hdr.get(HIERARCH+'CARACAL SERVAL FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan))
+   #self.drift = hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan)
+   #self.e_drift = hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan)
+   self.drift = hdr.get(HIERARCH+'CARACAL SERVAL FP RV', hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan))
+   self.e_drift = hdr.get(HIERARCH+'CARACAL SERVAL FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan))
    self.ccf.rvc = hdr.get(HIERARCH+'CARACAL SERVAL RV', np.nan)
    self.ccf.err_rvc = hdr.get(HIERARCH+'CARACAL SERVAL E_RV', np.nan)
 
