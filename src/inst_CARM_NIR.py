@@ -8,6 +8,7 @@ iomax = 28
 iomax *= 2 # reshaping
 
 maskfile = 'telluric_mask_carm_short.dat'
+maskfile = 'telluric_mask_nir4.dat'
 
 
 def scan(self, s, pfits=True):
