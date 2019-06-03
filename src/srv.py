@@ -10,13 +10,13 @@ from wstat import nanwsem, wmean, mlrms, wstd
 try:
    import gls
 except:
-    print 'Cannot import gls'
+   print 'Cannot import gls'
 
 try:
-   import pyfits
+   import astropy.io.fits as pyfits
 except:
    try:
-      import astropy.io.fits as pyfits
+      import pyfits
    except:
       print 'Cannot import pyfits'
 

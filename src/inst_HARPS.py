@@ -22,6 +22,9 @@ def scan(self, s, pfits=True, verb=False):
 
    """
    drs = self.drs
+   if '.tar' in s:
+      s = file_from_tar(s, inst=inst, fib=self.fib, pfits=pfits)
+
    if isinstance(s, str) and '.gz' in s:
       # if s is isinstance(s,tarfile.ExFileObject) then s.position will change !? resulting in:
       # *** IOError: Empty or corrupt FITS file

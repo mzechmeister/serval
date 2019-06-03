@@ -14,9 +14,9 @@ from collections import namedtuple
 
 
 try:
-   import pyfits
-except:
    import astropy.io.fits as pyfits
+except:
+   import pyfits
 #import fitsio
 import numpy as np
 
@@ -248,10 +248,11 @@ class Inst:
    def __init__(self, inst):
       pass
 
-def read_spec(self, s, inst='HARPS', plot=False, **kwargs):
+def read_spec(self, s, inst, plot=False, **kwargs):
    #print s, inst
    sp = inst.read(self, s, **kwargs)
    return sp
+
    if '.tar' in s: s = file_from_tar(s, inst=inst, fib=self.fib, **kwargs)
    if 'HARP' in inst:  sp = read_harps(self, s, inst=inst, **kwargs)
    elif inst == 'CARM_VIS':  sp = read_carm_vis(self, s, **kwargs)
@@ -819,6 +820,7 @@ class getext(dict):
          else:
             funit.seek(ext.EXTDATA+o*ext.NAXIS1*dsize)
             data = np.fromfile(funit, dtype=dtype, count=ext.NAXIS1)
+
       if not was_open:
          funit.close()
       return data

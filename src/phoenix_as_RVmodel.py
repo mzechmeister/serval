@@ -1,9 +1,9 @@
 #! /usr/bin/python
 
 try:
-   import pyfits
-except:
    import astropy.io.fits as pyfits
+except:
+   import pyfits
 import sys
 import os
 

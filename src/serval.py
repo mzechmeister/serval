@@ -930,9 +930,9 @@ def serval(*argv):
    msksky = [0] * iomax
    if 1 and inst.name=='CARM_VIS':
       try:
-         import pyfits
-      except:
          import astropy.io.fits as pyfits
+      except:
+         import pyfits
       msksky = flag.atm * pyfits.getdata(servallib + 'carm_vis_tel_sky.fits')
 
    if msklist: # convert line list to mask
