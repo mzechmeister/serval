@@ -109,11 +109,11 @@ def cbspline_Bk(x, K, xmin=None, xmax=None, fix=True):
    x = (K-1)/(xmax-xmin) * (x-xmin)
 
    kk, pp = divmod(x, 1)
-   G = np.empty((4, x.size), order='F')
+   G = np.empty((4,)+ x.shape, order='F')
 
    if fix:
-      idx, = np.where(kk==K-1)
-      if idx.size:
+      idx = np.where(kk==K-1)
+      if idx[0].size:
          kk[idx] -= 1
          pp[idx] = 1   # it should be zero before
 
@@ -167,18 +167,18 @@ def bk2bknat(G, kk, K):
    >>> gplot(x, B, ', "" us 1:3, "" us 1:4, "" us 1:5')
 
    '''
-   idx, = np.where(kk==0)
-   if idx.size:
+   idx = np.where(kk==0)
+   if idx[0].size:
       G[2,idx] -= G[0,idx]
       G[1,idx] += 2 * G[0,idx]
       G[0,idx] = 0
-   idx, = np.where(kk==K-2)
-   if idx.size:
+   idx = np.where(kk==K-2)
+   if idx[0].size:
       G[1,idx] -= G[3,idx]
       G[2,idx] += 2 * G[3,idx]
       G[3,idx] = 0
-   idx, = np.where(kk==K-1) # for points at the edge knot
-   if idx.size:
+   idx = np.where(kk==K-1) # for points at the edge knot
+   if idx[0].size:
       G[0,idx] -= G[2,idx]
       G[1,idx] += 2 * G[2,idx]
       G[2,idx] = 0
@@ -250,9 +250,9 @@ class spl:
          # handling of locations outside
          if border == 'extrapolate':
             # further options could be natural
-            ii, = np.where(k < 0)
+            ii = np.where(k < 0)
             p[ii], k[ii] = x[ii], 0
-            ii, = np.where(k > self.K-2)
+            ii = np.where(k > self.K-2)
             p[ii], k[ii] = x[ii]-(self.K-2), self.K-2
          # use Horner schema y = a + x (b+ x (c + xd)) in a slightly different way
          y = A[-1][k]   # init with d (not 0.)
@@ -590,7 +590,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    #pause()
 
    if mu is not None and e_mu:
-      # GP like penality with mu and variance 
+      # GP like penality with mu and variance
       BTy += mu / e_mu**2
       BTBbnd[0] += 1. / e_mu**2
 

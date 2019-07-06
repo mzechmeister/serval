@@ -46,8 +46,6 @@ def scan(self, s, pfits=True):
          import warnings
          warnings.warn("Warning: keyword HIERARCH CARACAL MJD-OBS not found! This was implemented in CARACAL v2.00."+
                        "Please use lastest products.")
-      #self.drift = hdr.get(HIERARCH+'CARACAL DRIFT FP RV', hdr.get(HIERARCH+'CARACAL DRIFT RV', np.nan))
-      #self.e_drift = hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT RVERR', np.nan))
       self.drift = hdr.get(HIERARCH+'CARACAL SERVAL FP RV', hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan))
       self.e_drift = hdr.get(HIERARCH+'CARACAL SERVAL FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan))
       self.fox = HIERARCH+'CARACAL FOX XWD' in hdr
@@ -58,7 +56,7 @@ def scan(self, s, pfits=True):
          self.flag |= sflag.led
          #print(sn25, sn30, self.sn55, )
 
-      self.fileid = hdr.get('FILENAME', 0) #fileid[fileid.index('(')+1:fileid.index(')')]
+      self.fileid = hdr.get('FILENAME', 0)
       self.timeid = self.fileid
       self.calmode = hdr.get('SOURCE', '') #.split("_")[3] #fileid[fileid.index('(')+1:fileid.index(')')]
       self.calmode = hdr.get(HIERARCH+'CARACAL FIB', '')
@@ -159,16 +157,15 @@ def data(self, orders, pfits=True):
       bpmap = bpmap.astype(int)
 
       with np.errstate(invalid='ignore'):
-         # arrgh, in newer numpy version comparison with nan raises a warning
+        # arrgh, in newer numpy version comparison with nan raises a warning
         if self.fox:
-           e *= 10.
-           f *= 10.
+           e = e * 10.
+           f = f * 10.
         else:
            e = np.sqrt(5.*10 + np.abs(f))
            bpmap[f>300000] |= flag.sat
         bpmap[f < -3*e] |= flag.neg
         bpmap[e==0] |= flag.nan
 
-      #e[bpmap > 0] = 1000. * np.max(e[bpmap == 0]) # set to zero for preRVs
       return w, f, e, bpmap
 

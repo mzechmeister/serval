@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2019-04-08'
+__version__ = '2019-07-05'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -905,6 +905,17 @@ def serval(*argv):
    if ccf and 'th_mask' not in ccf:
       atmfile = None
 
+   if atmspec:
+      # standard telluric spectrum
+      if inst.name is not 'CARM_VIS':
+         pause('Only implemented for CARM_VIS')
+      import astropy.io.fits as pyfits
+      #hdu = pyfits.open('/home/astro115/carmenes/tellurics/stdatmos_vis/stdatmos_vis30a090rh0780p000t.fits')
+      hdu = pyfits.open(atmspec)
+      wt, ft = lam2wave(hdu[1].data.field(0).astype(np.float64)), hdu[1].data.field(1).astype(np.float64)
+      atmmod = spl.ucbspl_fit(wt, ft, K=int(ft.size/2))
+      tidx = slice(None, -5)
+
    if atmfile:
       if atmfile != 'auto':
          maskfile = atmfile
@@ -1062,7 +1073,7 @@ def serval(*argv):
 
    RV = None
    if vtfix:
-      # RV are zero
+      # RVs are zero
       np.savetxt(prefile, np.array([(sp.bjd, 0., 0.) for sp in spoklist]))
 
    if skippre or vtfix:
@@ -1213,6 +1224,11 @@ def serval(*argv):
              '''get the polynomials'''
              if not sp.flag:
                sp = sp.get_data(pfits=2, orders=o)
+               if atmspec:
+                  ft = atmmod(sp.w)
+                  sp.f = sp.f / ft
+                  sp.e = sp.e / ft
+
                if inst.name == 'FEROS':
                   thisnpix = len(sp.bpmap)
                   # spectra can have different size
@@ -1258,7 +1274,6 @@ def serval(*argv):
                    ii = hh[0:len(hh)*0.98]
                    pind = np.intersect1d(pind, ii)
                    #gplot(sp.w[i0:ie], sp.f[i0:ie],',',sp.w[i0:ie][uind],sp.f[i0:ie][uind],',',sp.w[i0:ie][pind], sp.f[i0:ie][pind])
-               #if o==29 and i==4: stop()
                if not len(pind):
                   print 'no valid points in n=%s, o=%s, RV=%s; skipping order' % (i, o, RV[i])
                   if not safemode: pause()
@@ -1411,7 +1426,7 @@ def serval(*argv):
             yymod = mod * 0
             yymod[ind] = ymod
             for i,sp in enumerate(spoklist[tset]):
-               if sp.sn55 < 400:
+               if sp.sn55 < 400 and ind[i].any():
                   spt.header['HIERARCH COADD FILE %03i' % (i+1)] = (sp.timeid, 'rv = %0.5f km/s' % (-RV[i]/1000.))
                   iind = (i, ind[i])   # a short-cut for the indexing
                   signal = wmean(mod[iind], 1/emod[iind]**2)  # the signal
@@ -1477,7 +1492,10 @@ def serval(*argv):
          spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
          spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
          spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
-         spt.header['HIERARCH SERVAL TARG RV'] = (targ.rv, '[km/s] RV from targ.cvs')
+         if np.isfinite(targ.rv):
+            spt.header['HIERARCH SERVAL TARG RV'] = (targ.rv, '[km/s] RV from targ.cvs')
+         else:
+            spt.header['HIERARCH SERVAL TARG RV'] = (targrv, '[km/s] RV from targrv')
 
          # Oversampled template
          write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
@@ -1632,6 +1650,11 @@ def serval(*argv):
             # deepcopy probably does not copy everything properly
             sp.header = None
          sp.read_data()
+         if atmspec:
+            # Divide out a standard atmosphere
+            ft = atmmod(sp.w[tidx])
+            sp.f[tidx] /= ft
+            sp.e[tidx] /= ft
          bjd[i] = sp.bjd
 
          if wfix: sp.w = spt.w
@@ -1857,17 +1880,22 @@ def serval(*argv):
                gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2f+/-%.2f m/s)"'%(obj,o,rvo, e_rv[i,o]))
                gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
                gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
-               gplot('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"', flush='')
-               ogplot(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"', flush='')
-               ogplot(x2,w2, f2mod,(b2==0)*0.5, 'us (column(i)):3:4 w lp lt 3 pt 7 ps var t "Fmod"', flush='')
-               ogplot(x2,w2, res, b2, "us (column(i)):3:4 w lp pt 7 ps 0.5 lc var axis x1y2 t 'residuals'", flush='')
+               gplot-('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"')
+               gplot<(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"')
+               gplot<(x2,w2, f2mod,(b2==0)*0.5, 'us (column(i)):3:4 w lp lt 3 pt 7 ps var t "Fmod"')
+               gplot<(x2,w2, res, b2, "us (column(i)):3:4 w lp pt 7 ps 0.5 lc var axis x1y2 t 'residuals'")
                # legend with translation of bpmap, plot dummy using NaN function
-               ogplot(", ".join(["NaN w p pt 7 ps 0.5 lc "+str(f) +" t '"+str(f)+" "+",".join(flag.translate(f))+"'" for f in np.unique(b2)]), flush='')
+               gplot<(", ".join(["NaN w p pt 7 ps 0.5 lc "+str(f) +" t '"+str(f)+" "+",".join(flag.translate(f))+"'" for f in np.unique(b2)]))
 
-               ogplot("0 axis x1y2 lt 3 t'',"+b+" axis x1y2 lt 1,-"+b+" axis x1y2 lt 1 t ''", flush='')
+               # zero line and 1 sigma level
+               gplot<("0 axis x1y2 lt 3 t'',"+b+" axis x1y2 lt 1,-"+b+" axis x1y2 lt 1 t ''")
 
-               ogplot(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"', flush='')
-               ogplot(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
+               if atmspec:
+                  gplot<(x2, w2, atmmod(np.log(w2))*40-5, 'us (column(i)):3 w l lt rgb 0x999999  axis x1y2')
+                  gplot<(x2,w2, atmmod(np.log(w2)) * ((b2&flag.atm)==flag.atm)*40-5, 'us (column(i)):3 w filledcurve x1 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
+               else:
+                  ogplot<(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
+               gplot+(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
                pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi[i,o]))
          # end loop over orders
 
@@ -2049,26 +2077,26 @@ def serval(*argv):
          irtunit = [file(irtfile, 'w'), file(irtfile+'bad', 'w')]
       if meas_NaD:
          nadunit = [file(nadfile, 'w'), file(nadfile+'bad', 'w')]
-      for i,sp in enumerate(spoklist):
-         if np.isnan(rvm[i]): sp.flag |= sflag.rvnan
+      for n,sp in enumerate(spoklist):
+         if np.isnan(rvm[n]): sp.flag |= sflag.rvnan
          rvflag = int((sp.flag&(sflag.eggs+sflag.iod+sflag.rvnan)) > 0)
          if rvflag: 'nan RV for file: '+sp.filename
-         print >>rvunit[int(rvflag or np.isnan(sp.drift))], sp.bjd, RVc[i], e_RVc[i]
-         print >>rvounit[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,rv[i]))
-         print >>mypfile[rvflag], sp.bjd, RV[i], e_RV[i], rvm[i], rvmerr[i], " ".join(map(str,e_rv[i]))
-         print >>rvcunit[rvflag], sp.bjd, RVc[i], e_RVc[i], sp.drift, sp.e_drift, RV[i], e_RV[i], sp.berv, sp.sa
-         print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tCRX[i]) + map(str,xo[i]))
-         print >>srvunit[rvflag], sp.bjd, RVc[i], e_RVc[i], CRX[i], e_CRX[i], dLW[i], e_dLW[i]
-         print >>mlcunit[rvflag], sp.bjd, mlRVc[i], e_mlRVc[i], mlCRX[i], e_mlCRX[i], dLW[i], e_dLW[i]
-         print >>dlwunit[rvflag], sp.bjd, dLW[i], e_dLW[i], " ".join(map(str,dlw[i]))
-         print >>snrunit[rvflag], sp.bjd, np.nansum(snr[i]**2)**0.5, " ".join(map(str,snr[i]))
-         print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi[i]))
+         print >>rvunit[int(rvflag or np.isnan(sp.drift))], sp.bjd, RVc[n], e_RVc[n]
+         print >>rvounit[rvflag], sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], " ".join(map(str,rv[n]))
+         print >>mypfile[rvflag], sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], " ".join(map(str,e_rv[n]))
+         print >>rvcunit[rvflag], sp.bjd, RVc[n], e_RVc[n], sp.drift, sp.e_drift, RV[n], e_RV[n], sp.berv, sp.sa
+         print >>crxunit[rvflag], sp.bjd, " ".join(map(str,tCRX[n]) + map(str,xo[n]))
+         print >>srvunit[rvflag], sp.bjd, RVc[n], e_RVc[n], CRX[n], e_CRX[n], dLW[n], e_dLW[n]
+         print >>mlcunit[rvflag], sp.bjd, mlRVc[n], e_mlRVc[n], mlCRX[n], e_mlCRX[n], dLW[n], e_dLW[n]
+         print >>dlwunit[rvflag], sp.bjd, dLW[n], e_dLW[n], " ".join(map(str,dlw[n]))
+         print >>snrunit[rvflag], sp.bjd, np.nansum(snr[n]**2)**0.5, " ".join(map(str,snr[n]))
+         print >>chiunit[rvflag], sp.bjd, " ".join(map(str,rchi[n]))
          if meas_index:
-            print >>halunit[rvflag], sp.bjd, " ".join(map(str, lineindex(halpha[i],harigh[i],haleft[i]) + halpha[i] + haleft[i] + harigh[i] + lineindex(cai[i],harigh[i],haleft[i])))  #,cah[i][0],cah[i][1]
+            print >>halunit[rvflag], sp.bjd, " ".join(map(str, lineindex(halpha[n],harigh[n],haleft[n]) + halpha[n] + haleft[n] + harigh[n] + lineindex(cai[n],harigh[n],haleft[n])))  #,cah[n][0],cah[n][1]
          if meas_CaIRT:
-            print >>irtunit[rvflag], sp.bjd, " ".join(map(str, lineindex(irt1[i], irt1a[i], irt1b[i]) + lineindex(irt2[i], irt2a[i], irt2b[i]) + lineindex(irt3[i], irt3a[i], irt3b[i])))
+            print >>irtunit[rvflag], sp.bjd, " ".join(map(str, lineindex(irt1[n], irt1a[n], irt1b[n]) + lineindex(irt2[n], irt2a[n], irt2b[n]) + lineindex(irt3[n], irt3a[n], irt3b[n])))
          if meas_NaD:
-            print >>nadunit[rvflag], sp.bjd, " ".join(map(str, lineindex(nad1[i],nadr1[i],nadr2[i]) + lineindex(nad2[i],nadr2[i],nadr3[i])))
+            print >>nadunit[rvflag], sp.bjd, " ".join(map(str, lineindex(nad1[n],nadr1[n],nadr2[n]) + lineindex(nad2[n],nadr2[n],nadr3[n])))
       for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit + srvunit + mlcunit + dlwunit:
          file.close(ifile)
 
@@ -2119,6 +2147,7 @@ if __name__ == "__main__":
    argopt('-targrv', help='[km/s] Target rv guess (default=tplrv)', type=float)
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
+   argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division.'+default, type=str, default=None)
    argopt('-brvref', help='Barycentric RV code reference', choices=brvref, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)

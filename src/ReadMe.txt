@@ -96,16 +96,6 @@ etc...
 --------------------------------------------------------------------------------
 
 
-Description of file: obj.col.dat
---------------------------------------------------------------------------------
-Column Format Units     Label     Explanations
---------------------------------------------------------------------------------
-     1 D      ---       BJD       Barycentric Julian date [1]
-     2 D      m/s       COL       Slope over order
-     3 D      m/s     E_COL       Slope over order error
---------------------------------------------------------------------------------
-
-
 Description of file: obj.crx.dat
 --------------------------------------------------------------------------------
 Column Format Units     Label     Explanations

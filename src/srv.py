@@ -657,69 +657,91 @@ class srv:
       if (matplotlib.get_backend() != "TkAgg"):
          matplotlib.use("TkAgg")
 
-      import matplotlib.pylab as plt
+      import matplotlib.pylab as mlp
 
       # Drift and sa yet no applied to rvo
       #rvc = rv - (RVd + RVsa)[:,np.newaxis]
       bjd, RVc, e_RVc = self.trvc[0:3]
       bjd, RV, e_RV, crx, e_crx, dwid, e_dwid = self.tsrv
 
+      col = mlp.cm.rainbow(mlp.Normalize()(bjd))
       datstyle = dict(fmt='r.', capsize=0, elinewidth=1., markeredgewidth=0.5, markeredgecolor='k')
-      fig = plt.figure()
+      def plot_ecol(plt, x, y, e_y=None, e_x=None):
+           # script for scatter plot with errorbars and time color-coded
+           datstyle = dict(color=col, marker='.', edgecolor='k', linewidth=0.5, zorder=2)
+           if e_y is not None:
+              errstyle = dict(yerr=e_y, marker='', ls='', elinewidth=0.5)
+              if matplotlib.__version__ < '2.' :
+                 errstyle['capsize'] = 0.
+                 datstyle['s'] = 8**2   # requires square size !?
+              else:
+                 errstyle['ecolor'] = col
+              #_, _, (c,) = plt.errorbar(x, y, xerr=e_x, **errstyle)
+              plt.errorbar(x, y, xerr=e_x, **errstyle)
+              if matplotlib.__version__ < '2.':
+                 c.set_color(col)
+           plt.scatter(x, y, **datstyle)
+
+      fig = mlp.figure()
       fig.subplots_adjust(hspace=0.10, wspace=0.08, right=0.98, top=0.98)
 
       # BJD-RV
       ax1 = fig.add_subplot(3, 2, 1)
       #ax.set_title("Normalized periodogram")
-      plt.setp(ax1.get_xticklabels(), visible=False)
+      mlp.setp(ax1.get_xticklabels(), visible=False)
       ax1.set_ylabel("RV [m/s]")
-      ax1.errorbar(bjd-2450000, RVc, e_RVc, **datstyle)
+      plot_ecol(ax1, bjd-2450000, RVc, e_RVc)
+#      ax1.errorbar(bjd-2450000, RVc, e_RVc, ecolor=col, color=col, **datstyle)
 
       # BJD-COL
       ax3 = fig.add_subplot(3, 2, 3, sharex=ax1)
-      plt.setp(ax3.get_xticklabels(), visible=False)
+      mlp.setp(ax3.get_xticklabels(), visible=False)
       ax3.set_ylabel("chromatic index")
-      ax3.errorbar(bjd-2450000, crx, e_crx, **datstyle)
+      #ax3.errorbar(bjd-2450000, crx, e_crx, **datstyle)
+      plot_ecol(ax3, bjd-2450000, crx, e_crx)
 
       # BJD-DLW
       ax5 = fig.add_subplot(3, 2, 5, sharex=ax1)
       ax5.set_xlabel("BJD - 2 450 000")
       ax5.set_ylabel("dLW")
-      ax5.errorbar(bjd-2450000, dwid, e_dwid, **datstyle)
+      #ax5.errorbar(bjd-2450000, dwid, e_dwid, **datstyle)
+      plot_ecol(ax5, bjd-2450000, dwid, e_dwid)
 
       # RV-COL
       ax4 = fig.add_subplot(3, 2, 4, sharey=ax3)
-      plt.setp(ax4.get_xticklabels(), visible=False)
-      plt.setp(ax4.get_yticklabels(), visible=False)
+      mlp.setp(ax4.get_xticklabels(), visible=False)
+      mlp.setp(ax4.get_yticklabels(), visible=False)
 
       #np.fit(RVc, crx)
       a, cov_a = np.polyfit(RVc, crx, 1, cov=True)
       e_a = np.sqrt(cov_a[0,0])
       liney = [RVc.min(), RVc.max()]
       linex = np.polyval(a, liney)
-      ax4.plot(liney, linex, label='kappa: %.4g+/-%.4g'% (a[0], e_a), zorder=3)
-      ax4.errorbar(RVc, crx, e_crx, xerr=e_RVc, **datstyle)
+      ax4.plot(liney, linex, label='kappa: %.4g+/-%.4g'% (a[0], e_a), zorder=3, color='k')
+      #ax4.errorbar(RVc, crx, e_crx, xerr=e_RVc, **datstyle)
+      plot_ecol(ax4, RVc, crx, e_crx, e_x=e_RVc)
       ax4.legend(loc='upper right', frameon=False, framealpha=1, fontsize='small')
 
       # RV-DLW
       ax6 = fig.add_subplot(3, 2, 6, sharex=ax4, sharey=ax5)
-      plt.setp(ax6.get_yticklabels(), visible=False)
+      mlp.setp(ax6.get_yticklabels(), visible=False)
       ax6.set_xlabel("RV [m/s]")
-      ax6.errorbar(RVc, dwid, e_dwid, xerr=e_RVc, **datstyle)
+      #ax6.errorbar(RVc, dwid, e_dwid, xerr=e_RVc, **datstyle)
+      plot_ecol(ax6, RVc, dwid, e_dwid, e_x=e_RVc)
 
       for x in fig.axes:
          x.tick_params(direction='in', which='both', top=True, right=True)
          x.minorticks_on()
 
-      if hasattr(plt.get_current_fig_manager(), 'toolbar'):
+      if hasattr(mlp.get_current_fig_manager(), 'toolbar'):
          # check seems not needed when "TkAgg" is set
-         plt.get_current_fig_manager().toolbar.pan()
+         mlp.get_current_fig_manager().toolbar.pan()
       if block:
          print("Close the plot to continue.")
       else:
-         plt.ion()
+         mlp.ion()
 
-      plt.show()
+      mlp.show()
 
       pause(obj)
 

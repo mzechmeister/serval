@@ -129,7 +129,7 @@ def data(self, orders, pfits=True):
       if orders == np.s_[:]:
          #f = hdulist['SPEC'].data
          # "data" atribute seems to open again the fits file. For large data set (GJ273) this lead to "error: too many files open". So use "section"
-         f = hdulist['SPEC'].section[orders]
+         f = 1.*hdulist['SPEC'].section[orders]
          dim = f.shape
          if 1: # reshaping
             dim = (dim[0]*2,dim[1]/2)
@@ -146,14 +146,15 @@ def data(self, orders, pfits=True):
       # interpolate bad columns, they mess up a lot the creation of the template
       # We do this only when we read all order (preRVs), but not for coadding (single orders)
          if 1: # int
-            g =1.0*f
+            #g = 1.0 * f
             f[bp[0],bp[1]] = (f[bp[0],bp[1]-1]+f[bp[0],bp[1]+1]) / 2
             #o=17; gplot(g[o],'w l,',f[o],  'w lp')
             #pause()
       else:
          orders, det = divmod(orders,2)
-         f = hdulist['SPEC'].section[orders]
+         f = 1.*hdulist['SPEC'].section[orders]
          if 1:
+            # split and renumber the orders and indidexs
             sl = [None, None]
             sl[1-det] = f.shape[0]/2
             sl = slice(*sl)
@@ -170,8 +171,9 @@ def data(self, orders, pfits=True):
            f[bp[1]] = (f[bp[1]-1]+f[bp[1]+1]) / 2
          #pause()
       if self.fox:
-         e *= 100000.
-         f *= 100000.
+         # scale spectrum
+         e = e * 100000.
+         f = f * 100000.
       else:
          # fib B, linear extraction
          e = 0*f + np.sqrt(np.nanmedian(f)) # unweighted maybe for HCL
