@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2019-07-05'
+__version__ = '2019-07-10'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -1249,6 +1249,7 @@ def serval(*argv):
                # see https://github.com/mzechmeister/serval/issues/19#issuecomment-452661455
                # note in this step the RVs have reverted signs.
                bmod[i][tellmask(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.), spt.berv))>0.01] |= flag.badT
+               bmod[i][skymsk(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.), spt.berv))>0.01] |= flag.badT
 
                w2 = redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.)   # correct also for stellar rv
                #i0 = np.searchsorted(w2, ww[o].min()) - 1   # w2 must be oversized
@@ -1677,6 +1678,7 @@ def serval(*argv):
             b2[tellmask(w2)>0.01] |= flag.atm
             b2[skymsk(w2)>0.01] |= flag.sky
             b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag for bad template
+            b2[(skymsk(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT
             #pause()
             #if inst.name == 'HARPS':
                #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
@@ -1894,7 +1896,7 @@ def serval(*argv):
                   gplot<(x2, w2, atmmod(np.log(w2))*40-5, 'us (column(i)):3 w l lt rgb 0x999999  axis x1y2')
                   gplot<(x2,w2, atmmod(np.log(w2)) * ((b2&flag.atm)==flag.atm)*40-5, 'us (column(i)):3 w filledcurve x1 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
                else:
-                  ogplot<(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
+                  gplot<(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
                gplot+(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
                pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi[i,o]))
          # end loop over orders
