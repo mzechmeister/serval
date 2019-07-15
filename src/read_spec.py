@@ -341,12 +341,12 @@ def read_harps_ccf(s):
       for member in tar.getmembers():
          if 'A.fits' in member.name:
             if '_ccf_' in member.name and not extr: extr = member
-            if '_bis_' in member.name: extr = member; is_bis = 1  # prefer bis
+            if '_bis_' in member.name: extr = member   # prefer bis
       if not extr: return ccf(0,0,0,0,0,0)
       s = tar.extractfile(extr)
    else:
-      s = glob.glob(s.replace("_e2ds","_ccf_*"))
-      if s: s = s[0]
+      s = glob.glob(s.replace("_e2ds","_bis_*")) + glob.glob(s.replace("_e2ds","_ccf_*"))
+      if s: s = s[0]   # prefer bis
       else: return ccf(*[np.nan]*6)
       #else: return ccf(0,0,0,0,0,0)
    # ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask header')
