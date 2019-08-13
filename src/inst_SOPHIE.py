@@ -15,6 +15,23 @@ pat = '*_e2ds.fits'
 
 #maskfile = 'telluric_mask_carm_short.dat'
 
+
+def scan_ccf(self):
+   ccffiles = glob.glob(self.filename[:-10]+'*_ccf.fits')  # replace e2ds with *_ccf
+   ccf = self.ccf
+   if ccffiles:
+      ccf.filename = ccffiles[0]
+      hdr = pyfits.getheader(ccf.filename)
+      HIERDRS = 'HIERARCH OHP DRS '
+      ccf.rvc = hdr.get(HIERDRS+'CCF RV', np.nan)   # [km/s], not clear whether this value is drift corrected?
+      ccf.contrast = hdr.get(HIERDRS+'CCF CONTRAST', np.nan)
+      ccf.fwhm = hdr.get(HIERDRS+'CCF FWHM', np.nan)
+      ccf.mask = hdr.get(HIERDRS+'CCF MASK', np.nan)
+      ccf.err_rvc = hdr.get(HIERDRS+'CCF ERR', np.nan)  # [km/s]
+      ccf.bis = hdr.get(HIERDRS+'CCF SPAN', np.nan)   # [km/s]
+      self.drsberv = hdr.get(HIERDRS+'BERV', np.nan)  # [km/s]
+      self.drsbjd = hdr.get(HIERDRS+'BJD', np.nan)
+
 def scan(self, s, pfits=True, verb=False):
    """
    SYNTAX: read_harps(filename)
@@ -27,6 +44,7 @@ def scan(self, s, pfits=True, verb=False):
            drift - Used RV Drift
            sn55  - S_N order center55
 
+   http://atlas.obs-hp.fr/sophie/intro.html
    """
    drs = self.drs
    if isinstance(s, str) and '.gz' in s:
@@ -134,6 +152,8 @@ def scan(self, s, pfits=True, verb=False):
 
       hdr['OBJECT'] = hdr.get(HIERINST+'TARG NAME', 'FOX')
       self.header = self.hdr = hdr # self.header will be set to None
+
+   scan_ccf(self)
 
 
 def data(self, orders, pfits=True):
