@@ -78,11 +78,14 @@ def scan(self, s, pfits=True, verb=False):
       self.exptime = hdr[HIERINST+'CCD UIT']
       self.mjd = hdr[HIERINST+'OBS MJD']
       self.hdulist[0].verify('silentfix')
-      self.dateobs = hdr[HIERINST+'OBS DATE START'].split("'")[1]
+      if 'rounded' in hdr.comments[HIERINST+'OBS DATE START']:
+          print 'WARNING: proprietary data, dates are rounded.'
+          self.dateobs = hdr[HIERINST+'OBS DATE START'] + 'T00:00:00.000'
+      else:
+          self.dateobs = hdr[HIERINST+'OBS DATE START']
 
-      self.ra = hdr[HIERINST+'TEL ALPHA']
-# lalande21185;HD  95735;11 03 20.19400 +35 58 11.5682;-580.27  -4765.85  [0.62 0.64 0];392.64 [0.67] A 2007A&A...474..653V;v:~ -84.69 (~) A [0.1] 2002ApJS..141..503N
-      self.de = hdr[HIERINST+'TEL DELTA']
+      self.ra = hdr.get(HIERINST+'TEL ALPHA', hdr.get('HHIERARCH OHP TEL ALPHA')) # "HH" typo e.g. '2011-10-03T03:46:09.243' in v0.50
+      self.de = hdr.get(HIERINST+'TEL DELTA', hdr.get('HHIERARCH OHP TEL DELTA'))
       self.utc = datetime.datetime.strptime(self.dateobs, '%Y-%m-%dT%H:%M:%S.%f')
 
       self.obs.lon = obsloc['lon']
@@ -100,10 +103,12 @@ def scan(self, s, pfits=True, verb=False):
       self.drsberv = hdr.get(k_berv, np.nan)
       self.sn55 = hdr.get(k_sn55, np.nan)
       self.blaze = hdr.get(HIERDRS+'BLAZE FILE', 0)
-      self.drift = hdr.get(HIERDRS+'DRIFT RV USED', np.nan)
+      self.drift = hdr.get(HIERDRS+'DRIFT RV', np.nan)
       if abs(self.drift) > 1000:
          # sometimes there are crazy drift values ~2147491.59911, e.g. 2011-06-15T08:11:13.465
          self.drift = np.nan
+      else:
+         self.e_drift = hdr.get(HIERDRS+'DRIFT NOISE', np.nan)
 
       if self.instname == 'HARPS':
          # read the comment
@@ -171,8 +176,8 @@ def data(self, orders, pfits=True):
          #w = self.hdulist['WAVE_A'].section[orders] # better? stored as float32, 10m/s numeric difference
          e = np.sqrt(np.where(bpmap, 0., 5**2 * 6 + np.abs(f, dtype=float)))
          blaze = self.hdulist['BLAZE_A'].section[orders]
-         f /= blaze
-         e /= blaze
+         f = f / blaze
+         e = e / blaze
 
       with np.errstate(invalid='ignore'):
          bpmap[f < -3*e] |= flag.neg      # flag 2 for zero and negative flux
