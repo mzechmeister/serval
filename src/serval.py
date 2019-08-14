@@ -1034,7 +1034,7 @@ def serval(*argv):
    snrmedian = np.median([sp.sn55 for sp in spoklist])
    with open(outdir+obj+'.drs.dat', 'w') as myunit:
       for sp in spoklist:
-         print >>myunit, sp.bjd, sp.ccf.rvc*1000., sp.ccf.err_rvc*1000., sp.ccf.fwhm, sp.ccf.bis, sp.ccf.contrast, sp.timeid
+          print >>myunit, sp.bjd, sp.ccf.rvc*1000., sp.ccf.err_rvc*1000., sp.ccf.fwhm, sp.ccf.bis, sp.ccf.contrast, sp.timeid  #, sp.hdr['HIERARCH ESO OBS PROG ID'], sp.hdr['HIERARCH ESO OBS PI-COI NAME']
 
    ################################
    ### Template canditates ########
@@ -2179,7 +2179,7 @@ if __name__ == "__main__":
    argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
-   argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'else':':'}, type=arg2slice)
+   argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'ELODIE':'2:', 'else':':'}, type=arg2slice)
    #argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"17,18,19,20,21,36,37,38,39,40,41,42", "else":[]}, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"0,2,12,13,16,17,18,19,20,21,22,23,24,25,26,27,30,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,49,51,53,54,55", "else":[]}, type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
@@ -2188,8 +2188,8 @@ if __name__ == "__main__":
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
    argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')
-   argopt('-pmin', help='Minimum pixel'+default, default=300, type=int)
-   argopt('-pmax', help='Maximum pixel'+default, default={'CARM_NIR':1800, 'else':3800}, type=int)
+   argopt('-pmin', help='Minimum pixel'+default, default={'ELODIE':150,  'else':300}, type=int)
+   argopt('-pmax', help='Maximum pixel'+default, default={'CARM_NIR':1800, 'ELODIE':900,  'else':3800}, type=int)
    argopt('-pspline', help='pspline as coadd filter [smooth value]', nargs='?', const=0.0000001, dest='pspllam', type=float)
    argopt('-pmu', help='analog to GP mean. Default no GP penalty. Without the mean in each order. Otherwise this value.', nargs='?', const=True, type=float)
    argopt('-pe_mu', help='analog to GP mean deviation', default=5., type=float)
@@ -2230,12 +2230,13 @@ if __name__ == "__main__":
    if tpl and tpl.isdigit(): tpl = int(tpl)
    if isinstance(oset, dict): oset = arg2slice(oset[inst.name] if inst.name in oset else oset['else'])
    if isinstance(o_excl, dict): o_excl = arg2slice(o_excl[inst.name]) if inst.name in o_excl else []
+   if isinstance(pmin, dict): pmin = pmin[inst.name] if inst.name in pmin else pmin['else']
    if isinstance(pmax, dict): pmax = pmax[inst.name] if inst.name in pmax else pmax['else']
    if isinstance(tplrv, dict): tplrv = tplrv[inst.name] if inst.name in tplrv else tplrv['else']
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl
 
-   if skippre or vtfix:
+   if skippre or vtfix or last or isinstance(tpl, str):
       niter -= 1
 
    if dir_or_inputlist is None:

@@ -54,6 +54,7 @@ def scan(self, s, pfits=True, verb=False):
                  'MJD-OBS', 'FILENAME', 'RA', 'DEC', k_tmmean, HIERINST+'DPR TYPE',
                  HIERINST+'DPR TECH', HIERINST+'INS MODE', HIERINST+'OBS TARG NAME')
          args += (k_bjd, k_berv, k_sn55)
+         # args += (HIERINST+'OBS PI-COI NAME', HIERINST+'OBS PROG ID')
          if drs:
             args += (HIERDRS+'BLAZE FILE', HIERDRS+'DRIFT RV USED',
                      HIERDRS+'CAL TH DEG LL', HIERDRS+'CAL LOC NBO',

@@ -168,7 +168,7 @@ class srv:
          #gplot(';set ytics nomirr; set y2tics;', flush='')
          gplot(drsbjd-2450000, drsRVc, drse_RVc, 'us 1:2:3 w e pt 7 lt 1 t "DRS (rms = %1.3g m/s)"'% mlrms(drsRVc, e=drse_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
-         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff) = %.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
+         ogplot(bjd-2450000, RVc-np.median(RVc)+np.nanmedian(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff) = %.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
          pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
 
    def mlc(self):
