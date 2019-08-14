@@ -194,7 +194,6 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    omap = orders[:,newaxis]
    rv, e_rv = allrv[:,5+orders], allerr[:,5+orders]
 
-   # ind, = where(np.isfinite(e_rv[i])) # do not use the failed and last order
    RV, e_RV = nanwsem(rv, e=e_rv, axis=1)
    RVc = RV - np.nan_to_num(RVd) - np.nan_to_num(RVsa)
    e_RVc = np.sqrt(e_RV**2 + np.nan_to_num(e_RVd)**2)
@@ -1220,7 +1219,7 @@ def serval(*argv):
          spt.header['HIERARCH SERVAL UTC'] = (datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), 'time of coadding')
          for o in corders:
             print "coadding o %02i:" % o,     # continued below in iteration loop
-            for i,sp in enumerate(spoklist[tset]):
+            for n,sp in enumerate(spoklist[tset]):
              '''get the polynomials'''
              if not sp.flag:
                sp = sp.get_data(pfits=2, orders=o)
@@ -1243,15 +1242,15 @@ def serval(*argv):
                      sp.w = sp.w[:npix-thisnpix]
                      sp.f = sp.f[:npix-thisnpix]
 
-               bmod[i] = sp.bpmap | msksky[o]
-               bmod[i][tellmask(sp.w)>0.01] |= flag.atm
-               bmod[i][skymsk(sp.w)>0.01] |= flag.sky
+               bmod[n] = sp.bpmap | msksky[o]
+               bmod[n][tellmask(sp.w)>0.01] |= flag.atm
+               bmod[n][skymsk(sp.w)>0.01] |= flag.sky
                # see https://github.com/mzechmeister/serval/issues/19#issuecomment-452661455
                # note in this step the RVs have reverted signs.
-               bmod[i][tellmask(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.), spt.berv))>0.01] |= flag.badT
-               bmod[i][skymsk(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.), spt.berv))>0.01] |= flag.badT
+               bmod[n][tellmask(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.), spt.berv))>0.01] |= flag.badT
+               bmod[n][skymsk(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.), spt.berv))>0.01] |= flag.badT
 
-               w2 = redshift(sp.w, vo=sp.berv, ve=RV[i]/1000.)   # correct also for stellar rv
+               w2 = redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.)   # correct also for stellar rv
                #i0 = np.searchsorted(w2, ww[o].min()) - 1   # w2 must be oversized
                #wt = barshift(spt.w[o,idx], spt.berv)
                i0 = np.searchsorted(w2, TPL[o].wk[0]) - 1   # w2 must be oversized
@@ -1259,14 +1258,14 @@ def serval(*argv):
                   i0 = 0
                #ie = np.searchsorted(w2, ww[o].max())
                ie = np.searchsorted(w2,TPL[o].wk[-1])
-               pind, = where(bmod[i][i0:ie] == 0)
-               bmod[i][:i0] |= flag.out
-               bmod[i][ie:] |= flag.out
+               pind, = where(bmod[n][i0:ie] == 0)
+               bmod[n][:i0] |= flag.out
+               bmod[n][ie:] |= flag.out
                if np.sum(sp.f[pind]<0) > 0.4*pind.size:
-                  print 'too many negative data points in n=%s, o=%s, RV=%s; skipping order' % (i, o, RV[i])
-                  wmod[i] = np.nan
-                  mod[i] = np.nan
-                  emod[i] = np.nan
+                  print 'too many negative data points in n=%s, o=%s, RV=%s; skipping order' % (n, o, RV[n])
+                  wmod[n] = np.nan
+                  mod[n] = np.nan
+                  emod[n] = np.nan
                   continue
 
                if inst.name == 'FEROS':
@@ -1276,7 +1275,7 @@ def serval(*argv):
                    pind = np.intersect1d(pind, ii)
                    #gplot(sp.w[i0:ie], sp.f[i0:ie],',',sp.w[i0:ie][uind],sp.f[i0:ie][uind],',',sp.w[i0:ie][pind], sp.f[i0:ie][pind])
                if not len(pind):
-                  print 'no valid points in n=%s, o=%s, RV=%s; skipping order' % (i, o, RV[i])
+                  print 'no valid points in n=%s, o=%s, RV=%s; skipping order' % (n, o, RV[n])
                   if not safemode: pause()
                   break
 
@@ -1285,13 +1284,13 @@ def serval(*argv):
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg)   # RV  (in dopshift instead of v=RV; easier masking?)
                poly = calcspec(w2, *par.params, retpoly=True)
                #gplot( w2,sp.fo/poly); ogplot( w2[i0:ie],fmod/poly[i0:ie],' w lp ps 0.5'); ogplot(ww[o], ff[o],'w l')
-               wmod[i] = w2
-               mod[i] = sp.f / poly   # be careful if  poly<0
-               emod[i] = sp.e / poly
+               wmod[n] = w2
+               mod[n] = sp.f / poly   # be careful if  poly<0
+               emod[n] = sp.e / poly
                if 0:# o in lookt: #o==-29:
                   #gplot(sp.w,sp.f,poly, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
                   gplot(w2,sp.f,poly, ',"" us 1:3,', w2[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
-                  pause(i)
+                  pause(n)
               #(fmod<0) * flag.neg
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
             tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
@@ -1426,10 +1425,10 @@ def serval(*argv):
             sn = []
             yymod = mod * 0
             yymod[ind] = ymod
-            for i,sp in enumerate(spoklist[tset]):
-               if sp.sn55 < 400 and ind[i].any():
-                  spt.header['HIERARCH COADD FILE %03i' % (i+1)] = (sp.timeid, 'rv = %0.5f km/s' % (-RV[i]/1000.))
-                  iind = (i, ind[i])   # a short-cut for the indexing
+            for n,sp in enumerate(spoklist[tset]):
+               if sp.sn55 < 400 and ind[n].any():
+                  spt.header['HIERARCH COADD FILE %03i' % (n+1)] = (sp.timeid, 'rv = %0.5f km/s' % (-RV[n]/1000.))
+                  iind = (n, ind[n])   # a short-cut for the indexing
                   signal = wmean(mod[iind], 1/emod[iind]**2)  # the signal
                   noise = wrms(mod[iind]-yymod[iind], emod[iind])   # the noise
                   sn.append(signal/noise)
@@ -1640,7 +1639,7 @@ def serval(*argv):
       print 'Iteration %s / %s (%s)' % (iterate, niter, obj)
       print "RV method: ", 'CCF' if ccf else 'DRIFT' if diff_rv else 'LEAST SQUARE'
 
-      for i,sp in enumerate(spoklist):
+      for n,sp in enumerate(spoklist):
          #if sp.flag:
             #continue
             # introduced for drift measurement? but then Halpha is not appended and writing halpha.dat will fail
@@ -1656,7 +1655,7 @@ def serval(*argv):
             ft = atmmod(sp.w[tidx])
             sp.f[tidx] /= ft
             sp.e[tidx] /= ft
-         bjd[i] = sp.bjd
+         bjd[n] = sp.bjd
 
          if wfix: sp.w = spt.w
          fmod = sp.w * np.nan
@@ -1697,11 +1696,11 @@ def serval(*argv):
                f2 *= b2==0
                par, f2mod, vCCF, stat = CCF(lam2wave(ccfmask[:,0]), ccfmask[:,1], wmod, f2, targrv+v_lo, targrv+v_hi, e_y2=e2, keep=pind, plot=(o in look)+2*(o in lookssr), ccfmode=ccfmode)
 
-               rvccf[i,o] = par.params[0] * 1000
-               e_rvccf[i,o] = par.perror[0] * 1000
+               rvccf[n,o] = par.params[0] * 1000
+               e_rvccf[n,o] = par.perror[0] * 1000
                keep = pind
                rchio = 1
-               #pause(rvccf[i,o], e_rvccf[i,o])
+               #pause(rvccf[n,o], e_rvccf[n,o])
             elif diff_rv:
                '''METHOD DRIFT MEASUREMENT'''
                # Correlate the residuals with the first derivative.
@@ -1843,20 +1842,20 @@ def serval(*argv):
                   drchi = rms(((f2-f2mod) - dlwo/c**2*ddy)[keep] / e2[keep])
                   #print par.params[1],par.params[0], v, dlwo*1000, e_dlwo
                   if np.isnan(dlwo) and not safemode: pause()
-                  dlw[i,o] = dlwo * 1000       # convert from (km/s) to m/s km/s
-                  e_dlw[i,o] = e_dlwo * 1000 * drchi
+                  dlw[n,o] = dlwo * 1000       # convert from (km/s) to m/s km/s
+                  e_dlw[n,o] = e_dlwo * 1000 * drchi
                   if 0:
                      gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,', wmod[keep],(f2-f2mod)[keep], 'us 1:2')
                      ogplot(wmod,dlwo/c**2*ddy); #ogplot(wmod,f2, 'axis x1y2')
-                     pause(o, 'dLW', dlw[i,o])
+                     pause(o, 'dLW', dlw[n,o])
 
             fmod[o] = f2mod
             if par.perror is None: par.perror = [0.,0.,0.,0.]
             results[sp.timeid][o] = par
-            rv[i,o] = rvo = par.params[0] * 1000. #- sp.drift
-            snr[i,o] = stat['snr']
-            rchi[i,o] = stat['std']
-            Nok[i,o] = len(keep)
+            rv[n,o] = rvo = par.params[0] * 1000. #- sp.drift
+            snr[n,o] = stat['snr']
+            rchi[n,o] = stat['std']
+            Nok[n,o] = len(keep)
 
             if not diff_rv:
                vgrid = chi2mapo[0]
@@ -1868,8 +1867,8 @@ def serval(*argv):
                #chi2map[o] = ((chi2mapo[0]-par.params[0])/ (par.perror[0]))**2
                #pause(o)
 
-            e_rv[i,o] = par.perror[0] * stat['std'] * 1000
-            if verb: print "%s-%02u  %s  %7.2f +/- %5.2f m/s %5.2f %5.1f it=%s %s" % (i+1, o, sp.timeid, rvo, par.perror[0]*1000., stat['std'], stat['snr'], par.niter, np.size(keep))
+            e_rv[n,o] = par.perror[0] * stat['std'] * 1000
+            if verb: print "%s-%02u  %s  %7.2f +/- %5.2f m/s %5.2f %5.1f it=%s %s" % (n+1, o, sp.timeid, rvo, par.perror[0]*1000., stat['std'], stat['snr'], par.niter, np.size(keep))
 
             clipped = np.sort(list(set(pind).difference(set(keep))))
             if len(clipped):
@@ -1879,7 +1878,7 @@ def serval(*argv):
                res = np.nan * f2
                res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
                b = str(stat['std'])
-               gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2f+/-%.2f m/s)"'%(obj,o,rvo, e_rv[i,o]))
+               gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2f+/-%.2f m/s)"'%(obj,o,rvo, e_rv[n,o]))
                gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
                gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
                gplot-('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"')
@@ -1898,19 +1897,20 @@ def serval(*argv):
                else:
                   gplot<(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
                gplot+(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
-               pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[i,o], rchi[i,o]))
+               pause('large RV ' if abs(rvo/1000-targrv+tplrv)>rvwarn else 'look ', o, ' rv = %.3f +/- %.3f m/s   rchi = %.2f' %(rvo, e_rv[n,o], rchi[n,o]))
+
          # end loop over orders
 
-         # ind = setdiff1d(where(e_rv[i]>0.)[0],[71]) # do not use the failed and last order
-         ind, = where(np.isfinite(e_rv[i])) # do not use the failed and last order
-         rvm[i], rvmerr[i] = np.median(rv[i,ind]), std(rv[i,ind])
-         if len(ind) > 1: rvmerr[i] /= (len(ind)-1)**0.5
+         # ind = setdiff1d(where(e_rv[n]>0.)[0],[71]) # do not use the failed and last order
+         ind, = where(np.isfinite(e_rv[n])) # do not use the failed and last order
+         rvm[n], rvmerr[n] = np.median(rv[n,ind]), std(rv[n,ind])
+         if len(ind) > 1: rvmerr[n] /= (len(ind)-1)**0.5
 
          # Mean RV
-         RV[i], e_RV[i] = wsem(rv[i,ind], e=e_rv[i,ind])
-         RVc[i] = RV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
-         e_RVc[i] = np.sqrt(e_RV[i]**2 + np.nan_to_num(sp.e_drift)**2)
-         print i+1, '/', nspec, sp.timeid, sp.bjd, RV[i], e_RV[i]
+         RV[n], e_RV[n] = wsem(rv[n,ind], e=e_rv[n,ind])
+         RVc[n] = RV[n] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
+         e_RVc[n] = np.sqrt(e_RV[n]**2 + np.nan_to_num(sp.e_drift)**2)
+         print n+1, '/', nspec, sp.timeid, sp.bjd, RV[n], e_RV[n]
 
          # Chromatic trend
          if 1:
@@ -1923,56 +1923,56 @@ def serval(*argv):
             x = np.mean(spt.w if def_wlog else np.log(spt.w), axis=1)  # ln(lambda)
             xc = np.mean(x[ind])   # only to center the trend fit
             # fit trend with curve_fit to get parameter error
-            pval, cov = curve_fit(func, x[ind]-xc, rv[i][ind], [0.0, 0.0], e_rv[i][ind])
+            pval, cov = curve_fit(func, x[ind]-xc, rv[n][ind], [0.0, 0.0], e_rv[n][ind])
             perr = np.sqrt(np.diag(cov))
             #print cov, pval
-            #pval, cov = np.polyfit(x[ind]-xc, rv[i][ind], 1, w=1/e_rv[i][ind], cov=True)
+            #pval, cov = np.polyfit(x[ind]-xc, rv[n][ind], 1, w=1/e_rv[n][ind], cov=True)
             #print cov, pval
 
-            l_v = np.exp(-(pval[0]-RV[i])/pval[1]+xc)
-            CRX[i], e_CRX[i], xo[i] = pval[1], perr[1], x
-            tCRX[i] = CRX[i], e_CRX[i], pval[0], perr[0], l_v
+            l_v = np.exp(-(pval[0]-RV[n])/pval[1]+xc)
+            CRX[n], e_CRX[n], xo[n] = pval[1], perr[1], x
+            tCRX[n] = CRX[n], e_CRX[n], pval[0], perr[0], l_v
 
             # manual regression
-            lhs = np.array([1/e_rv[i][ind], (x[ind]-xc)/e_rv[i][ind]]).T
+            lhs = np.array([1/e_rv[n][ind], (x[ind]-xc)/e_rv[n][ind]]).T
             cov = np.linalg.inv(np.dot(lhs.T, lhs))
-            #e_CRX[i] = np.sqrt(cov[1,1])
+            #e_CRX[n] = np.sqrt(cov[1,1])
 
             # with scaling
             scale = np.sqrt((lhs*lhs).sum(axis=0))
             cov = np.linalg.inv(np.dot((lhs/scale).T, lhs/scale)) / np.outer(scale, scale)
 
-            #pause(e_CRX[i])
+            #pause(e_CRX[n])
 
-            #coli,stat = polynomial.polyfit(arange(len(rv[i]))[ind],rv[i][ind], 1, w=1./e_rv[i][ind], full=True)
+            #coli,stat = polynomial.polyfit(arange(len(rv[n]))[ind],rv[n][ind], 1, w=1./e_rv[n][ind], full=True)
             if 0:   # show trend in each order
                gplot.log('x; set autoscale xfix; set xtic add (0'+(",%i"*10)%tuple((np.arange(10)+1)*1000)+')')
-               gplot(np.exp(x[ind]), rv[i][ind], e_rv[i][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[i], pval[1],l_v,RV[i]))
+               gplot(np.exp(x[ind]), rv[n][ind], e_rv[n][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[n], pval[1],l_v,RV[n]))
                pause()
 
          if not diff_rv:
             # ML version of chromatic trend
-            oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[i]) 
+            oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[n])
 
-            gg = Chi2Map(chi2map, (v_lo, v_step), RV[i]/1000, e_RV[i]/1000, rv[i,oo]/1000, e_rv[i,oo]/1000, orders=oo, keytitle=obj+' ('+inst.name+')\\n'+sp.timeid, rchi=rchi[i], No=Nok[i], name='')
-            mlRV[i], e_mlRV[i] = gg.mlRV, gg.e_mlRV
+            gg = Chi2Map(chi2map, (v_lo, v_step), RV[n]/1000, e_RV[n]/1000, rv[n,oo]/1000, e_rv[n,oo]/1000, orders=oo, keytitle=obj+' ('+inst.name+')\\n'+sp.timeid, rchi=rchi[n], No=Nok[n], name='')
+            mlRV[n], e_mlRV[n] = gg.mlRV, gg.e_mlRV
 
-            mlRVc[i] = mlRV[i] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
-            e_mlRVc[i] = np.sqrt(e_mlRV[i]**2 + np.nan_to_num(sp.e_drift)**2)
+            mlRVc[n] = mlRV[n] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
+            e_mlRVc[n] = np.sqrt(e_mlRV[n]**2 + np.nan_to_num(sp.e_drift)**2)
 
             if lookmlRV:
                gg.plot()
-               pause(i, mlRV[i], e_mlRV[i])
+               pause(n, mlRV[n], e_mlRV[n])
 
-            mlCRX[i], e_mlCRX[i] = gg.mlcrx(x, xc, oo)
+            mlCRX[n], e_mlCRX[n] = gg.mlcrx(x, xc, oo)
 
             if lookmlCRX:
                gg.plot_fit()
-               pause(i, CRX[i], mlCRX[i])
+               pause(n, CRX[n], mlCRX[n])
 
 
          # Line Indices
-         vabs = tplrv + RV[i]/1000.
+         vabs = tplrv + RV[n]/1000.
          kwargs = {'inst': inst.name, 'plot':looki}
          if meas_index:
             halpha += [getHalpha(vabs, 'Halpha', **kwargs)]
@@ -1999,19 +1999,19 @@ def serval(*argv):
             nadr3 += [getHalpha(vabs, 'NaDref3', **kwargs)]
 
          if diff_width:
-            ind, = where(np.isfinite(e_dlw[i]))
-            dLW[i], e_dLW[i] = wsem(dlw[i,ind], e=e_dlw[i,ind])
+            ind, = where(np.isfinite(e_dlw[n]))
+            dLW[n], e_dLW[n] = wsem(dlw[n,ind], e=e_dlw[n,ind])
 
          if 0: # plot RVs of all orders
-            gplot.key('title "rv %i:  %s"' %(i+1,sp.timeid))
-            gplot(orders,rv[i,orders],e_rv[i,orders],rvccf[i,orders],e_rvccf[i,orders],'us 1:2:3 w e, "" us 1:4:5 w e t "ccf", {0}, {0} - {1}, {0}+{1} lt 2'.format(RV[i],e_RV[i]))
+            gplot.key('title "rv %i:  %s"' %(n+1,sp.timeid))
+            gplot(orders,rv[n,orders],e_rv[n,orders],rvccf[n,orders],e_rvccf[n,orders],'us 1:2:3 w e, "" us 1:4:5 w e t "ccf", {0}, {0} - {1}, {0}+{1} lt 2'.format(RV[n],e_RV[n]))
             pause('rvo')
          if 0: # plot dLW of all orders
-            gplot.key('title "dLW %i:  %s"' %(i+1,sp.timeid))
-            gplot(orders, dlw[i][orders], e_dlw[i][orders], ' w e, %f, %f, %f lt 2'%(dLW[i]+e_dLW[i],dLW[i],dLW[i]-e_dLW[i]))
+            gplot.key('title "dLW %i:  %s"' %(n+1,sp.timeid))
+            gplot(orders, dlw[n][orders], e_dlw[n][orders], ' w e, %f, %f, %f lt 2'%(dLW[n]+e_dLW[n],dLW[n],dLW[n]-e_dLW[n]))
             pause('dlw')
 
-         if outfmt and not np.isnan(RV[i]):   # write residuals
+         if outfmt and not np.isnan(RV[n]):   # write residuals
             data = {'fmod': fmod, 'wave': sp.w, 'spec': sp.f,
                     'err': sp.e, 'bpmap': sp.bpmap}
             outfile = os.path.basename(sp.filename)
@@ -2020,13 +2020,13 @@ def serval(*argv):
             if 'ratio' in outfmt: data['ratio'] = sp.f / fmod
 
             sph = Spectrum(sp.filename, inst=inst, pfits=True, drs=drs, fib=fib, targ=targ).header
-            sph['HIERARCH SERVAL RV'] = (RV[i], '[m/s] Radial velocity')
-            sph['HIERARCH SERVAL E_RV'] = (e_RV[i], '[m/s] RV error estimate')
-            sph['HIERARCH SERVAL RVC'] = (RVc[i], '[m/s] RV drift corrected')
-            sph['HIERARCH SERVAL E_RVC'] = (e_RVc[i], '[m/s] RVC error estimate')
+            sph['HIERARCH SERVAL RV'] = (RV[n], '[m/s] Radial velocity')
+            sph['HIERARCH SERVAL E_RV'] = (e_RV[n], '[m/s] RV error estimate')
+            sph['HIERARCH SERVAL RVC'] = (RVc[n], '[m/s] RV drift corrected')
+            sph['HIERARCH SERVAL E_RVC'] = (e_RVc[n], '[m/s] RVC error estimate')
             write_res(outdir+'res/'+outfile, data, outfmt, sph, clobber=1)
 
-         if outchi and not np.isnan(RV[i]):   # write residuals
+         if outchi and not np.isnan(RV[n]):   # write residuals
             gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
             gplot.xlabel('"v [m/s]"; set ylabel "chi^2/max(chi^2)"; set cblabel "order"')
             #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%(v_step, v_lo))
@@ -2047,7 +2047,7 @@ def serval(*argv):
             hdr['CDELT2'] = 1
             write_fits(outdir+'res/'+outfile, chi2map, hdr+spt.header[10:])
 
-         if i>0 and not safemode:
+         if n>0 and not safemode:
             # plot time series
             gplot(bjd-2450000, RV, e_RV, ' us 1:2:3 w e pt 7') # explicitly specify columns to deal with NaNs
          #pause()
