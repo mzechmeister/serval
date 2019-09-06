@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2019-07-10'
+__version__ = '2019-09-06'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)

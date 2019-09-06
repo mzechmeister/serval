@@ -42,7 +42,7 @@ def bjdbrv(jd_utc, ra, dec, obsname=None, lat=0., lon=0., elevation=None,
       elevation = 2168.
    if obsname=='eso':
       #obsname = 'lasilla'
-      lat = -29.2584 
+      lat = -29.2584
       lon = -70.7345
       elevation = 2400.
    if obsname=='lapalma':
