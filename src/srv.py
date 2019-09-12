@@ -364,7 +364,23 @@ class srv:
          hypertext = ' "" us 1:2:(sprintf("o: %d\\nBJD: %f\\nRV: %f", $4, $1, $2)) w labels hypertext point pt 0 lt 1 t "",'
          arg += ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
 
-      gplot(bjdmap.ravel()-2450000, rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",'+hypertext, bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
+      omax = rv.shape[1]
+      o = omap.ravel()[np.isfinite(rvc.ravel())].min()
+      while 0 <= o < omax:
+         gplot-(bjdmap.ravel()-2450000, rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",'+hypertext, bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
+         gplot+(bjdmap[:,o]-2450000, rvc[:,o], e_rv[:,o], 'us 1:2:3 w e pt 12 lc 9 t "%s"'%o)
+         oo = pause('%i/%i'% (o, omax))
+         try:
+            o += int(oo)
+         except:
+            if oo in ('-', "D", "B"):
+               o -= 1
+            elif oo in ('^'):
+               o = 0
+            elif oo in ('$'):
+               o = self.N - 1
+            else:
+               o += 1
 
       pause('rvo ', self.tag)
 
