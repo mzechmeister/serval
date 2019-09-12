@@ -8,11 +8,12 @@ from read_spec import def_wlog
 
 c = 299792.4580   # [km/s]
 
-def redshift(x, vo=0., ve=0.):
+def redshift(x, vo=0., ve=0., wlog=def_wlog):
    """
    x: The measured wavelength.
    v: Speed of the observer [km/s].
    ve: Speed of the emitter [km/s].
+   wlog: Logarithmic wavelengths.
 
    Returns:
       The emitted wavelength l'.
@@ -23,7 +24,7 @@ def redshift(x, vo=0., ve=0.):
    """
    if np.isnan(vo): vo = 0     # propagate nan as zero (@calibration in fib B)
    a = (1.0+vo/c) / (1.0+ve/c)
-   if def_wlog:
+   if wlog:
       return x + np.log(a)   # logarithmic
       #return x + a          # logarithmic + approximation v << c
    else:
