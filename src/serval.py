@@ -733,7 +733,6 @@ def serval(*argv):
    maskfile = servallib + getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')
 
    # instrument specific default values
-   pmax = getattr(inst, 'pmax', pmax)
    iomax = inst.iomax
 
    if inst.name == 'CARM_VIS':
@@ -2130,15 +2129,31 @@ def flexdefault(arg):
    return [arg] if isinstance(arg, int) else arg
 
 if __name__ == "__main__":
+   insts = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
+
+   # check first the instrument with preparsing
+   preparser = argparse.ArgumentParser(add_help=False)
+   preparser.add_argument('args', nargs='*')
+   preparser.add_argument('-inst', help='instrument', default='HARPS', choices=insts)
+   preargs, _ =  preparser.parse_known_args()
+
+   inst = preargs.inst
+   inst = importlib.import_module('inst_'+inst)
+
+   # instrument specific default
+   pmin = getattr(inst, 'pmin', 300)
+   pmax = getattr(inst, 'pmax', {'CARM_NIR':1800, 'ELODIE':900}.get(inst.name, 3800))
+   oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
+
    default = " (default: %(default)s)."
    epilog = """\
+
+   Default parameters are for """+inst.name+""".
+
    usage example:
    %(prog)s tag dir_or_filelist -targ gj699 -snmin 10 -oset 40:
    """
-   insts = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
-   #osets = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
-
-   parser = argparse.ArgumentParser(description=description, epilog=epilog, add_help=False)
+   parser = argparse.ArgumentParser(description=description, epilog=epilog, add_help=False, formatter_class=argparse.RawTextHelpFormatter)
    argopt = parser.add_argument   # function short cut
    argopt('obj', help='Tag, output directory and file prefix (e.g. Object name).')
    argopt('dir_or_inputlist', help='Directory name with reduced data fits/tar or a file listing the spectra (only suffixes .txt or .lis accepted).', nargs='?')
@@ -2179,8 +2194,7 @@ if __name__ == "__main__":
    argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
-   argopt('-oset', help='index for order subset (e.g. 1:10, ::5)', default={'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'ELODIE':'2:', 'else':':'}, type=arg2slice)
-   #argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"17,18,19,20,21,36,37,38,39,40,41,42", "else":[]}, type=arg2slice)
+   argopt('-oset', help='index for order subset (e.g. 1:10, ::5)'+default, default=oset, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"0,2,12,13,16,17,18,19,20,21,22,23,24,25,26,27,30,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,49,51,53,54,55", "else":[]}, type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=1., type=float)
@@ -2188,8 +2202,8 @@ if __name__ == "__main__":
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
    argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')
-   argopt('-pmin', help='Minimum pixel'+default, default={'ELODIE':150,  'else':300}, type=int)
-   argopt('-pmax', help='Maximum pixel'+default, default={'CARM_NIR':1800, 'ELODIE':900,  'else':3800}, type=int)
+   argopt('-pmin', help='Minimum pixel'+default, default=pmin, type=int)
+   argopt('-pmax', help='Maximum pixel'+default, default=pmax, type=int)
    argopt('-pspline', help='pspline as coadd filter [smooth value]', nargs='?', const=0.0000001, dest='pspllam', type=float)
    argopt('-pmu', help='analog to GP mean. Default no GP penalty. Without the mean in each order. Otherwise this value.', nargs='?', const=True, type=float)
    argopt('-pe_mu', help='analog to GP mean deviation', default=5., type=float)
@@ -2221,6 +2235,7 @@ if __name__ == "__main__":
    for i, arg in enumerate(sys.argv):   # allow to parse negative floats
       if len(arg) and arg[0]=='-' and arg[1].isdigit(): sys.argv[i] = ' ' + arg
    print sys.argv
+
    args = parser.parse_args()
    globals().update(vars(args))
 
@@ -2228,10 +2243,8 @@ if __name__ == "__main__":
    Spectrum.brvref = brvref
 
    if tpl and tpl.isdigit(): tpl = int(tpl)
-   if isinstance(oset, dict): oset = arg2slice(oset[inst.name] if inst.name in oset else oset['else'])
+   oset = arg2slice(oset)
    if isinstance(o_excl, dict): o_excl = arg2slice(o_excl[inst.name]) if inst.name in o_excl else []
-   if isinstance(pmin, dict): pmin = pmin[inst.name] if inst.name in pmin else pmin['else']
-   if isinstance(pmax, dict): pmax = pmax[inst.name] if inst.name in pmax else pmax['else']
    if isinstance(tplrv, dict): tplrv = tplrv[inst.name] if inst.name in tplrv else tplrv['else']
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl

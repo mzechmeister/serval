@@ -1,5 +1,6 @@
 from read_spec import *
 from read_spec import Inst
+from calcspec import redshift
 
 # https://www.eso.org/sci/facilities/paranal/instruments/espresso/ESPRESSO_User_Manual_P105_v1.0.pdf
 # ftp://ftp.eso.org/pub/dfs/pipelines/instruments/espresso/espdr-reflex-tutorial-1.3.2.pdf
@@ -8,11 +9,23 @@ from read_spec import Inst
 pat = "*_0003.fits"
 
 name = inst = __name__[5:]
-obsname = 'paranal' # for barycorrpy
-obsloc = dict(lat=-24.6268, lon=-70.4045, elevation=2648.) # HIERARCH ESO TEL3 GEO*
+obsname = 'paranal'   # for barycorrpy
+obsloc = dict(lat=-24.6268, lon=-70.4045, elevation=2648.)   # HIERARCH ESO TEL3 GEO*
 
+oset = np.s_[6:] #if not join_slice else np.s_[6/2:]
 iomax = 170
-pmax = 8800
+pmin = 1600
+pmax = 7500
+
+join_slice = False   # experimental
+# The idea is to create one high S/N template per order, instead of two noisy templates.
+# Runs slower, because wavelengths needs to be re-sorted.
+
+if join_slice:
+   oset = np.s_[6/2:]
+   iomax /= 2
+   pmin *= 2
+   pmax *= 2
 
 def scan(self, s, pfits=True, verb=False):
    drs = self.drs
@@ -58,6 +71,18 @@ def scan(self, s, pfits=True, verb=False):
       self.sn55 = hdr.get(k_sn55, np.nan)
       self.drift = hdr.get(HIERQC+'DRIFT MEAN', np.nan)
 
+      if 1:
+         ccf = self.ccf
+         hdrccf = hdr # pyfits.open(s.replace("_0003.fits", "_0011.fits"))[0].header
+         hdrccf['PIPEFILE']
+         ccf.rvc = hdrccf['HIERARCH ESO QC CCF RV']
+         ccf.err_rvc = hdrccf['HIERARCH ESO QC CCF RV ERROR']
+         ccf.fwhm = hdrccf['HIERARCH ESO QC CCF FWHM']
+         ccf.e_fwhm = hdrccf['HIERARCH ESO QC CCF FWHM ERROR']
+         ccf.contrast = hdrccf['HIERARCH ESO QC CCF CONTRAST']
+         ccf.e_contrast = hdrccf['HIERARCH ESO QC CCF CONTRAST ERROR']
+         ccf.mask = hdrccf['HIERARCH ESO PRO REC1 PARAM6 VALUE']   # mask_table_id
+         ccf.rvguess = hdrccf['HIERARCH ESO PRO REC1 PARAM3 VALUE']   # rv_center
       if abs(self.drift) > 1000:
          # sometimes there are crazy drift values ~2147491.59911, e.g. 2011-06-15T08:11:13.465
          self.drift = np.nan
@@ -76,16 +101,28 @@ def data(self, orders, pfits=True):
    hdr = self.hdr
    if not hasattr(self, 'hdulist'):
       scan(self, self.filename)
-   f = self.hdulist['SCIDATA'].section[orders]
-   e = self.hdulist['ERRDATA'].section[orders]
-   w = self.hdulist['WAVEDATA_A'].section[orders]
-   bpmap = 1 * (self.hdulist['QUALDATA'].section[orders] > 0)
+   if join_slice:
+       # join slices
+       w = self.hdulist['WAVEDATA_A'].data.reshape(170/2, 9141*2)
+       ii = np.argsort(w[orders], axis=-1)
+       oo = np.arange(np.shape(w)[0])[orders,np.newaxis]
+       w = w[oo,ii]
+       f = self.hdulist['SCIDATA'].data.reshape(170/2, 9141*2)[oo,ii]
+       e = self.hdulist['ERRDATA'].data.reshape(170/2, 9141*2)[oo,ii]
+       bpmap = 1 * (self.hdulist['QUALDATA'].data.reshape(170/2, 9141*2)[oo,ii] > 0)
+   else:
+       f = self.hdulist['SCIDATA'].section[orders]
+       e = self.hdulist['ERRDATA'].section[orders]
+       w = self.hdulist['WAVEDATA_A'].section[orders]
+       bpmap = 1 * (self.hdulist['QUALDATA'].section[orders] > 0)
 
    with np.errstate(invalid='ignore'):
       bpmap[f < -3*e] |= flag.neg      # flag 2 for zero and negative flux
       bpmap[f > 300000] |= flag.sat    # unchecked estimate for saturation level
 
-      w = airtovac(w)
-      return w, f, e, bpmap
+   #w = airtovac(w)
+   w = redshift(w, ve=self.drsberv, wlog=False)   # ESPRESSO wavelengths are BERV corrected. Undo the correction here.
+
+   return w, f, e, bpmap
 
 
