@@ -36,9 +36,9 @@ def scan(self, s, pfits=True, verb=False):
       self.HIERARCH = HIERARCH = 'HIERARCH '
       HIERINST = HIERARCH + 'ESO '
       HIERQC = HIERINST + 'QC '
-      k_tmmean = HIERINST + 'OCS EM OBJ1 TMMEAN'
+      k_tmmean = HIERINST + 'OCS EM OBJ3 TMMEAN'
       self.HIERDRS = HIERDRS = HIERINST + 'DRS '
-      k_sn55 = HIERQC + 'ORDER55 SNR'
+      k_sn55 = HIERQC + 'ORDER110 SNR'
       k_berv = HIERQC + 'BERV'
       k_bjd = HIERQC + 'BJD'
 
@@ -65,6 +65,7 @@ def scan(self, s, pfits=True, verb=False):
       self.obs.elevation = hdr['HIERARCH ESO TEL3 GEOELEV']
 
       self.tmmean = hdr.get(k_tmmean, 0.5)
+      if not (0.25 < self.tmmean < 0.75): print 'WARNING:'
 
       self.drsbjd = hdr.get(k_bjd)
       self.drsberv = hdr.get(k_berv, np.nan)
@@ -101,9 +102,11 @@ def data(self, orders, pfits=True):
    hdr = self.hdr
    if not hasattr(self, 'hdulist'):
       scan(self, self.filename)
+   
+   waveext = 'WAVEDATA_VAC_BARY' if 'WAVEDATA_VAC_BARY' in self.hdulist else 'WAVEDATA_A'
    if join_slice:
        # join slices
-       w = self.hdulist['WAVEDATA_A'].data.reshape(170/2, 9141*2)
+       w = self.hdulist[waveext].data.reshape(170/2, 9141*2)
        ii = np.argsort(w[orders], axis=-1)
        oo = np.arange(np.shape(w)[0])[orders,np.newaxis]
        w = w[oo,ii]
@@ -113,7 +116,7 @@ def data(self, orders, pfits=True):
    else:
        f = self.hdulist['SCIDATA'].section[orders]
        e = self.hdulist['ERRDATA'].section[orders]
-       w = self.hdulist['WAVEDATA_A'].section[orders]
+       w = self.hdulist[waveext].section[orders]
        bpmap = 1 * (self.hdulist['QUALDATA'].section[orders] > 0)
 
    with np.errstate(invalid='ignore'):
