@@ -91,7 +91,7 @@ def scan(self, s, pfits=True, verb=False):
       self.timeid = ffileid = hdr['ARCFILE'][6:29]
       self.calmode = hdr.get(HIERINST+'INS3 CALSEL NAME','NOTFOUND')
 
-      if hdr[HIERINST+'INS MODE'] == 'EGGS':
+      if 'UHR' in hdr['HIERARCH ESO TPL ID']:
          self.flag |= sflag.eggs
 
       hdr['OBJECT'] = hdr.get('OBJECT', 'FOX')
