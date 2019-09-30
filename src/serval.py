@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2019-09-06'
+__version__ = '2019-09-30'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -713,7 +713,7 @@ def serval(*argv):
 
    sys.stdout = Logger()
 
-   global obj, targ, oset, coadd, coset, last, tpl, sa, tplrv, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv
+   global obj, targ, oset, coadd, coset, last, tpl, sa, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv
 
    if not argv: argv = sys.argv     # python shell start
    else: argv = ['module '] + list(argv)
@@ -796,7 +796,20 @@ def serval(*argv):
    if fib == 'B' or (ccf is not None and 'th_mask' in ccf):
       pass
 
+
    ### SELECT TARGET ###
+   if tplrv=='auto' and tpl is None:  tplrv = targrv
+   if targrv=='auto' and tpl is None: targrv = tplrv
+   try:
+      targrv_src, targrv = 'user', float(targrv) # is a float, so user input
+   except:
+      targrv_src, targrv = targrv, None
+   try:
+      tplrv_src, tplrv = 'usertpl', float(tplrv)
+   except:
+      tplrv_src, tplrv = tplrv, None
+
+
    targ = type('TARG', (), dict(name=targ, plx=targplx, rv=targrv, sa=float('nan')))
    targ.ra, targ.de = targrade
    targ.pmra, targ.pmde = targpm
@@ -1074,13 +1087,6 @@ def serval(*argv):
       # RVs are zero
       np.savetxt(prefile, np.array([(sp.bjd, 0., 0.) for sp in spoklist]))
 
-   if skippre or vtfix:
-      # restore the pre RVs
-      if os.path.isfile(prefile):
-         bjd, RV, e_RV = np.genfromtxt(prefile, dtype=None, unpack=True)
-      else:
-         pause('pre RV file', prefile, 'does not exist')
-
 
    ################################
    ### Select high S_N template ###
@@ -1100,6 +1106,7 @@ def serval(*argv):
 
    is_ech_tpl = True   # echelle or continuous spectrum
    TPL = [None] * nord
+   TPLrv = None
 
    if 1:
       to = time.time()
@@ -1118,6 +1125,7 @@ def serval(*argv):
                ww = lam2wave(ww)
                is_ech_tpl = False
                TPL = [Tpl(ww, ff, spline_cv, spline_ev)] * nord
+               TPLrv = 0.
             elif tpl.endswith('template.fits') or os.path.isdir(tpl):
                # last option
                # read a spectrum stored order wise
@@ -1127,11 +1135,13 @@ def serval(*argv):
                   print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
                   if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
+               TPLrv = head['HIERARCH SERVAL TARG RV']
             else:
                # a user specified other observation/star
                spt = Spectrum(tpl, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
                #ww, ff = barshift(spt.w,spt.berv), spt.f
                TPL = [Tpl(wo, fo, spline_cv, spline_ev, mask=True, berv=spt.berv) for wo,fo in zip(barshift(spt.w,spt.berv),spt.f)]
+               TPLrv = spt.ccf.rvc
          except:
             print 'ERROR: could not read template:', tpl
             exit()
@@ -1148,6 +1158,7 @@ def serval(*argv):
             ff = fff
       else:
          '''set up a spline template from spt'''
+         TPLrv = spt.ccf.rvc
          for o in sorted(set(orders) | set(corders)):
             if inst.name == 'FEROS':
                ptmin = ptomin[o]
@@ -1188,6 +1199,47 @@ def serval(*argv):
          #ind = (bb&flag.neg)==0
          #gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv),spt.f[o,ptmin:ptmax])
          #ogplot(ww[o],ff[o]); pause()
+
+   rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
+   targrvs = {'targ': targ.rv,
+              'tpl': TPLrv,
+              'drsspt': spt.ccf.rvc,
+              'drsmed': np.median(rvdrs[np.isfinite(rvdrs)]),
+              'user': targrv,
+              'usertpl': tplrv
+             }
+
+   if targrv_src=='auto':
+      if np.isfinite(targrvs['drsspt']):
+         targrv_src = 'drsspt'
+      else:
+         print 'DRS RV is NaN in spt, trying median'
+         if np.isfinite(targrvs['drsmed']):
+            targrv_src = 'drsmed'
+         else:
+            print 'DRS RV is NaN in all spec, simbad RV'
+            if np.isnan(targrv):
+               targrv_src = 'simbad'
+
+   targrv = targrvs.get(targrv_src, 0)
+   print 'setting targ RV to: %s km/s (%s)' % (targrv, targrv_src)
+
+   if tplrv_src=='auto' and np.isfinite(TPLrv):
+      # for external templates take value from fits header
+      tplrv_src = 'tpl'
+
+   tplrv = targrvs.get(tplrv_src, 0)
+   print 'setting tpl RV to:  %s km/s (%s)' % (tplrv, tplrv_src)
+
+
+   if skippre or vtfix:
+      # restore the pre RVs
+      if os.path.isfile(prefile):
+         bjd, RV, e_RV = np.genfromtxt(prefile, dtype=None, unpack=True)
+      else:
+         pause('pre RV file', prefile, 'does not exist')
+
+
 
    for iterate in range(1, niter+1):
 
@@ -1492,9 +1544,13 @@ def serval(*argv):
          spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
          spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
          if np.isfinite(targ.rv):
-            spt.header['HIERARCH SERVAL TARG RV'] = (targ.rv, '[km/s] RV from targ.cvs')
-         else:
-            spt.header['HIERARCH SERVAL TARG RV'] = (targrv, '[km/s] RV from targrv')
+            spt.header['HIERARCH SERVAL TARG RV CSV'] = (targ.rv, '[km/s] RV from targ.cvs')
+         if np.isfinite(targrvs['drsspt']):
+            spt.header['HIERARCH SERVAL TARG RV DRSSPT'] = (targrvs['drsspt'], '[km/s] DRS RV of spt')
+         if np.isfinite(targrvs['drsmed']):
+            spt.header['HIERARCH SERVAL TARG RV DRSMED'] = (targrvs['drsmed'], '[km/s] median DRS RV')
+         spt.header['HIERARCH SERVAL TARG RV'] = (targrv, '[km/s] RV used')
+         spt.header['HIERARCH SERVAL TARG RV SRC'] = (targrv_src, 'Origin of TARG RV')
 
          # Oversampled template
          write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
@@ -1579,28 +1635,10 @@ def serval(*argv):
       rchi = nans((nspec,nord))
       Nok = nans((nspec,nord))
 
-      if tplrv == 'targ':
-         tplrv = targ.rv
-         print 'setting tplrv to simbad RV:', tplrv, 'km/s'
-      if tplrv == 'auto':
-         tplrv = spt.ccf.rvc
-         if np.isnan(tplrv):
-            print 'tplrv in spt is NaN, trying median'
-            rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
-            tplrv = np.median(rvdrs[np.isfinite(rvdrs)])
-         if np.isnan(tplrv):
-            print 'tplrv is NaN in all spec, simbad RV'
-            tplrv = targ.rv
-         print 'setting tplrv to:', tplrv, 'km/s'
 
-      meas_index = tplrv is not None and 'B' not in fib #and not 'th_mask' in ccf
+      meas_index = targrv_src and 'B' not in fib #and not 'th_mask' in ccf
       meas_CaIRT = meas_index and inst.name=='CARM_VIS'
       meas_NaD = meas_index and inst.name=='CARM_VIS'
-
-      if tplrv is None: tplrv = 0   # do this after setting meas_index
-      tplrv = float(tplrv)
-      if targrv is None:
-         targrv = tplrv
 
       if meas_index:
          halpha = []
@@ -2161,7 +2199,7 @@ if __name__ == "__main__":
    argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
    argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
    argopt('-targplx', help='Target parallax', type=float, default='nan')
-   argopt('-targrv', help='[km/s] Target rv guess (default=tplrv)', type=float)
+   argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad))', default={'CARM_NIR':None, 'else':'auto'})
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division.'+default, type=str, default=None)
@@ -2216,7 +2254,7 @@ if __name__ == "__main__":
    argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=400, type=float)
    argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
-   argopt('-tplrv', help='[km/s] template RV (default auto, for index measures, for phoe tpl put 0 km/s, None => no measure, targ => from simbad, auto => first from header, second from targ else consider to adapt also rvguess))', default={'CARM_NIR':None, 'else':'auto'})
+   argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl.[float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
@@ -2245,7 +2283,7 @@ if __name__ == "__main__":
    if tpl and tpl.isdigit(): tpl = int(tpl)
    oset = arg2slice(oset)
    if isinstance(o_excl, dict): o_excl = arg2slice(o_excl[inst.name]) if inst.name in o_excl else []
-   if isinstance(tplrv, dict): tplrv = tplrv[inst.name] if inst.name in tplrv else tplrv['else']
+   if isinstance(targrv, dict): targrv = targrv[inst.name] if inst.name in targrv else targrv['else']
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl
 
