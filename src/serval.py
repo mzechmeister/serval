@@ -1032,7 +1032,7 @@ def serval(*argv):
    check_daytime = True
    spoklist = []
    for sp in splist:
-      if sp.flag & (sflag.eggs|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
+      if sp.flag & (sflag.nosci|sflag.eggs|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
          print 'bad spectra:', sp.timeid, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag))
       else:
          spoklist += [sp]
@@ -1171,7 +1171,8 @@ def serval(*argv):
             #ind = spt.bpmap[o,idx] == 0  # let out zero errors, interpolate over
 
             # Smoothing with bspline
-            smod = spl.ucbspl_fit(barshift(spt.w[o,idx],spt.berv), spt.f[o,idx], K=idx.size/2, e_yk=True, lam=0.00001)
+            # the number of knots is halfed.
+            smod = spl.ucbspl_fit(barshift(spt.w[o,idx],spt.berv), spt.f[o,idx], K=int(idx.size*ofac/2), e_yk=True, lam=0.00001)
 
             # Conversion to cardinal spline and then to fast spline
             smod_spl = smod.to_spl()

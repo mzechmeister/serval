@@ -118,8 +118,11 @@ def scan(self, s, pfits=True, verb=False):
       #calmode = hdr.get('IMAGETYP',0).split(",")[:2]
       calmode = hdr.get(HIERINST+'DPR TYPE','NOTFOUND').split(',')[:2]
       self.calmode = ','.join(calmode)
-      calmodedict = {'STAR,WAVE': 'OBJ,CAL', 'STAR,DARK': 'OBJ,SKY'}
-      if self.calmode in calmodedict: self.calmode = calmodedict[self.calmode]
+      calmodedict = {'STAR,WAVE': 'OBJ,CAL', 'STAR,DARK': 'OBJ,SKY', 'STAR,SKY': 'OBJ,SKY'}
+      if self.calmode in calmodedict:
+         self.calmode = calmodedict[self.calmode]
+      if self.calmode.startswith('WAVE'):
+         self.flag |= sflag.nosci
 
       if hdr[HIERINST+'DPR TECH'] == 'ECHELLE,ABSORPTION-CELL':
          self.flag |= sflag.iod
@@ -156,7 +159,9 @@ def data(self, orders, pfits=True):
       if drs:
          # print " applying wavelength solution ", file
          # omax = self.hdu['SPEC'].NAXIS1
-         omax = hdr[self.HIERDRS+'CAL LOC NBO'] # 72 for A and 71 for B
+         omax = hdr.get(self.HIERDRS+'CAL LOC NBO', iomax) # 72 for A and 71 for B
+         # missing for HARPN.2018-11-08T18-10-16.439_e2ds_A.fits, also "DRS CAL TH ORDER NBR"
+         # HIERARCH IA2 DRS VERSION = 'HARPN_3.7.1_140214' / IA2 DRS version               
          d = hdr[self.HIERDRS+'CAL TH DEG LL']
          xmax = 4096
          x = np.empty((d+1, xmax), 'int64')

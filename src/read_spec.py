@@ -62,6 +62,7 @@ flag = nameddict(
 
 # spectrum flagging
 sflag = nameddict(
+   nosci=    1, # nosci frame, e.g. calibration files
    iod=      2,
    eggs=     4,
    dist=    16, # coordinates too much off
