@@ -621,7 +621,7 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
       pause(v)
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
-def fitspec(tpl, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
+def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
    """
    Performs the robust least square fit via iterative clipping.
 
@@ -634,28 +634,27 @@ def fitspec(tpl, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=Non
    v_step : Number of v steps (only background polynomial => v_step = false).
 
    """
-   if keep is None: keep = np.arange(len(w2))
-   if e_y is None: e_y = np.mean(f2)**0.5 + 0*f2   # mean photon noise
+   if keep is None: keep = np.arange(len(w))
    if clip is None: nclip = 0   # number of clip iterations; default 1
-   calcspec.wcen = np.mean(w2[keep])
+   calcspec.wcen = np.mean(w[keep])
    calcspec.tpl = tpl
 
    p = np.array([v, 1.] + [0]*deg)   # => [v,1,0,0,0]
-   fMod = np.nan * w2
-   #fres = 0.*w2     # same size
+   fMod = np.nan * w
+   #fres = 0.*w     # same size
    for n in range(nclip+1):
       if df is not None:
          '''drift mode: scale derivative to residuals'''
-         par, fModkeep = optidrift(ft.take(keep,mode='clip'), df.take(keep,mode='clip'), f2.take(keep,mode='clip'),
-                                 e_y.take(keep,mode='clip'))
+         par, fModkeep = optidrift(ft.take(keep,mode='clip'), df.take(keep,mode='clip'), f.take(keep,mode='clip'),
+                                 e_f.take(keep,mode='clip'))
       elif v_step:
          '''least square mode'''
-         par, fModkeep = opti(v+v_lo, v+v_hi, w2.take(keep,mode='clip'), f2.take(keep,mode='clip'),
-                              e_y.take(keep,mode='clip'), p[1:], vfix=vfix, plot=plot)
+         par, fModkeep = opti(v+v_lo, v+v_hi, w.take(keep,mode='clip'), f.take(keep,mode='clip'),
+                              e_f.take(keep,mode='clip'), p[1:], vfix=vfix, plot=plot)
          ssr = par.ssr
       else:
          '''only background polynomial'''
-         p, SSR, fModkeep = polyreg(w2.take(keep,mode='clip'), f2.take(keep,mode='clip'), e_y.take(keep,mode='clip'), v, len(p)-1)
+         p, SSR, fModkeep = polyreg(w.take(keep,mode='clip'), f.take(keep,mode='clip'), e_f.take(keep,mode='clip'), v, len(p)-1)
          par = type('par',(),{'params': np.append(v,p), 'ssr': SSR})
 
       p = par.params
@@ -667,12 +666,12 @@ def fitspec(tpl, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=Non
          keep = keep[ind]      # ignore the pixels modelled with negative flux
          fModkeep = fModkeep[ind]
          # all might be negative (for low/zero S/N data)
-      #fres[keep] = (f2[keep] - fMod[keep]) / fMod[keep]**0.5
+      #fres[keep] = (f[keep] - fMod[keep]) / fMod[keep]**0.5
       #res_std = rms(fres[keep])     # residual noise / photon noise
       # use error predicted by model
-      #fres = (f2.take(keep,mode='clip')-fModkeep) / fModkeep**0.5
+      #fres = (f.take(keep,mode='clip')-fModkeep) / fModkeep**0.5
       # use external errors
-      fres = (f2.take(keep,mode='clip')-fModkeep) / e_y.take(keep,mode='clip')
+      fres = (f.take(keep,mode='clip')-fModkeep) / e_f.take(keep,mode='clip')
       res_std = rms(fres)     # residual noise / photon noise
       if n < nclip:
          ind = np.abs(fres) <= clip*res_std
@@ -686,21 +685,21 @@ def fitspec(tpl, w2, f2, e_y=None, v=0, vfix=False, clip=None, nclip=1, keep=Non
          if df:
             fMod = ft * p[1]     # compute also at bad pixels
          else:
-            fMod = calcspec(w2, *p)     # compute also at bad pixels
+            fMod = calcspec(w, *p)     # compute also at bad pixels
          gplot.y2tics().ytics('nomir; set y2range [-5:35];')
-         gplot(w2,fMod,' w lp pt 7 ps 0.5 t "fmod"')
-         gplot+(w2[keep],fMod[keep],' w lp pt 7 ps 0.5 t "fmod[keep]"')
-         gplot+(w2,f2,' w lp pt 7 ps 0.5 t "f2"')
-         #ogplot(w2[keep],fres[keep],' w lp pt 7 ps 0.5 lc rgb "red" axis x1y2 t "residuals"',flush='')
-         ogplot(w2[keep],fres,' w lp pt 7 ps 0.5 lc rgb "black" axis x1y2, 0 w l lt 2 axis x1y2 t"", '+str(res_std)+' w l lt 1 axis x1y2, '+str(-res_std)+ ' w l lt 1 t "" axis x1y2')
+         gplot(w,fMod,' w lp pt 7 ps 0.5 t "fmod"')
+         gplot+(w[keep],fMod[keep],' w lp pt 7 ps 0.5 t "fmod[keep]"')
+         gplot+(w,f,' w lp pt 7 ps 0.5 t "f"')
+         #ogplot(w[keep],fres[keep],' w lp pt 7 ps 0.5 lc rgb "red" axis x1y2 t "residuals"',flush='')
+         ogplot(w[keep],fres,' w lp pt 7 ps 0.5 lc rgb "black" axis x1y2, 0 w l lt 2 axis x1y2 t"", '+str(res_std)+' w l lt 1 axis x1y2, '+str(-res_std)+ ' w l lt 1 t "" axis x1y2')
          pause('large RV', par.params[0]*1000)
 
-   stat = {"std": res_std, 'ssrmin': fres.sum(), "snr": np.mean(fModkeep)/np.mean(np.abs(f2.take(keep,mode='clip')-fModkeep))}
-   #pause(stat["snr"], wmean(fModkeep)/wrms(f2.take(keep,mode='clip')-fModkeep), np.median(fModkeep)/np.median(np.abs(f2.take(keep,mode='clip')-fModkeep)) )
+   stat = {"std": res_std, 'ssrmin': fres.sum(), "snr": np.mean(fModkeep)/np.mean(np.abs(f.take(keep,mode='clip')-fModkeep))}
+   #pause(stat["snr"], wmean(fModkeep)/wrms(f.take(keep,mode='clip')-fModkeep), np.median(fModkeep)/np.median(np.abs(f.take(keep,mode='clip')-fModkeep)) )
    if df is not None:
       fMod[indmod] = ft[indmod]*p[1] - df[indmod]*p[1]*p[0]/c  # compute also at bad pixels
    else:
-      fMod[indmod] = calcspec(w2[indmod], *p)   # compute also at bad pixels
+      fMod[indmod] = calcspec(w[indmod], *p)   # compute also at bad pixels
 
    if chi2map:
       return par, fMod, keep, stat, ssr
