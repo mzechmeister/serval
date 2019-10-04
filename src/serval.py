@@ -1001,8 +1001,8 @@ def serval(*argv):
       sp.sa = targ.sa / 365.25 * (sp.bjd-splist[0].bjd)
       sp.header = None   # saves memory(?), but needs re-read (?)
       if inst.name == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
-      if sp.sn55 < snmin: sp.flag |= sflag.lowSN
-      if sp.sn55 > snmax: sp.flag |= sflag.hiSN
+      if sp.sn55 < snmin | np.isnan(sp.sn55): sp.flag |= sflag.lowSN
+      if sp.sn55 > snmax | np.isnan(sp.sn55): sp.flag |= sflag.hiSN
       if distmax and sp.ra and sp.de:
          # check distance for mis-pointings
          # yet no proper motion included
@@ -1201,7 +1201,7 @@ def serval(*argv):
          #ogplot(ww[o],ff[o]); pause()
 
    rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
-   targrvs = {'targ': targ.rv,
+   targrvs = {'simbad': targ.rv,
               'tpl': TPLrv,
               'drsspt': spt.ccf.rvc,
               'drsmed': np.median(rvdrs[np.isfinite(rvdrs)]),
@@ -1218,8 +1218,7 @@ def serval(*argv):
             targrv_src = 'drsmed'
          else:
             print 'DRS RV is NaN in all spec, simbad RV'
-            if np.isnan(targrv):
-               targrv_src = 'simbad'
+            targrv_src = 'simbad'
 
    targrv = targrvs.get(targrv_src, 0)
    print 'setting targ RV to: %s km/s (%s)' % (targrv, targrv_src)
@@ -1227,6 +1226,8 @@ def serval(*argv):
    if tplrv_src=='auto' and np.isfinite(TPLrv):
       # for external templates take value from fits header
       tplrv_src = 'tpl'
+   else:
+      tplrv_src = targrv_src
 
    tplrv = targrvs.get(tplrv_src, 0)
    print 'setting tpl RV to:  %s km/s (%s)' % (tplrv, tplrv_src)
