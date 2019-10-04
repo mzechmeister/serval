@@ -712,17 +712,10 @@ def serval(*argv):
 
    sys.stdout = Logger()
 
-   global obj, targ, oset, coadd, coset, last, tpl, sa, debug, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv
+   global obj, targ, oset, coadd, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv
 
-   if not argv: argv = sys.argv     # python shell start
-   else: argv = ['module '] + list(argv)
-   if len(argv)>1:
-      outdir = obj + '/'
-      fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
-   else:
-      print "object missing"
-      print "Example: "+sys.argv[0]+" gj699  dir_or_inputlist=/home/zechmeister/data/harps/gj699/path/ -restore omin=20 nset='1::2'"
-      return 1
+   outdir = obj + '/'
+   fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
 
    print description
 
@@ -791,7 +784,6 @@ def serval(*argv):
    t0 = time.time()
    print "start time:", time.strftime("%Y-%m-%d %H:%M:%S %a", time.localtime())
 
-   use_drsberv = False
    if fib == 'B' or (ccf is not None and 'th_mask' in ccf):
       pass
 
@@ -995,8 +987,6 @@ def serval(*argv):
       print '%3i/%i' % (n+1, nspec),
       sp = Spectrum(filename, inst=inst, pfits=2 if 'HARPS' in inst.name else True, drs=drs, fib=fib, targ=targ, verb=True)
       splist.append(sp)
-      if use_drsberv:
-         sp.bjd, sp.berv = sp.drsbjd, sp.drsberv
       sp.sa = targ.sa / 365.25 * (sp.bjd-splist[0].bjd)
       sp.header = None   # saves memory(?), but needs re-read (?)
       if inst.name == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
@@ -2204,7 +2194,7 @@ if __name__ == "__main__":
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division.'+default, type=str, default=None)
-   argopt('-brvref', help='Barycentric RV code reference', choices=brvref, type=str, default='WE')
+   argopt('-brvref', help='Barycentric RV code reference', choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)
    argopt('-mskspec', help='Ascii 0-1 spectrum.'+default, default='')
