@@ -2,6 +2,13 @@ import barycorrpy
 from astropy.time import Time
 from astropy import time, coordinates as coord, units as u
 
+# https://github.com/shbhuk/barycorrpy/issues/27
+# https://github.com/shbhuk/barycorrpy/wiki/11.-USNO-IERS-servers-are-down
+# https://github.com/astropy/astropy/issues/9427
+from astropy.utils.iers import conf as iers_conf
+iers_conf.iers_auto_url = 'https://astroconda.org/aux/astropy_mirror/iers_a_1/finals2000A.all'
+iers_conf.auto_max_age = None
+
 def bjdbrv(jd_utc, ra, dec, obsname=None, lat=0., lon=0., elevation=None,
         pmra=0., pmdec=0., parallax=0., rv=0., zmeas=0.,
         epoch=2451545.0, tbase=0., **kwargs):
