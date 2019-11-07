@@ -102,7 +102,7 @@ def data(self, orders, pfits=True):
    hdr = self.hdr
    if not hasattr(self, 'hdulist'):
       scan(self, self.filename)
-   
+
    waveext = 'WAVEDATA_VAC_BARY' if 'WAVEDATA_VAC_BARY' in self.hdulist else 'WAVEDATA_A'
    if join_slice:
        # join slices

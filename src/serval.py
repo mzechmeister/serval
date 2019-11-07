@@ -708,7 +708,7 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
 
 
 
-def serval(*argv):
+def serval():
 
    sys.stdout = Logger()
 
@@ -730,11 +730,9 @@ def serval(*argv):
    if inst.name == 'CARM_VIS':
       if fib == '': fib = 'A'
       pat = '*-vis_' + fib + '.fits'
-      maskfile = servallib + 'telluric_mask_carm_short.dat'
    elif inst.name == 'CARM_NIR':
       if fib == '': fib = 'A'
       pat = '*-nir_' + fib + '.fits'
-      maskfile = servallib + 'telluric_mask_carm_short.dat'
    elif 'HARP' in inst.name:
       if fib == '': fib = 'A'
       #if fib == 'A': iomax = 72
@@ -789,8 +787,8 @@ def serval(*argv):
 
 
    ### SELECT TARGET ###
-   if tplrv=='auto' and tpl is None:  tplrv = targrv
-   if targrv=='auto' and tpl is None: targrv = tplrv
+   if tplrv=='auto' and (tpl is None or isinstance(tpl, int)):  tplrv = targrv
+   if targrv=='auto' and (tpl is None or isinstance(tpl, int)): targrv = tplrv
    try:
       targrv_src, targrv = 'user', float(targrv) # is a float, so user input
    except:
@@ -874,9 +872,9 @@ def serval(*argv):
 
    if outfmt or outchi: os.system('mkdir -p '+obj+'/res')
    with open(outdir+'lastcmd.txt', 'w') as f:
-      print >>f, ' '.join(argv)
+      print >>f, ' '.join(sys.argv)
    with open('cmdhistory.txt', 'a') as f:
-      print >>f, ' '.join(argv)
+      print >>f, ' '.join(sys.argv)
 
    badfile = file(outdir + obj + '.flagdrs' + fibsuf + '.dat', 'w')
    infofile = file(outdir + obj + '.info' + fibsuf + '.cvs', 'w')
@@ -990,8 +988,8 @@ def serval(*argv):
       sp.sa = targ.sa / 365.25 * (sp.bjd-splist[0].bjd)
       sp.header = None   # saves memory(?), but needs re-read (?)
       if inst.name == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
-      if sp.sn55 < snmin | np.isnan(sp.sn55): sp.flag |= sflag.lowSN
-      if sp.sn55 > snmax | np.isnan(sp.sn55): sp.flag |= sflag.hiSN
+      if sp.sn55 < snmin or np.isnan(sp.sn55): sp.flag |= sflag.lowSN
+      if sp.sn55 > snmax or np.isnan(sp.sn55): sp.flag |= sflag.hiSN
       if distmax and sp.ra and sp.de:
          # check distance for mis-pointings
          # yet no proper motion included
@@ -1022,7 +1020,7 @@ def serval(*argv):
    spoklist = []
    for sp in splist:
       if sp.flag & (sflag.nosci|sflag.eggs|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
-         print 'bad spectra:', sp.timeid, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag))
+         print 'bad spectra:', sp.timeid, sp.obj, sp.calmode, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag))
       else:
          spoklist += [sp]
 
@@ -2041,7 +2039,7 @@ def serval(*argv):
 
          if outfmt and not np.isnan(RV[n]):   # write residuals
             data = {'fmod': fmod, 'wave': sp.w, 'spec': sp.f,
-                    'err': sp.e, 'bpmap': sp.bpmap}
+                    'err': sp.e, 'bpmap': sp.bpmap, 'waverest': redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.)}
             outfile = os.path.basename(sp.filename)
             outfile = os.path.splitext(outfile)[0] + outsuf
             if 'res' in outfmt: data['res'] = sp.f - fmod
@@ -2229,7 +2227,7 @@ if __name__ == "__main__":
    argopt('-ofac', help='oversampling factor in coadding'+default, default=1., type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
-   argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
+   argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'waverest', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')
    argopt('-pmin', help='Minimum pixel'+default, default=pmin, type=int)
    argopt('-pmax', help='Maximum pixel'+default, default=pmax, type=int)

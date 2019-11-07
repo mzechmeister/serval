@@ -77,7 +77,7 @@ sflag = nameddict(
 # bpmap flags
 flag_cosm = flag.sat  # @ FEROS for now use same flag as sat
 def_wlog = True
-brvref = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
+brvrefs = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
 
 class Spectrum:
    """
