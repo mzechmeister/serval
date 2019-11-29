@@ -49,7 +49,7 @@ def scan(self, s, pfits=True):
       self.drift = hdr.get(HIERARCH+'CARACAL SERVAL FP RV', hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan))
       self.e_drift = hdr.get(HIERARCH+'CARACAL SERVAL FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan))
       self.fox = HIERARCH+'CARACAL FOX XWD' in hdr
-      self.sn55 = hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 36', np.nan)
+      self.sn55 = hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 36', np.nan)   # @ 746nm
       sn25 = hdr.get(HIERARCH+'CARACAL FOX SNR 25', np.nan)
       sn30 = hdr.get(HIERARCH+'CARACAL FOX SNR 30', np.nan)
       if sn25 > 70 and sn25 > 10*sn30: # hig

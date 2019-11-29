@@ -38,7 +38,7 @@ def scan(self, s, pfits=True, verb=False):
       HIERQC = HIERINST + 'QC '
       k_tmmean = HIERINST + 'OCS EM OBJ3 TMMEAN'
       self.HIERDRS = HIERDRS = HIERINST + 'DRS '
-      k_sn55 = HIERQC + 'ORDER110 SNR'
+      k_sn55 = HIERQC + 'ORDER110 SNR'  # @ 573 nm
       k_berv = HIERQC + 'BERV'
       k_bjd = HIERQC + 'BJD'
 
@@ -92,7 +92,7 @@ def scan(self, s, pfits=True, verb=False):
       self.calmode = hdr.get(HIERINST+'INS3 CALSEL NAME','NOTFOUND')
 
       if 'UHR' in hdr['HIERARCH ESO TPL ID']:
-         self.flag |= sflag.eggs
+         self.flag |= sflag.config
 
       hdr['OBJECT'] = hdr.get('OBJECT', 'FOX')
       self.header = self.hdr = hdr # self.header will be set to None

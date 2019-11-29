@@ -1019,7 +1019,7 @@ def serval():
    check_daytime = True
    spoklist = []
    for sp in splist:
-      if sp.flag & (sflag.nosci|sflag.eggs|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
+      if sp.flag & (sflag.nosci|sflag.config|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
          print 'bad spectra:', sp.timeid, sp.obj, sp.calmode, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag))
       else:
          spoklist += [sp]
@@ -2107,7 +2107,7 @@ def serval():
          nadunit = [file(nadfile, 'w'), file(nadfile+'bad', 'w')]
       for n,sp in enumerate(spoklist):
          if np.isnan(rvm[n]): sp.flag |= sflag.rvnan
-         rvflag = int((sp.flag&(sflag.eggs+sflag.iod+sflag.rvnan)) > 0)
+         rvflag = int((sp.flag&(sflag.config+sflag.iod+sflag.rvnan)) > 0)
          if rvflag: 'nan RV for file: '+sp.filename
          print >>rvunit[int(rvflag or np.isnan(sp.drift))], sp.bjd, RVc[n], e_RVc[n]
          print >>rvounit[rvflag], sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], " ".join(map(str,rv[n]))

@@ -2,9 +2,10 @@ from read_spec import *
 from read_spec import Inst
 # Instrument parameters
 
-name = inst = __name__[5:]
-obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name] # for barycorrpy
-iomax = {'HARPS': 72, 'HARPN': 69}[name]
+inst = __name__[5:]   # HARPS, HARPSpre, HARPSpost, HARPN
+name = inst[:5]       # HARPS, HARPN  (passed to bary)
+obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name[:5]] # for barycorrpy
+iomax = {'HARPS': 72, 'HARPN': 69}[name[:5]]
 
 #maskfile = 'telluric_mask_carm_short.dat'
 
@@ -32,8 +33,8 @@ def scan(self, s, pfits=True, verb=False):
 
    if 1:
       HIERARCH = 'HIERARCH '
-      HIERINST = HIERARCH + {'HARPS': 'ESO ', 'HARPN': 'TNG '}[inst]
-      k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST + 'EXP_METER_A EXP CENTROID'}[inst]
+      HIERINST = HIERARCH + {'HARPS': 'ESO ', 'HARPN': 'TNG '}[inst[0:5]]
+      k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST + 'EXP_METER_A EXP CENTROID'}[inst[0:5]]
       # In old HARPN the keyword is different and the value absolute
       #k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST + 'EXP1 TMMEAN'}[inst]
       if drs:
@@ -127,7 +128,13 @@ def scan(self, s, pfits=True, verb=False):
       if hdr[HIERINST+'DPR TECH'] == 'ECHELLE,ABSORPTION-CELL':
          self.flag |= sflag.iod
       if hdr[HIERINST+'INS MODE'] == 'EGGS':
-         self.flag |= sflag.eggs
+         self.flag |= sflag.config
+
+      # in May 29th 2015 (BJD = 2457171.9481) there was the fibre intervention
+      if inst == 'HARPSpre' and self.timeid > '2015-05-29T':
+         self.flag |= sflag.config
+      if inst == 'HARPSpost' and self.timeid <= '2015-05-29T':
+         self.flag |= sflag.config
 
       hdr['OBJECT'] = hdr.get('OBJECT', 'FOX')
       self.header = self.hdr = hdr # self.header will be set to None
