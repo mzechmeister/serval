@@ -308,13 +308,9 @@ def lineindex(l, r1, r2):
    e = s * np.sqrt((l[1]/l[0])**2 + (r1[1]**2+r2[1]**2)/(r1[0]+r2[0])**2)
    return s, e
 
-def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
-   """
-   v [km/s]
-   sp,fmod as global variables !
-   deblazed sp should be used !
-   """
-   wcen, dv1, dv2 = {
+
+
+lines = {
          'Halpha': (6562.808, -15.5, 15.5),   # Kuerster et al. (2003, A&A, 403, 1077)
          'Halpha': (6562.808, -40., 40.),
          'Haleft': (6562.808, -300., -100.),
@@ -338,21 +334,30 @@ def getHalpha(v, typ='Halpha', inst='HARPS', rel=False, plot=False):
          'NaDref1': (5885, -40, 40),          # My definition
          'NaDref2': ((5889.950+5895.924)/2, -40, 40),   # My definition
          'NaDref3': (5905, -40, 40)           # My definition
-   }[typ]
-   wcen = lam2wave(airtovac(wcen))
-   o = None
-   if inst == 'HARPS':
-      if typ in ['Halpha', 'Haleft', 'Harigh', 'CaI']: o = 67
-      if typ in ['CaK']: o = 5
-      if typ in ['CaH']: o = 7
-   elif inst == 'CARM_VIS':
-      if typ in ['Halpha', 'Haleft', 'Harigh', 'CaI']: o = 25
-      if 'CaIRT1' in typ: o = 46
-      if 'CaIRT2' in typ: o = 46
-      if 'CaIRT3' in typ: o = 47
-      if 'NaD' in typ: o = 14
+}
 
+def get_o_of_line(typ, wavemap):
+   # find the orders of a spectral line
+   wcen, dv1, dv2 = lines.get(typ, (None, None, None))
+   wcen = lam2wave(airtovac(wcen))
+   if not wcen:
+      return None
+   o = np.where((np.nanmin(wavemap,axis=1) < wcen) & (wcen < np.nanmax(wavemap, axis=1)))[0]
+   if o.size > 0:
+      return o[0]   # Take the first. If another order is preferred, it should be overwritten with the inst file.
+   else:
+      return None
+
+def getHalpha(v, typ='Halpha', line_o=None, rel=False, plot=False):
+   """
+   v [km/s]
+   sp,fmod as global variables !
+   deblazed sp should be used !
+   """
+   o = line_o.get(typ)
    if o is None: return np.nan, np.nan
+   wcen, dv1, dv2 = lines[typ]
+   wcen = lam2wave(airtovac(wcen))
 
    ind = o, (wcen+(v-sp.berv+dv1)/c < sp.w[o]) & (sp.w[o] < wcen+(v-sp.berv+dv2)/c)
 
@@ -1066,6 +1071,10 @@ def serval():
    print 'median SN:', snrmedian
    print 'template:', spt.timeid, 'SN55', spt.sn55, '#', spi, ' <e_rv>=%0.2fm/s, <Q>=%s' % (np.median(dv)*1000, np.median(Q))
 
+   # find the order where to measure the line indices
+   line_o = {}
+   for l in lines:   # Halpha, NaD, CaIRT
+      line_o[l] = get_o_of_line(l, spt.w)
 
    nord = len(spt.w)
 
@@ -1626,8 +1635,8 @@ def serval():
 
 
       meas_index = targrv_src and 'B' not in fib #and not 'th_mask' in ccf
-      meas_CaIRT = meas_index and inst.name=='CARM_VIS'
-      meas_NaD = meas_index and inst.name=='CARM_VIS'
+      meas_CaIRT = meas_index and line_o['CaIRT1']
+      meas_NaD = meas_index and line_o['NaD1']
 
       if meas_index:
          halpha = []
@@ -1999,7 +2008,7 @@ def serval():
 
          # Line Indices
          vabs = tplrv + RV[n]/1000.
-         kwargs = {'inst': inst.name, 'plot':looki}
+         kwargs = {'line_o':line_o, 'plot':looki}
          if meas_index:
             halpha += [getHalpha(vabs, 'Halpha', **kwargs)]
             haleft += [getHalpha(vabs, 'Haleft', **kwargs)]
@@ -2213,7 +2222,7 @@ if __name__ == "__main__":
    argopt('-kapsig', help='kappa sigma clip value'+default, type=float, default=3.0)
    argopt('-last', help='use last template (-tpl <obj>/template.fits)', action='store_true')
    argopt('-look', help='slice of orders to view the fit [:]', nargs='?', default=[], const=':', type=arg2slice)
-   argopt('-looki', help='list of indices to watch', nargs='*', choices=['Halpha', 'Haleft', 'Haright', 'CaI', 'HK'], default=[]) #, const=['Halpha'])
+   argopt('-looki', help='list of indices to watch', nargs='*', choices=sorted(lines.keys()), default=[]) #, const=['Halpha'])
    argopt('-lookt', help='slice of orders to view the coadd fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookp', help='slice of orders to view the preRV fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookssr', help='slice of orders to view the ssr function [:]', nargs='?', default=[], const=':', type=arg2slice)
