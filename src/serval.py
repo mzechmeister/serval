@@ -650,7 +650,7 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
    for n in range(nclip+1):
       if df is not None:
          '''drift mode: scale derivative to residuals'''
-         par, fModkeep = optidrift(ft.take(keep,mode='clip'), df.take(keep,mode='clip'), f.take(keep,mode='clip'),
+         par, fModkeep = optidrift(tpl[1].take(keep,mode='clip'), df.take(keep,mode='clip'), f.take(keep,mode='clip'),
                                  e_f.take(keep,mode='clip'))
       elif v_step:
          '''least square mode'''
@@ -702,7 +702,7 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
    stat = {"std": res_std, 'ssrmin': fres.sum(), "snr": np.mean(fModkeep)/np.mean(np.abs(f.take(keep,mode='clip')-fModkeep))}
    #pause(stat["snr"], wmean(fModkeep)/wrms(f.take(keep,mode='clip')-fModkeep), np.median(fModkeep)/np.median(np.abs(f.take(keep,mode='clip')-fModkeep)) )
    if df is not None:
-      fMod[indmod] = ft[indmod]*p[1] - df[indmod]*p[1]*p[0]/c  # compute also at bad pixels
+      fMod[indmod] = tpl[1][indmod]*p[1] - df[indmod]*p[1]*p[0]/c  # compute also at bad pixels
    else:
       fMod[indmod] = calcspec(w[indmod], *p)   # compute also at bad pixels
 
@@ -1570,7 +1570,6 @@ def serval():
       elif is_ech_tpl:
          for o in orders:
             ii = np.isfinite(ff[o])
-            #kk[o] = spline_cv(ww[o][ii],ff[o][ii])
             if do_reg:
                print 'q factor masking order ', o
                reg[o] = qfacmask(ww[o],ff[o]) #, plot=True)
@@ -1794,7 +1793,7 @@ def serval():
                   gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
                   pause(o)
 
-               par, f2mod, keep, stat = fitspec((spt.w[o],spt.f[o],kk[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
+               par, f2mod, keep, stat = fitspec((spt.w[o],spt.f[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
 
                e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
                e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
@@ -2285,7 +2284,7 @@ if __name__ == "__main__":
    if coset is None: coset = oset
    if co_excl is None: co_excl = o_excl
 
-   if skippre or vtfix or last or isinstance(tpl, str):
+   if skippre or vtfix or last or isinstance(tpl, str) or driftref:
       niter -= 1
 
    if dir_or_inputlist is None:

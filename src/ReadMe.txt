@@ -31,7 +31,7 @@ log.obj        Plain text logfile of SERVAL stdout
 --------------------------------------------------------------------------------
 NOTES:
 [1]   (BJD,BERV) depending on serval input option, propagated from CARACAL
-      or recomputed by SERVAL
+      or recomputed by SERVAL (for -brvref WE: BJD_TDB, MH: BJD_UTC)
 [2]   Reference region for CAIRT1 are 8492 (-40, 40) km/s and 8504 (-40, 40) km/s
 [3]   Reference region for CAIRT2 are 8542.09 (-300, -200) km/s and 8542.09 (250, 350) km/s
 [4]   Reference region for CAIRT3 are 8662.14 (-300, -200) km/s and 8662.14 (200, 300) km/s
