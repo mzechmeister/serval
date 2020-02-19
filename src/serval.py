@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2019-09-30'
+__version__ = '2020-02-19'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -2175,10 +2175,11 @@ if __name__ == "__main__":
    inst = preargs.inst
    inst = importlib.import_module('inst_'+inst)
 
-   # instrument specific default
+   # instrument specific default (see inst_*.py)
    pmin = getattr(inst, 'pmin', 300)
    pmax = getattr(inst, 'pmax', {'CARM_NIR':1800, 'ELODIE':900}.get(inst.name, 3800))
-   oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'CARM_NIR': ':', 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
+   oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
+   coset = getattr(inst, 'coset', None)
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2209,7 +2210,7 @@ if __name__ == "__main__":
                       choices=['box', 'binless', 'gauss', 'trapeze'])
    argopt('-coadd', help='coadd method'+default, default='post3',
                    choices=['post3'])
-   argopt('-coset', help='index for order in coadding (default: oset)', type=arg2slice)
+   argopt('-coset', help='index for order in coadding (default: oset)', default=coset, type=arg2slice)
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
    argopt('-deg',  help='degree for background polynomial', type=int, default=3)
@@ -2230,7 +2231,7 @@ if __name__ == "__main__":
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)'+default, default=oset, type=arg2slice)
-   argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default={"CARM_NIR":"0,2,12,13,16,17,18,19,20,21,22,23,24,25,26,27,30,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,49,51,53,54,55", "else":[]}, type=arg2slice)
+   argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default=[], type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=1., type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
