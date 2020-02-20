@@ -151,12 +151,13 @@ class Spectrum:
       if targ and targ.name == 'cal':
          self.bjd, self.berv = self.drsbjd, 0.
       elif targ and targ.ra:  # unique coordinates
+         obsloc = inst.obsloc if hasattr(inst, 'obsloc') else {}
          if self.brvref == 'MH':
             # fastest version
             #sys.path.append(os.environ['HOME']+'/programs/BarCor/')
             sys.path.insert(1, sys.path[0]+os.sep+'BarCor')            # bary now in src/BarCor
             import bary
-            self.bjd, self.berv = bary.bary(self.dateobs, targ.ra, targ.de, inst.name, epoch=2000, exptime=self.exptime*2* self.tmmean, pma=targ.pmra, pmd=targ.pmde)
+            self.bjd, self.berv = bary.bary(self.dateobs, targ.ra, targ.de, inst.name, epoch=2000, exptime=self.exptime*2* self.tmmean, pma=targ.pmra, pmd=targ.pmde, obsloc=obsloc)
          if self.brvref in ('WEhtml', 'WEidl', 'WE'):
             # Wright & Eastman (2014) via online or idl request
             # cd /home/raid0/zechmeister/idl/exofast/bary
@@ -167,7 +168,6 @@ class Spectrum:
             ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15  # [deg]
             de = (targ.de[0] + np.copysign(targ.de[1]/60. + targ.de[2]/3600., targ.de[0]))       # [deg]
             obsname = inst.obsname #{'CARM_VIS':'ca', 'CARM_NIR':'ca', 'FEROS':'eso', 'HARPS':'eso', 'HARPN':'lapalma', 'HPF':'hpf'}[inst]
-            obsloc = inst.obsloc if hasattr(inst, 'obsloc') else {}
             if self.brvref == 'WE':
                # pure python version
                import brv_we14py

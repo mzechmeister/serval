@@ -161,11 +161,19 @@ C       2000-2010(January-December)
      * 33.000,33.000,33.000,33.000,34.000,34.000,34.000,34.000,
      * 34.000,34.000,34.000,34.000/
 C
-      IF(K.EQ.0) K=1
-      HVEZD=OBS(K)
-      DELKA=DEL(K)
-      SIRKA=SIR(K)
-      ELEV=VYS(K)
+      IF(K.EQ.0) THEN
+         !MZ: read obs params from file instead hardcoding
+         READ(2,*) IN
+         READ(2,*) SIRKA, DELKA, ELEV
+         DELKA = DELKA / 360
+         SIRKA = SIRKA * (3.1415926535897932D0/180)
+         HVEZD = TRANSFER (IN, HVEZD)
+      ELSE
+         HVEZD=OBS(K)
+         DELKA=DEL(K)
+         SIRKA=SIR(K)
+         ELEV=VYS(K)
+      ENDIF
 C
   202 FORMAT(10X)
   233 WRITE(9,203) STAR

@@ -44,12 +44,20 @@ def bary_harps(file, ra=None, dec=None, epoch=2000, pma=0.0, pmd=0.0):
    #print ra, dec, pma, pmd
    return bary(dateobs, rammss, demmss, 14, epoch, exptime, pma, pmd) #, bjd, berv
 
-def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.0):
+def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.0, obsloc=None):
    ''' baricentric correction with BarCor
    rammss - (ra,mm,ss) or 'ra:mm:ss' or ra
    demmss - (de,mm,ss)
+
+   Examples
+   --------
+   >>> bary.bary('2016-02-04T05:55:21', (17.0, 57.0, 48.4997994034), (4.0, 41.0, 36.111354228), 'CARM_VIS', epoch=2000, exptime=450.1, pma=-802.803, pmd=10362.542)
+   array([2.45742275e+06, 1.90159600e+01])
+
+   >>> bary.bary('2016-02-04T05:55:21', (17.0, 57.0, 48.4997994034), (4.0, 41.0, 36.111354228), 'PASS', epoch=2000, exptime=450.1, pma=-802.803, pmd=10362.542, obsloc={'lat':-2.5463, 'lon':37.2236, 'elevation':2168.})
+
    '''
-   instnum = {'HARPS':14, 'HARPN':17,  'HPF':18, 'CARM_VIS':16, 'CARM_NIR':16, 'FIES':16}[inst]
+   instnum = {'HARPS':14, 'HARPN':17,  'HPF':18, 'CARM_VIS':16, 'CARM_NIR':16, 'FIES':16}.get(inst, 0)
 
    if type(rammss) is str:
       if ':' in rammss:
@@ -66,6 +74,9 @@ def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.
    #print "%10.4f%10.4f%10.4f"%rammss + "%10.4f%10.4f%10.4f"%demmss + "%5i%5i%10.4f%10.4f\n"%(epoch, 14, pma, pmd)
    par.write("this\n")
    par.write("%10.4f%10.4f%10.4f"%rammss + "%10.4f%10.4f%10.4f"%demmss + "%5i%5i%10.4f%10.4f\n"%(epoch, instnum, pma, pmd))
+   if not instnum:
+       # pass via obs location via file (instead fortran hardcoding)
+       par.write("%s\n%s %s %s\n" % (inst, obsloc['lon'], obsloc['lat'], obsloc['elevation']))
    par.seek(0)
    par.name
 
