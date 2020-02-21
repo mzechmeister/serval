@@ -344,7 +344,9 @@ def get_o_of_line(typ, wavemap):
       return None
    o = np.where((np.nanmin(wavemap,axis=1) < wcen) & (wcen < np.nanmax(wavemap, axis=1)))[0]
    if o.size > 0:
-      return o[0]   # Take the first. If another order is preferred, it should be overwritten with the inst file.
+      o = o[0]   # Take the first. If another order is preferred, it should be overwritten with the inst file.
+      o = np.argmin(np.nanmax(np.abs(wavemap-wcen), axis=1))   # take the one with which best centered
+      return o
    else:
       return None
 
