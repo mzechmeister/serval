@@ -1494,7 +1494,11 @@ def serval():
             if o in lookt:
                gplot.bar(0).key("tit '%s order %s'"% (obj,o))
                gplot.mxtics().mytics().xlabel("'ln {/Symbol l}'")
-               gplot.x2label("'{/Symbol l} [A]'").x2tics().mx2tics().link('x via exp(x) inverse log(x)').xtics("nomirr")
+               # estimate a good x2tics spacing
+               i10, f10 = divmod(np.log10((np.exp(max(TPL[o].wk))-np.exp(min(TPL[o].wk)))/5), 1)
+               dx2 = [1,2,5][abs(10**f10-[1,2,5]).argmin()] * 10**i10
+               gplot.bind('f "dx2=(GPVAL_X2_MAX-GPVAL_X2_MIN)/5; i10=10**floor(log10(dx2)); dx2=dx2/i10; set x2tics i10*(dx2<1.5?1:dx2<4?2:5);        replot"')
+               gplot.x2label("'{/Symbol l} [A]'").x2tics(dx2).mx2tics().link('x via exp(x) inverse log(x)').xtics("nomirr")
                #gplot(wmod[ind],mod[ind], 1/np.sqrt(we[ind]), emod[ind], 'us 1:2:3 w e lt 2, "" us 1:2:4  w e pt 7 ps 0.5 lt 1')
                #hasflag = lambda array,flag: (array&flag)==flag
                #hasflags = lambda array,flags: [hasflag(array,flag) for flag in flags]
@@ -2182,6 +2186,7 @@ if __name__ == "__main__":
    pmax = getattr(inst, 'pmax', {'CARM_NIR':1800, 'ELODIE':900}.get(inst.name, 3800))
    oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
    coset = getattr(inst, 'coset', None)
+   ofac = getattr(inst, 'ofac', 1.)
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2235,7 +2240,7 @@ if __name__ == "__main__":
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)'+default, default=oset, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default=[], type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
-   argopt('-ofac', help='oversampling factor in coadding'+default, default=1., type=float)
+   argopt('-ofac', help='oversampling factor in coadding'+default, default=ofac, type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
    argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'waverest', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
