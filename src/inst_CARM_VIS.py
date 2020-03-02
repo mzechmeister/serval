@@ -5,6 +5,8 @@ from read_spec import *
 name = 'CARM_VIS'
 obsname = 'ca'
 iomax = 61 # NAXIS2
+snmax = 500
+oset = '10:52'
 
 maskfile = 'telluric_mask_carm_short.dat'
 

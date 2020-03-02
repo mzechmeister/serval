@@ -2184,9 +2184,10 @@ if __name__ == "__main__":
    # instrument specific default (see inst_*.py)
    pmin = getattr(inst, 'pmin', 300)
    pmax = getattr(inst, 'pmax', {'CARM_NIR':1800, 'ELODIE':900}.get(inst.name, 3800))
-   oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'CARM_VIS':'10:52', 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
+   oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
    coset = getattr(inst, 'coset', None)
    ofac = getattr(inst, 'ofac', 1.)
+   snmax = getattr(inst, 'snmax', 400.)
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2256,7 +2257,7 @@ if __name__ == "__main__":
    argopt('-skippre', help='Skip pre-RVs.', action='store_true')
    argopt('-skymsk', help='Sky emission line mask ('' for no masking)'+default, default='auto', dest='skyfile')
    argopt('-snmin', help='minimum S/N (considered as not bad and used in template building)'+default, default=10, type=float)
-   argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=400, type=float)
+   argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=snmax, type=float)
    argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl.[float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
