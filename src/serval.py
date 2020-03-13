@@ -1913,7 +1913,7 @@ def serval():
             clipped = np.sort(list(set(pind).difference(set(keep))))
             if len(clipped):
                b2[clipped] = flag.clip
-            if o in look or (not safemode and (abs(rvo/1000-targrv+tplrv)>rvwarn and not sp.flag) or debug>1):
+            if o in lookp or (o in look and iterate==niter) or (not safemode and (abs(rvo/1000-targrv+tplrv)>rvwarn and not sp.flag) or debug>1):
                if def_wlog: w2 = np.exp(w2)
                res = np.nan * f2
                res[pmin:pmax] = (f2[pmin:pmax]-f2mod[pmin:pmax]) / e2[pmin:pmax]  # normalised residuals
