@@ -5,19 +5,26 @@ from calcspec import redshift
 # https://www.eso.org/sci/facilities/paranal/instruments/espresso/ESPRESSO_User_Manual_P105_v1.0.pdf
 # ftp://ftp.eso.org/pub/dfs/pipelines/instruments/espresso/espdr-reflex-tutorial-1.3.2.pdf
 
+name = inst = __name__[5:]
+drs = 2 if name.endswith('ESPRESSO') else 1   # DRS version (old <2.0.0)
+# DRS v2.0.0: Both slices are already merged into one order
+
 # Instrument parameters
 pat = "*_0003.fits"
 
-name = inst = __name__[5:]
 obsname = 'paranal'   # for barycorrpy
 obsloc = dict(lat=-24.6268, lon=-70.4045, elevation=2648.)   # HIERARCH ESO TEL3 GEO*
 
 oset = np.s_[6:] #if not join_slice else np.s_[6/2:]
-iomax = 170
-pmin = 1600
-pmax = 7500
+iomax = 85
+pmin = 800
+pmax = 3700
+if drs<2:
+   iomax = 170
+   pmin = 1600
+   pmax = 7500
 
-join_slice = False   # experimental
+join_slice = False   # experimental and only drs<2.0.0
 # The idea is to create one high S/N template per order, instead of two noisy templates.
 # Runs slower, because wavelengths needs to be re-sorted.
 
@@ -28,17 +35,13 @@ if join_slice:
    pmax *= 2
 
 def scan(self, s, pfits=True, verb=False):
-   drs = self.drs
-   if '.tar' in s:
-      s = file_from_tar(s, inst=inst, fib=self.fib, pfits=pfits)
-
    if 1:
       self.HIERARCH = HIERARCH = 'HIERARCH '
       HIERINST = HIERARCH + 'ESO '
       HIERQC = HIERINST + 'QC '
       k_tmmean = HIERINST + 'OCS EM OBJ3 TMMEAN'
       self.HIERDRS = HIERDRS = HIERINST + 'DRS '
-      k_sn55 = HIERQC + 'ORDER110 SNR'  # @ 573 nm
+      k_sn55 = HIERQC + ('ORDER55 SNR' if drs>1 else 'ORDER110 SNR') # @ 573 nm
       k_berv = HIERQC + 'BERV'
       k_bjd = HIERQC + 'BJD'
 
