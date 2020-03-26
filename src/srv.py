@@ -60,7 +60,7 @@ class srv:
       self.dlw = genfromtxt2d(pre+'.dlw'+fibsuf+'.dat')
       self.rchi = genfromtxt2d(pre+'.chi'+fibsuf+'.dat')
       try:
-         self.halpha = genfromtxt2d(pre+'.halpha.dat')
+         self.halpha = genfromtxt2d(pre+'.halpha.dat').T
       except:
          pass
       try:
@@ -140,15 +140,10 @@ class srv:
       pause('dLW ', self.tag)
 
    def plot_halpha(self):
-      '''Show RVs over order for each observation.'''
+      '''Show Halpha time series.'''
       bjd, halpha, e_halpha = self.halpha[0:3]
-      arg = ''
-      if not self.has_d.all():
-         arg += 'us 1:2:3 w e pt 6 lt 7 t "dLW no drift"'
-      if self.has_d.any():
-         if arg: arg += ', "" '
-         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLW"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+      arg = 'us 1:2:3 w e pt 6 lt 7 t "no drift"'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nHalpha: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
       arg += hypertext
 
       gplot.key('tit "%s"'%(self.keytitle))
