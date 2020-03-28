@@ -7,7 +7,7 @@ obsname = 'ca'
 iomax = 28
 iomax *= 2 # reshaping
 oset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
-coset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52] #sorted(set(range(iomax)) - {17,18,19,20,21,36,37,38,39,40,41,42})
+coset = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})
 
 maskfile = 'telluric_mask_carm_short.dat'
 maskfile = 'telluric_mask_nir4.dat'
