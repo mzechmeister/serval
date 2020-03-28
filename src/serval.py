@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 __author__ = 'Mathias Zechmeister'
-__version__ = '2020-02-19'
+__version__ = '2020-03-25'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -982,6 +982,12 @@ def serval():
    ################################
    ### READ FITS FILES ############
    ################################
+   if nspec > 700:
+      ulimit = resource.getrlimit(resource.RLIMIT_OFILE)
+      if ulimit[0] < 4096:
+         print "Many files! Adapting ulimit from %s to (4096, 4096)." % (ulimit,)
+         resource.setrlimit(resource.RLIMIT_OFILE, (4096,4096))
+
    splist = []
    spi = None
    SN55best = 0.
@@ -1302,13 +1308,10 @@ def serval():
                bmod[n][skymsk(dopshift(redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.), spt.berv))>0.01] |= flag.badT
 
                w2 = redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.)   # correct also for stellar rv
-               #i0 = np.searchsorted(w2, ww[o].min()) - 1   # w2 must be oversized
-               #wt = barshift(spt.w[o,idx], spt.berv)
                i0 = np.searchsorted(w2, TPL[o].wk[0]) - 1   # w2 must be oversized
                if i0<0:
                   i0 = 0
-               #ie = np.searchsorted(w2, ww[o].max())
-               ie = np.searchsorted(w2,TPL[o].wk[-1])
+               ie = np.searchsorted(w2, TPL[o].wk[-1])
                pind, = where(bmod[n][i0:ie] == 0)
                bmod[n][:i0] |= flag.out
                bmod[n][ie:] |= flag.out
@@ -1334,13 +1337,13 @@ def serval():
                par, fmod, keep, stat = fitspec(TPL[o],
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg)   # RV  (in dopshift instead of v=RV; easier masking?)
                poly = calcspec(w2, *par.params, retpoly=True)
-               #gplot( w2,sp.fo/poly); ogplot( w2[i0:ie],fmod/poly[i0:ie],' w lp ps 0.5'); ogplot(ww[o], ff[o],'w l')
                wmod[n] = w2
                mod[n] = sp.f / poly   # be careful if  poly<0
                emod[n] = sp.e / poly
                if 0:# o in lookt: #o==-29:
-                  #gplot(sp.w,sp.f,poly, ',"" us 1:3,', sp.w[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
-                  gplot(w2,sp.f,poly, ',"" us 1:3,', w2[i0:ie],(sp.f / poly)[i0:ie], ' w l,',ww[o], ff[o], 'w l')
+                  gplot-(w2, sp.f, poly, ' t "sp.f", "" us 1:3 w l t "poly"')
+                  gplot<(w2[i0:ie][keep], sp.f[i0:ie][keep], sp.e[i0:ie][keep], 'w e')
+                  gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
                   pause(n)
               #(fmod<0) * flag.neg
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
@@ -1826,7 +1829,6 @@ def serval():
 
                # pause()
                if o==41: pind=pind[:-9]   # @CARM_NIR?
-               #par, f2mod, keep, stat, chi2mapo = fitspec((ww[o], ff[o], kk[o]), wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
                par, f2mod, keep, stat, chi2mapo = fitspec(TPL[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
 
                if diff_width:
@@ -2218,7 +2220,7 @@ if __name__ == "__main__":
                       choices=['box', 'binless', 'gauss', 'trapeze'])
    argopt('-coadd', help='coadd method'+default, default='post3',
                    choices=['post3'])
-   argopt('-coset', help='index for order in coadding (default: oset)', default=coset, type=arg2slice)
+   argopt('-coset', help='index for order in coadding (default: oset)'+default, default=coset, type=arg2slice)
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
    argopt('-deg',  help='degree for background polynomial', type=int, default=3)
@@ -2239,7 +2241,7 @@ if __name__ == "__main__":
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)'+default, default=oset, type=arg2slice)
-   argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)', default=[], type=arg2slice)
+   argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)'+default, default=[], type=arg2slice)
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=ofac, type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
