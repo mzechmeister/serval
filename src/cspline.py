@@ -1,7 +1,7 @@
 from __future__ import division
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2018-05-04'
+__version__ = '2020-04-03'
 
 import numpy as np
 from scipy.linalg import solve_banded, solveh_banded
@@ -607,10 +607,15 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
          #for i in range(1,4): BTB += np.diag(BTBbnd[i,:-i], i) + np.diag(BTBbnd[i,:-i], -i)
          #ds9(BTB)
          #print _cbspline.cholsol(BTB, tt, BTy.size)
-         _cbspline.cholbnd(BTBbnd, BTy, BTy.size, 3)
+         flag = _cbspline.cholbnd(BTBbnd, BTy, BTy.size, 3)
+         if flag:
+            print 'LinAlgError: The data may contain too large gaps. Try regularisation options.'
          #_cbspline.cholbnd_upper(gg, uu,  BTy.size, 3)
       elif 1: # python version
-         solveh_banded(BTBbnd, BTy, lower=True, overwrite_ab=True, overwrite_b=True)
+         try:
+            solveh_banded(BTBbnd, BTy, lower=True, overwrite_ab=True, overwrite_b=True)
+         except np.linalg.LinAlgError:
+            print 'LinAlgError: The data may contain too large gaps. Try regularisation options.'
       else:
          # old c version with Gauss elimination
          # symmetric part
