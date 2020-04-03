@@ -11,6 +11,8 @@ name = inst = 'MAROONXred'
 obsname = 'geminiN'   # for barycorrpy
 obsloc = dict(lat=19.82396, lon=155.46984, elevation=4213.)   # https://en.wikipedia.org/wiki/Gemini_Observatory
 
+snmax = 800
+
 fibs = ['fiber_2', 'fiber_3', 'fiber_4']
 nfibs = len(fibs)
 
@@ -63,8 +65,6 @@ def scan(self, s, pfits=True, verb=False):
 
    self.timeid = timetag
    self.calmode = 'NOTFOUND'
-
-   self.snmax = 800
 
    self.header = self.hdr = pyfits.Header(
        {'SIMPLE': True,
