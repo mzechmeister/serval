@@ -140,7 +140,7 @@ class Spectrum:
          print "scan %s:"%self.instname, self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode
 
       if inst.name != self.instname:
-         pause('WARNING:', filename, 'from', self.inst, ', but mode is', inst)
+         pause('WARNING:', filename, 'from', inst, ', but mode is', self.instname)
       self.obj = self.header['OBJECT']
 
       ### Barycentric correction ###
