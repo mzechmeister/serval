@@ -19,12 +19,12 @@ oset = np.s_[6:] #if not join_slice else np.s_[6/2:]
 iomax = 85
 pmin = 800
 pmax = 3700
-if drs<2:
+if drs < 2:
    iomax = 170
    pmin = 1600
    pmax = 7500
 
-join_slice = False   # experimental and only drs<2.0.0
+join_slice = (drs < 2) and False   # experimental and only drs<2.0.0
 # The idea is to create one high S/N template per order, instead of two noisy templates.
 # Runs slower, because wavelengths needs to be re-sorted.
 
@@ -48,8 +48,8 @@ def scan(self, s, pfits=True, verb=False):
       self.hdulist = hdulist = pyfits.open(s)
       hdr = self.hdulist[0].header
 
-      self.instname = hdr['INSTRUME']
-      if self.instname != 'ESPRESSO':
+      self.instname = hdr['INSTRUME'] + name[8:]
+      if self.instname[:8] != 'ESPRESSO':
          pause('\nWARNING: inst should be ESPRESSO, but got: '+self.inst+'\nSee option -inst for available inst.') 
 
       self.airmass = hdr.get(HIERINST+'TEL3 AIRM START', np.nan)
@@ -109,13 +109,16 @@ def data(self, orders, pfits=True):
    waveext = 'WAVEDATA_VAC_BARY' if 'WAVEDATA_VAC_BARY' in self.hdulist else 'WAVEDATA_A'
    if join_slice:
        # join slices
-       w = self.hdulist[waveext].data.reshape(170/2, 9141*2)
+       w = self.hdulist[waveext].data
+       dim = w.shape
+       dim = dim[0]/2, dim[1]*2
+       w = w.reshape(dim)
        ii = np.argsort(w[orders], axis=-1)
        oo = np.arange(np.shape(w)[0])[orders,np.newaxis]
        w = w[oo,ii]
-       f = self.hdulist['SCIDATA'].data.reshape(170/2, 9141*2)[oo,ii]
-       e = self.hdulist['ERRDATA'].data.reshape(170/2, 9141*2)[oo,ii]
-       bpmap = 1 * (self.hdulist['QUALDATA'].data.reshape(170/2, 9141*2)[oo,ii] > 0)
+       f = self.hdulist['SCIDATA'].data.reshape(dim)[oo,ii]
+       e = self.hdulist['ERRDATA'].data.reshape(dim)[oo,ii]
+       bpmap = 1 * (self.hdulist['QUALDATA'].data.reshape(dim)[oo,ii] > 0)
    else:
        f = self.hdulist['SCIDATA'].section[orders]
        e = self.hdulist['ERRDATA'].section[orders]
