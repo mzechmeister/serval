@@ -1586,7 +1586,7 @@ def serval():
          spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
          spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
          spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
-         if np.isfinite(targ.rv):
+         if targ.rv is not None and np.isfinite(targ.rv):
             spt.header['HIERARCH SERVAL TARG RV CSV'] = (targ.rv, '[km/s] RV from targ.cvs')
          if np.isfinite(targrvs['drsspt']):
             spt.header['HIERARCH SERVAL TARG RV DRSSPT'] = (targrvs['drsspt'], '[km/s] DRS RV of spt')
