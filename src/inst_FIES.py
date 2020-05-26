@@ -1,14 +1,20 @@
 from read_spec import *
 
 # Instrument parameters
-name = 'FIES'
+name = __name__[5:]   # FIES (iraf), FIES_CERES
+
 # obsname = (28.75728, -17.88508, 2382) from wiki
 obsname = "not" # for barycorrpy
 obsname = "lapalma" # for barycorrpy
 
 pat = '*.fits'
-pmax = 2048 - 300
-iomax = 79
+
+iomax = {'FIES': 79, 'FIES_CERES': 76}[name]
+pmax =  {'FIES': 2048, 'FIES_CERES': 2102}[name] - 300
+if name == 'FIES_CERES':
+   oset = ':66'   # CERES background subtraction problem in blue orders
+
+name = 'FIES'
 
 maskfile = 'telluric_mask_carm_short.dat'
 
@@ -33,8 +39,38 @@ def scan(self, s, pfits=True):
    """
    HIERARCH = 'HIERARCH '
    hdulist = self.hdulist = pyfits.open(s) # slow 30 ms
-   if 1:
-      self.header = hdr = hdulist[0].header
+   self.header = hdr = hdulist[0].header
+   self.drs = hdr.get('PIPELINE', 'DRS')
+
+   if self.drs == 'CERES':
+      self.instname = hdr['INST']
+      self.drsberv = hdr.get('BARYCENTRIC CORRECTION (KM/S)', np.nan)
+      self.drsbjd = hdr.get('MBJD', np.nan) + 2400000.5  # same as MJD!?
+      self.dateobs = hdr['HIERARCH SHUTTER START DATE'] + 'T' + hdr['HIERARCH SHUTTER START UT']
+      self.mjd = hdr.get('HIERARCH MJD')
+      self.drift = np.nan
+      self.e_drift = np.nan
+      self.sn55 = hdr.get('SNR', 50)   # always 50
+      self.fileid = self.dateobs
+      self.calmode = "%s,%s,%s" % (hdr.get('SCI-OBJ', ''), hdr.get('CAL-OBJ', ''), hdr.get('SKY-OBJ', ''))
+      self.timeid = self.fileid
+      self.ccf.rvc = hdr.get('RV', np.nan)
+      self.ccf.err_rvc = hdr.get('RV_E', np.nan)
+
+      self.ra = hdr['HIERARCH RA']
+      self.de = hdr['HIERARCH DEC']
+      self.airmass = hdr.get('HIERARCH TARG AIRMASS START', np.nan)
+      self.exptime = hdr['HIERARCH TEXP (S)']
+      self.tmmean = hdr.get(HIERARCH+'CARACAL TMEAN', 0.0)
+      if self.exptime: self.tmmean /= self.exptime   # normalise
+      if self.tmmean == 0: self.tmmean = 0.5
+      # estimate SNR
+      f = hdulist[0].section[1]
+      self.snr = np.nanmedian(np.abs(f[:,1:]/(f[:,1:]- f[:,:-1])), axis=1)
+      self.sn55 = self.snr[55]
+      hdr['OBJECT'] = hdr['HIERARCH TARGET NAME']
+   else:
+      # IRAF header
       self.instname = hdr['INSTRUME']
       self.drsberv = hdr.get('BERV', np.nan)
       self.drsbjd = hdr.get('HJD', np.nan)
@@ -69,22 +105,27 @@ def scan(self, s, pfits=True):
 
 def data(self, orders=None, pfits=True):
    hdulist = self.hdulist
-   if 1:  # read order data
+   # read order data
+   if self.drs == 'CERES':
+      f = hdulist[0].section[1][orders]
+      w = hdulist[0].section[0][orders]
+      e = 1/np.sqrt(hdulist[0].section[2][orders])
+   else:
       f = hdulist[0].section[orders]
+      # stupid iraf header
       gg = readmultispec(self.filename, reform=True, quiet=True)
       # "".join(self.header['WAT2_0*'].values()).split("spec")
       w = gg['wavelen'][orders]
       f = hdulist[0].section[orders]
       e = f*0 + 1/self.snr[orders, np.newaxis] *0.5
-      bpmap = np.isnan(f).astype(int)            # flag 1 for nan
-      # stupid iraf header
-      
 
-      with np.errstate(invalid='ignore'):
-        bpmap[f < -3*e] |= flag.neg
-        bpmap[e==0] |= flag.nan
+   bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
-      return w, f, e, bpmap
+   with np.errstate(invalid='ignore'):
+      bpmap[f < -3*e] |= flag.neg
+      bpmap[e==0] |= flag.nan
+
+   return w, f, e, bpmap
 
 
 
