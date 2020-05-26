@@ -108,14 +108,14 @@ def data(self, orders=None, pfits=True):
    # read order data
    if self.drs == 'CERES':
       f = hdulist[0].section[1][orders]
-      w = hdulist[0].section[0][orders]
+      w = hdulist[0].section[0][orders] / (1.00004)
       e = 1/np.sqrt(hdulist[0].section[2][orders])
    else:
       f = hdulist[0].section[orders]
       # stupid iraf header
       gg = readmultispec(self.filename, reform=True, quiet=True)
       # "".join(self.header['WAT2_0*'].values()).split("spec")
-      w = gg['wavelen'][orders]
+      w = airtovac(gg['wavelen'][orders])
       f = hdulist[0].section[orders]
       e = f*0 + 1/self.snr[orders, np.newaxis] *0.5
 
