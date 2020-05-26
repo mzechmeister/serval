@@ -145,7 +145,7 @@ class interp:
 
 
 class Tpl:
-   def __init__(self, wk, fk, initfunc, evalfunc, mask=False, berv=None):
+   def __init__(self, wk, fk, initfunc, evalfunc, mask=False, berv=None, vsini=None):
       '''
       wk : barycentric corrected wavelength
       '''
@@ -154,6 +154,9 @@ class Tpl:
         ii = np.isfinite(fk)
       self.wk = wk[ii]
       self.fk = fk[ii]
+      if vsini and self.wk[1]-self.wk[0]:
+         # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
+         self.wk, self.fk = rotbroad(self.wk, self.fk, vsini)
       self.berv = berv
       self.funcarg = initfunc(self.wk, self.fk)
       self.evalfunc = evalfunc
@@ -169,6 +172,38 @@ class Tpl:
          return msk(barshift(w,-self.berv)) > 0.01
       else:
          return slice(0,0) # empty
+
+def rotbroad(x, f, v):
+    '''
+    Broaden a spectrum by rotation.
+
+    Parameters
+    ----------
+    x : Uniform ln(lambda) grid.
+    f : Spectrum (sampled uniformly in log(lambda), i.e. velocity).
+    v : Rotational velocity vsini [km/s]
+
+    Returns
+    -------
+    x : ln(lambda) truncated to valid range.
+    f : Broaden spectrum.
+
+    '''
+    # f(x)= x<-1 ? -pi/4 : x>1? pi/4 : (sqrt(1-x**2)*x+asin(x))/2; pl sqrt(1-x**2), dx=0.8, (f(x+dx/2)-f(x-dx/2))/dx, f(x)
+
+    dv = (x[1]-x[0]) * c   # velocity step [km/s]
+    k = int(v / dv)        # kernel sampling
+
+    # rotation broadening kernel
+    A = np.sqrt(1 - (np.arange(-k,k+1.)/k)**2)
+    A /= sum(A)    # normalise kernel to unity area
+
+    return x[k:-k], np.convolve(f, A, mode='valid')
+
+    frot = 0
+    for i in range(-k, k+1):
+        frot += A[v+i] * f[v-i:-v-i-1]  # -0 does not work
+    return frot
 
 
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
@@ -719,7 +754,7 @@ def serval():
 
    sys.stdout = Logger()
 
-   global obj, targ, oset, coadd, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv
+   global obj, targ, oset, coadd, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -1128,13 +1163,14 @@ def serval():
                ww, ff = phoenix_as_RVmodel.readphoenix(servallib + 'lte03900-5.00-0.0_carm.fits', wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
                ww = lam2wave(ww)
                is_ech_tpl = False
-               TPL = [Tpl(ww, ff, spline_cv, spline_ev)] * nord
+               TPL = [Tpl(ww, ff, spline_cv, spline_ev, vsini=tplvsini)] * nord
                TPLrv = 0.
             elif tpl.endswith('template.fits') or os.path.isdir(tpl):
                # last option
                # read a spectrum stored order wise
+               print "tplvsini", tplvsini
                ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
-               TPL = [Tpl(wo, fo, spline_cv, spline_ev) for wo,fo in zip(ww,ff)]
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini) for wo,fo in zip(ww,ff)]
                if 'HIERARCH SERVAL COADD NUM' in head:
                   print 'HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM']
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
@@ -2262,7 +2298,8 @@ if __name__ == "__main__":
    argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=snmax, type=float)
    argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
-   argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl.[float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
+   argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
+   argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
