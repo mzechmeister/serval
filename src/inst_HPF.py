@@ -67,7 +67,7 @@ def data(self, orders, pfits=True):
    if 1:  # read order data
       f = hdulist['Sci Flux'].section[orders]
       w =  hdulist['Sci Wavl'].section[orders]
-      e = (hdulist['Sci Variance'].section[orders])**-0.5
+      e = (hdulist['Sci Variance'].section[orders])**0.5
       bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
       with np.errstate(invalid='ignore'):
