@@ -1,4 +1,5 @@
 #! /usr/bin/python
+from __future__ import division, print_function
 
 import sys
 import argparse
@@ -10,7 +11,7 @@ from wstat import nanwsem, wmean, mlrms, wstd
 try:
    import gls
 except:
-   print 'Cannot import gls'
+   print('Cannot import gls')
 
 try:
    import astropy.io.fits as pyfits
@@ -18,7 +19,7 @@ except:
    try:
       import pyfits
    except:
-      print 'Cannot import pyfits'
+      print('Cannot import pyfits')
 
 import chi2map
 
@@ -52,7 +53,7 @@ class srv:
       self.pre = pre = obj+'/'+tag
       self.rms = np.nan
 
-      print pre+'.rvc'+fibsuf+'.dat'
+      print(pre+'.rvc'+fibsuf+'.dat')
       self.allrv = genfromtxt2d(pre+'.rvo'+fibsuf+'.dat')
       self.allerr = genfromtxt2d(pre+'.rvo'+fibsuf+'.daterr')
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0])   # as string
@@ -74,7 +75,7 @@ class srv:
       bjd = np.atleast_1d(np.genfromtxt(pre+'.brv.dat', usecols=[0]))
 
       nn = [n for (n,t) in enumerate(bjd) if t in self.allrv[:,0]]
-      self.info = np.atleast_1d(np.genfromtxt(pre+'.info.cvs', dtype=('S'), usecols=[0], delimiter=';'))[nn]
+      self.info = np.atleast_1d(np.genfromtxt(pre+'.info.cvs', dtype=str, usecols=[0], delimiter=';'))[nn]
 
       if not self.info.ndim:
          self.info = self.info[np.newaxis]
@@ -164,7 +165,7 @@ class srv:
          gplot(drsbjd-2450000, drsRVc, drse_RVc, 'us 1:2:3 w e pt 7 lt 1 t "DRS (rms = %1.3g m/s)"'% mlrms(drsRVc, e=drse_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
          ogplot(bjd-2450000, RVc-np.median(RVc)+np.nanmedian(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff) = %.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
-         pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
+         pause('drsrv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
 
    def mlc(self):
       '''Show RVs over order for each observation.'''
@@ -186,8 +187,8 @@ class srv:
          chimap = chi2map.fromfile(name, self.RV[n]/1000., self.e_RV[n]/1000., self.rv[n]/1000., self.e_rv[n]/1000., self.orders, self.keytitle, self.rchi[n])
 
          chimap.plot()
-         print 'mlRV', chimap.mlRV, chimap.e_mlRV
-         print 'RV  ', self.RV[n], self.e_RV[n]
+         print('mlRV', chimap.mlRV, chimap.e_mlRV)
+         print('RV  ', self.RV[n], self.e_RV[n])
 
          nn = pause('%i/%i %s %s'% (n+1, self.N, self.bjd[n], self.info[n]))
          try:
@@ -213,8 +214,8 @@ class srv:
          ind = self.orders
          xc = np.mean(x[ind])
          crxml, e_crxml = chimap.mlcrx(x, xc, ind)
-         print 'crxml', crxml
-         print 'crx  ', self.tcrx[1,n], self.tcrx[2,n]
+         print('crxml', crxml)
+         print('crx  ', self.tcrx[1,n], self.tcrx[2,n])
          chimap.plot_fit()
 
          nn = pause('%i/%i %s %s'% (n+1, self.N, self.bjd[n], self.info[n]))
@@ -247,17 +248,17 @@ class srv:
       x = [row for i, row in enumerate(reader) if row["#Karmn\t\t"]== self.tag+'\t']
       if x:
          x = x[0]
-         print '#Karm', x["#Karmn\t\t"], ' | GJ'+x[" GJ\t\t"], ' | '+x[" Name\t\t\t"]
-         print 'vsini [km/s]:', x[" vsini_kms-1\t"], "(%s)"%x[" Ref28\t"]
-         print 'Prot [km/s]:', x[" P_d \t\t"], x[" eP_d\t\t"], "(%s)"%x[" Ref29\t"]
-         print 'SpT :', x[" SpT\t\t"]
+         print('#Karm', x["#Karmn\t\t"], ' | GJ'+x[" GJ\t\t"], ' | '+x[" Name\t\t\t"])
+         print('vsini [km/s]:', x[" vsini_kms-1\t"], "(%s)"%x[" Ref28\t"])
+         print('Prot [km/s]:', x[" P_d \t\t"], x[" eP_d\t\t"], "(%s)"%x[" Ref29\t"])
+         print('SpT :', x[" SpT\t\t"])
 
    def targ(self):
      try:
       with open(self.pre+'.targ.cvs') as f:
          self.line = f.read()
       line = self.line.split(';')        # ['gj699', "NAME Barnard's star", ' 17 57 ...]
-      print line[0],"; ", line[1]
+      print(line[0],"; ", line[1])
       line = " ".join(line[2:]).split()
       self.ra = tuple(map(float,line[0:3]))  # rammss = (14.,29.,42.94)
       self.de = tuple(map(float,line[3:6]))  # demmss = (-62.,40.,46.16)
@@ -274,9 +275,9 @@ class srv:
       Periodanalysis of RV data.
       '''
       self.mlrms = mlrms(self.RVc, e=self.e_RVc)
-      print 'N:     ', self.N
-      print 'T [d]:     ', self.bjd.max() - self.bjd.min()
-      print 'wrms_RVc [m/s]:   %.2f\njitter [m/s]: %.2f' % self.mlrms
+      print('N:     ', self.N)
+      print('T [d]:     ', self.bjd.max() - self.bjd.min())
+      print('wrms_RVc [m/s]:   %.2f\njitter [m/s]: %.2f' % self.mlrms)
       #pause()
 
    def plotrvno(self):
@@ -285,7 +286,7 @@ class srv:
       crx, e_crx = self.tcrx[1:3]
       lam_o = np.exp(self.tcrx[6:].T)
       lnlv = np.log(self.tcrx[5])
-      print "use '$' to toggle between orders and wavelength"
+      print("use '$' to toggle between orders and wavelength")
       n = 0
       while 0 <= n < self.N:
          gplot.key('tit "%s %s %s"'%(n+1, bjd[n], self.info[n]))
@@ -304,7 +305,7 @@ class srv:
 
             gplot(bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg,
                   hypertext,
-                  bjd[n]-2450000, RVc[n], e_RVc[n], 'us 1:2:3 w e pt 7 t ""', flush=' \n')
+                  bjd[n]-2450000, RVc[n], e_RVc[n], 'us 1:2:3 w e pt 7 t "n=%s"'%(n+1))
 
          # bottom panel
          gplot.xlabel('"order"').ylabel('"RV [m/s]"')
@@ -319,7 +320,7 @@ class srv:
          gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7'+hypertext+', "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
 
          gplot.unset('multiplot')
-         nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
+         nn = pause('%i/%i %s %s'% (n+1, self.N, bjd[n], self.info[n]))
          try:
             n += int(nn)
          except:
@@ -370,9 +371,9 @@ class srv:
          except:
             if oo in ('-', "D", "B"):
                o -= 1
-            elif oo in ('^'):
+            elif oo in ('^',):
                o = 0
-            elif oo in ('$'):
+            elif oo in ('$',):
                o = self.N - 1
             else:
                o += 1
@@ -508,7 +509,7 @@ class srv:
          e_n = np.sqrt((np.nansum((r**2-e_rv**2-e_o**2)/e_r**2, axis=1)/np.nansum(1/e_r**2, axis=1)).clip(min=0))[:,np.newaxis] # keepdims not in v1.6.1
          e_o = np.sqrt((np.nansum((r**2-e_rv**2-e_n**2)/e_r**2, axis=0)/np.nansum(1/e_r**2, axis=0)).clip(min=0))[np.newaxis,:]
          L = - 0.5* np.nansum(r**2/e_r**2) - 0.5* np.nansum(np.log(2.*np.pi*e_r**2))
-         print L, e_n.ravel()
+         print(L, e_n.ravel())
          gplot.unset(' multiplot')
          gplot.datafile('missing "nan"')
          gplot.multiplot('layout 1,2;')
@@ -562,7 +563,7 @@ class srv:
       gplot.xlabel('"Order"').ylabel('"RV_{n,o} - RV_n [m/s]"')
       gplot(orddisp.T, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(self.orders)]))
       ogplot(self.orders, ordstd, ' w lp lt 3 t "", "" us 1:(-$2) w lp t ""')
-      pause()
+      pause('disp')
       ##gplot('"'+filename,'" matrix every ::%i::%i us ($1-5):3' % (omin+5,omax+5))
       ##ogplot(allrv[:,5:71],' matrix every ::%i us 1:3' %omin)
       ## create ord, rv,e_rv, bb
