@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 __author__ = 'Mathias Zechmeister'
 __version__ = '2020-04-03'
@@ -240,9 +240,10 @@ class spl:
          A = 6*d,
 
       if x is None:
-         # return knot values 
+         # return knot values
          # for last knot append the end point of last interval a + b*1 + c*1^2 + d*1^3
-         y = np.r_[A[0], np.sum(zip(*A)[-1])]
+         #y = np.r_[A[0], np.sum(zip(*A)[-1])]
+         y = np.r_[A[0], np.sum(a[-1] for a in A)]
       else:
          x = (self.K-1)/(self.xmax-self.xmin) * (x-self.xmin)
          k, p = divmod(x, 1)
@@ -314,7 +315,7 @@ class ucbspl:
    >>> cs(cs.xk)
    array([0., 0., 0., 1., 4., 1., 0., 0., 0., 0.])
    >>> cs(5), cs([4.3,5.5])
-   (array(1.), array([3.541, 0.125]))
+   (1.0, array([3.541, 0.125]))
    >>> x = np.r_[:10:0.1]
    >>> gplot(x, cs(x), 'w lp,', cs.xk, cs(), 'pt 7 lt 3')
 
@@ -512,18 +513,18 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
 
    if 0:
       # the slow way without band storage
-      print 'bspline2'
+      print('bspline2')
       B = bspline2((x-x.min())/(x.max()-x.min())*K, K, D=3)
       n = B.shape[1]
       D = np.diff(np.eye(n),n=pord).T
-      print 'BTy'
+      print('BTy')
       BTy = np.dot(B.T, y)
-      print 'BTB'
+      print('BTB')
       BTB = np.dot(B.T,B) + lam*np.dot(D.T,D)
       #BTB = B.T.dot(B)+lam*D.T.dot(D)
       #a = np.linalg.solve(BTB, BTy) # too slow
       a = solve_banded((3,3), bandmat(BTB,bw=7), BTy)
-      print a
+      print(a)
       yfit = np.dot(B,a)
 
    if c:
@@ -554,7 +555,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
 
       if lam:
          # Add penalty lam*DTD
-         print lam
+         print(lam)
          if pord == 0:
             # diagonal
             BTBbnd[0] += lam
@@ -609,13 +610,13 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
          #print _cbspline.cholsol(BTB, tt, BTy.size)
          flag = _cbspline.cholbnd(BTBbnd, BTy, BTy.size, 3)
          if flag:
-            print 'LinAlgError: The data may contain too large gaps. Try regularisation options.'
+            print('LinAlgError: The data may contain too large gaps. Try regularisation options.')
          #_cbspline.cholbnd_upper(gg, uu,  BTy.size, 3)
       elif 1: # python version
          try:
             solveh_banded(BTBbnd, BTy, lower=True, overwrite_ab=True, overwrite_b=True)
          except np.linalg.LinAlgError:
-            print 'LinAlgError: The data may contain too large gaps. Try regularisation options.'
+            print('LinAlgError: The data may contain too large gaps. Try regularisation options.')
       else:
          # old c version with Gauss elimination
          # symmetric part
@@ -743,8 +744,8 @@ def bspline1(x, K, D=3):
    for d in range(1, D+1):
 #      B = p[:-d]*B[:-1]/d + (d+1-p[:-d])/d*B[1:]         # Bkd
       B = (p[:-d]*B[:-1] - (p[d:]-1)*B[1:])/d         # Bkd
-      print B
-   print zip(k,B)
+      print(B)
+   print(zip(k,B))
    return B
 
 def bspline2(x,K,D=3):
@@ -865,10 +866,10 @@ def example():
     [ 0,  0, -5, 10]
    ])
    D = np.array([1100, 100, 100, 100])
-   print "SciPy - Solve Banded"
-   print "A:", A
-   print "D:", D
-   print "Result:", SolveBanded(A, D)
+   print("SciPy - Solve Banded")
+   print("A:", A)
+   print("D:", D)
+   print("Result:", SolveBanded(A, D))
    pause()
 
 if __name__ == "__main__":
