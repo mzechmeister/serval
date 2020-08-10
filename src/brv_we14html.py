@@ -3,8 +3,12 @@
 from __future__ import division
 
 # Required packages
-#import requests
-import urllib2
+try:
+    # For Python 3.0 and later
+    import urllib.request as urllib2
+except ImportError:
+    # Fall back to Python 2's urllib2
+    import urllib2
 from numpy import array, ndarray
 
 

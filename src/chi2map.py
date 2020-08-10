@@ -1,3 +1,5 @@
+from __future__ import division, print_function
+
 import numpy as np
 try:
    import astropy.io.fits as pyfits
@@ -26,11 +28,11 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    v = vgrid[k] - a[1]/2./a[2]   # parabola minimum
    e_v = np.nan
    if -1 in SSR:
-      print 'opti warning: bad ccf.'
+      print('opti warning: bad ccf.')
    elif a[2] <= 0:
-      print 'opti warning: a[2]=%f<=0.' % a[2]
+      print('opti warning: a[2]=%f<=0.' % a[2])
    elif not vgrid[0] <= v <= vgrid[-1]:
-      print 'opti warning: v not in [va,vb].'
+      print('opti warning: v not in [va,vb].')
    else:
       e_v = 1. / a[2]**0.5
    if (plot==1 and np.isnan(e_v)) or plot==2:
@@ -74,8 +76,8 @@ class Chi2Map:
       V, e_V = wsem(np.array(v),e=np.array(e_v), rescale=0)
       V, e_V = wsem(np.array(v),e=np.array(e_v))
       if 0:
-         print V, e_V
-         print RV, e_RV
+         print(V, e_V)
+         print(RV, e_RV)
          gplot(rv, e_rv, 'us 0:1:2 w e,', v, e_v,  'us 0:1:2 w e lc 3, %s,%s' % (RV, V))
          gplot(rv, e_rv, 'us 0:1:2 w e,', v, e_v*rchi[1:][orders],  'us 0:1:2 w e lc 3, %s,%s' % (RV, V))
          pause()
@@ -181,16 +183,15 @@ class Chi2Map:
 
          try:
             # setup a grid around the start guess mlRv and mlCRX=0
-            par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-1, self.mlRV/1000.+1,0.2), np.arange(-500,500,50)/1000.))
+            par = list(map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-1, self.mlRV/1000.+1,0.2), np.arange(-500,500,50)/1000.)))
             # par = map(np.ravel, np.meshgrid(np.arange(self.mlRV/1000.-0.1, self.mlRV/1000.+.1,0.02), np.arange(-500,500,50)/1000.))
 
             z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
 
             # gplot.splot(par, z, ' palette')
-            #pause()
             cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
 
-            zmod = cov.p(zip(*par))
+            zmod = cov.p(list(zip(*par)))
             #pause("\n", cov.Va*1000**2, cov.Xc*1000)
             #cov = paraboloid.covmat_fit(par, z)
             #cov = paraboloid.covmat_fit(par, z, N=self.No[ind].sum())
@@ -202,15 +203,15 @@ class Chi2Map:
 
             if -1<v<1 and -0.5<b<0.5 and np.isfinite(cov.e_a).all():
                # refit closer to minimum
-               par = map(np.ravel, np.meshgrid(np.arange(v-3*e_v, v+3*e_v, e_v/2), np.arange(b-3*e_b, b+3*e_b, e_b/2)))
+               par = list(map(np.ravel, np.meshgrid(np.arange(v-3*e_v, v+3*e_v, e_v/2), np.arange(b-3*e_b, b+3*e_b, e_b/2))))
                z = [np.sum([cs_o(vvi+(x_o-xc)*bbi) for x_o,cs_o in zip(ll, cs)]) for vvi,bbi in zip(*par)]
-               zmod = cov.p(zip(*par))
+               zmod = cov.p(list(zip(*par)))
                cov = paraboloid.covmat_fit(zip(*par), z, N=len(cs))
 
             self.crx = cov.Xc[1] * 1000
             self.e_crx = cov.e_a[1] * 1000
          except:
-            print "warning: mlCRX failed."
+            print("warning: mlCRX failed.")
 
       if 0:
       # scipy optimisation

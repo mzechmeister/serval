@@ -119,3 +119,8 @@ def sun(YYYY, MM, DD, lon=-74.3, lat=40.9, zenith='nautical', rise=True):
           = 5h 26m
           = 5:26 am EDT
    '''
+
+if __name__ == "__main__":
+   import doctest
+   doctest.testmod()
+

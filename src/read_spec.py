@@ -1,4 +1,6 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
+from __future__ import print_function
+
 __author__ = 'Mathias Zechmeister'
 __version__ = '2019-03-01'
 
@@ -11,6 +13,14 @@ import tarfile
 import time
 import warnings
 from collections import namedtuple
+
+try:
+   # Python 2
+   type(file)
+except:
+   # Python 3
+   import io
+   file = io.FileIO
 
 
 try:
@@ -137,7 +147,7 @@ class Spectrum:
       self.scan(self, filename, pfits=pfits)
 
       if verb:
-         print "scan %s:"%self.instname, self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode
+         print("scan %s:"%self.instname, self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode)
 
       if inst.name != self.instname:
          pause('WARNING:', filename, 'from', inst, ', but mode is', self.instname)
@@ -439,7 +449,7 @@ def read_csfs_vis(self, s, orders=None, pfits=True, verb=True):
       bpmap[e==0] |= flag.nan
       return w, f, e, bpmap
 
-   if verb: print "read_carm_vis:", self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode
+   if verb: print("read_carm_vis:", self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode)
 
 
 def read_feros(self, s, orders=None, pfits=True, verb=True):
@@ -491,7 +501,7 @@ def read_feros(self, s, orders=None, pfits=True, verb=True):
       #  hdr['OBJECT'] = hdr.get('OBJECT','FOX')
       self.header = hdr
    hdr = self.header
-   if verb: print "read_feros:", self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode
+   if verb: print("read_feros:", self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode)
 
    if orders is not None:  # read order data
       if self.filename.endswith('.mt'):
@@ -598,7 +608,7 @@ def read_fts(self,s, orders=None, filename=None, pfits=True, verb=True):
       self.calmode = hdr.get('SOURCE', 0) #.split("_")[3] #fileid[fileid.index('(')+1:fileid.index(')')]
       self.timeid = self.fileid
       self.exptime = 0
-   if verb: print "read_fts:", self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode
+   if verb: print("read_fts:", self.timeid, self.header['OBJECT'], self.drsbjd, self.sn55, self.drsberv, self.drift, self.flag, self.calmode)
 
    if orders is not None:  # read order data
       nord = 70    # some arbitary shaping to 70x10000
@@ -666,7 +676,7 @@ def file_from_tar(s, inst='HARPS', fib=None, **kwargs):
       # does not work with np.fromfile
       s = tar.extractfile(extr)
    else:
-      print 'extract'
+      print('extract')
       tar.extract(extr, path='tarfits')   # extract physically
       s = 'tarfits/'+extr.name
    #tar.close()
@@ -726,6 +736,7 @@ class imhead(dict):
       if 1:
          fi.seek(extpos)
          for card in iter(lambda:fi.read(80), ''):   # read in 80 byte blocks
+            card = card.decode()
             NR += 1
             if card.startswith('END '): break
             if card.startswith(args):
@@ -739,7 +750,7 @@ class imhead(dict):
                if count==0: args = () # all found; do not check cards anymore; only read to end
          #NR = (fi.tell()-extpos) / 80
 
-      hsz = 2880 * ((NR-1)/36 + 1)
+      hsz = 2880 * ((NR-1)//36 + 1)
       dsz = 0     # EXTDATSZ
       self.NAXIS = hdr.get('NAXIS', 0)
       if self.NAXIS:
@@ -750,7 +761,7 @@ class imhead(dict):
          if self.NAXIS > 1:
             self.NAXIS2 = hdr['NAXIS2']
             dsz *= self.NAXIS2
-         dsz = ((dsz/8-1)/2880+1) * 2880
+         dsz = ((dsz//8-1)//2880+1) * 2880
 
       self.EXTHDRSZ = hsz   # add hdr size
       self.EXTDATA = extpos + hsz

@@ -370,7 +370,7 @@ class ucbspl:
       y : ndarray
          Spline values.
       '''
-      x = np.linspace(self.xmin, self.xmax, num=self.K*ofac)
+      x = np.linspace(self.xmin, self.xmax, num=int(self.K*ofac))
       return x, self(x)
 
    def to_spl(self):

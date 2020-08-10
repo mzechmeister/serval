@@ -103,7 +103,7 @@ def qfacmask(lnw,f,sz=26,thres=3000.,plot=False):
    for i,msk in enumerate(idx):
       if msk: reg[max(i-sz/2,1):i+sz/2] = True
    if plot:
-      from gplot import *
+      from gplot import gplot, ogplot
       gplot(lnw,f,Qb," ,'' us 1:3 axis x1y2, "+str(thres)+" axis x1y2 t 'threshold'"); 
       ogplot(lnw[reg], f[reg],",", lnw[idx], f[idx])
       pause()

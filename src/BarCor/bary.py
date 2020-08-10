@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from __future__ import print_function
+
 import tempfile
 import os
 import sys
@@ -66,9 +68,9 @@ def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.
       if ':' in demmss:
          demmss = tuple(map(float,demmss.split(':')))
 
-   par = tempfile.NamedTemporaryFile()
-   dat = tempfile.NamedTemporaryFile()
-   res = tempfile.NamedTemporaryFile()
+   par = tempfile.NamedTemporaryFile(mode='w')
+   dat = tempfile.NamedTemporaryFile(mode='w')
+   res = tempfile.NamedTemporaryFile(mode='w')
    resfile = res.name
    res.close()
    #print "%10.4f%10.4f%10.4f"%rammss + "%10.4f%10.4f%10.4f"%demmss + "%5i%5i%10.4f%10.4f\n"%(epoch, 14, pma, pmd)
@@ -85,7 +87,7 @@ def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.
 
    p = Popen([path+'/bary.e'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
    #p = Popen(['/home/raid0/zechmeister/programs/BarCor/bary.e'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-   eph = p.communicate(input="\n".join([par.name,dat.name,res.name])+"\n"); eph
+   eph = p.communicate(input=("\n".join([par.name,dat.name,res.name])+"\n").encode()); eph
    result = np.loadtxt(res.name,skiprows=8)
    os.remove(res.name)
    result[-2] = result[-2] + 2400000.
@@ -93,7 +95,7 @@ def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.
 
 def main(files, **kwargs):
    for file in files:
-      print file, fmt % tuple(bary_harps(file,**kwargs))
+      print(file, fmt % tuple(bary_harps(file,**kwargs)))
 
 if __name__ == "__main__":
    parser = argparse.ArgumentParser(
