@@ -1,4 +1,15 @@
-import urllib, urllib2
+from __future__ import division, print_function
+
+import urllib
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlopen
+    import urllib
+    urllib.quote = urllib.parse.quote
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib2 import urlopen
+
 import os
 import sys
 
@@ -32,10 +43,10 @@ def simbad_query(targ):
       'output console=off',
       'format object form1 "%OBJECT;%IDLIST(1);%COO(A D);%PM(A D [E]);%PLX;%RV"',
       'query '+targ]))
-   # urllib2.urlopen('http://simbad.u-strasbg.fr/simbad/sim-script', 'submit=submit+script&script=output+script%3Doff%0D%0Aoutput+console%3Doff%0D%0Aformat+object+form1+%22%25OBJECT+%3A+%25IDLIST%281%29+%3A+%25COO%28A+D%29+%25PM%28A+D+[E]%29+%25PLX\n%22%0D%0Aquery+gj699')
+   # urlopen('http://simbad.u-strasbg.fr/simbad/sim-script', b'submit=submit+script&script=output%20script%3Doff%0Aoutput%20console%3Doff%0Aformat%20object%20form1%20%22%25OBJECT%3B%25IDLIST%281%29%3B%25COO%28A%20D%29%3B%25PM%28A%20D%20%5BE%5D%29%3B%25PLX%3B%25RV%22%0Aquery%20gj699').read()
 
-   site = urllib2.urlopen('http://simbad.u-strasbg.fr/simbad/sim-script').geturl()
-   result = urllib2.urlopen(site, 'submit=submit+script&script='+query).read()
+   site = 'http://simbad.u-strasbg.fr/simbad/sim-script'
+   result = urlopen(site, str.encode('submit=submit+script&script='+query)).read().decode()
 
    return result
 
@@ -52,7 +63,7 @@ class Targ:
    (17.0, 57.0, 48.49803)
 
    '''
-   def __init__(self, name, rade=(None, None), pm=(None, None), plx=None, rv=None, sa=float('nan'), cvs=None):
+   def __init__(self, name, rade=(None, None), pm=(None, None), plx=None, rv=None, sa=float('nan'), csv=None):
       self.name = name
       self.sa = sa
       self.ra, self.de = rade
@@ -65,9 +76,9 @@ class Targ:
          self.de = tuple(map(float,self.de.split(':')))
       else:
          # look for name, try to read from file. If not found or different object then make a request to simbad
-         if not self.fromfile(cvs) or not self.line.startswith(self.name+";"):
+         if not self.fromfile(csv) or not self.line.startswith(self.name+";"):
             self.query()
-            self.tofile(cvs)
+            self.tofile(csv)
          self.assignAttr(self.line)
       if self.pmra and self.plx:
          self.sa = 22.98 * ((self.pmra/1000)**2+(self.pmde/1000)**2) / self.plx
@@ -76,13 +87,13 @@ class Targ:
       '''Restore info from a file.'''
       self.line = None
       if os.path.exists(filename):
-         print "targ.py: restoring '%s' from %s" % (self.name, filename)
+         print("targ.py: restoring '%s' from %s" % (self.name, filename))
          with open(filename) as f:
             self.line = f.read()
       return self.line
 
    def query(self):
-      print "targ.py: requesting simbad for '%s'" % self.name
+      print("targ.py: requesting simbad for '%s'" % self.name)
       self.line = simbad_query(self.name)
 
    def assignAttr(self, line):
@@ -99,17 +110,17 @@ class Targ:
    def tofile(self, filename=None):
       if filename:
          with (open(filename, 'w') if filename else sys.stdout) as f:
-            print >>f, self.line
-         print 'storing in', filename
+            print(self.line, file=f)
+         print('storing in', filename)
       else:
-         print self.line
+         print(self.line)
 
 
 if __name__ == "__main__":
    name = 'gj699'
-   if len(sys.argv): name = sys.argv[1]
-   targ = Targ(name)
+   if len(sys.argv) > 1: name = sys.argv[1]
+   targ = Targ(name, csv='targ.csv')
    #targ = Targ('gj699', fromfilename='bla')
-   print targ.sa, targ.pmra, targ.pmde, targ.plx
+   print(targ.sa, targ.pmra, targ.pmde, targ.plx)
 
 
