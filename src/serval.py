@@ -1,8 +1,8 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2020-03-25'
+__version__ = '2020-08-19'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -43,6 +43,7 @@ from chi2map import Chi2Map
 
 gplot2 = Gplot() # for a second plot window
 gplot.bar(0).colors('classic')
+gplot.tmp = None
 
 if 'gplot_set' in locals():
    raise ImportError('Please update new gplot.py.')
@@ -1022,7 +1023,7 @@ def serval():
    ################################
    ### READ FITS FILES ############
    ################################
-   if nspec > 700:
+   if nspec > 500:
       ulimit = resource.getrlimit(resource.RLIMIT_OFILE)
       if ulimit[0] < 4096:
          print("Many files! Adapting ulimit from %s to (4096, 4096)." % (ulimit,))
@@ -1041,6 +1042,8 @@ def serval():
       sp.sa = targ.sa / 365.25 * (sp.bjd-splist[0].bjd)
       sp.header = None   # saves memory(?), but needs re-read (?)
       if inst.name == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
+      if any(x in filename for x in n_excl):
+          sp.flag |= sflag.user
       if sp.sn55 < snmin or np.isnan(sp.sn55): sp.flag |= sflag.lowSN
       if sp.sn55 > snmax or np.isnan(sp.sn55): sp.flag |= sflag.hiSN
       if distmax and sp.ra and sp.de:
@@ -1072,7 +1075,7 @@ def serval():
    check_daytime = True
    spoklist = []
    for sp in splist:
-      if sp.flag & (sflag.nosci|sflag.config|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime):
+      if sp.flag & (sflag.nosci|sflag.config|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime|sflag.user):
          print('bad spectra:', sp.timeid, sp.obj, sp.calmode, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag)))
       else:
          spoklist += [sp]
@@ -1996,7 +1999,7 @@ def serval():
          print(n+1, '/', nspec, sp.timeid, sp.bjd, RV[n], e_RV[n])
 
          # Chromatic trend
-         if 1:
+         if len(ind)>1:
             # scipy version
             #np.polynomial.polyval(x,[a,b])
             def func(x, a, b): return a + b*x #  np.polynomial.polyval(x,a)
@@ -2033,7 +2036,7 @@ def serval():
                gplot(np.exp(x[ind]), rv[n][ind], e_rv[n][ind], ' us 1:2:3 w e pt 7, %f+%f*log(x/%f), %f' % (RV[n], pval[1],l_v,RV[n]))
                pause()
 
-         if not diff_rv:
+         if len(ind)>1 and not diff_rv:
             # ML version of chromatic trend
             oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[n])
 
@@ -2272,6 +2275,7 @@ if __name__ == "__main__":
    argopt('-fib',  help='fibre', choices=['', 'A', 'B', 'AB'], default='')
    argopt('-inst', help='instrument '+default, default='HARPS', choices=insts)
    argopt('-nset', '-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
+   argopt('-n_excl',  help='pattern for files to exclude', nargs='+', default=[])
    argopt('-kapsig', help='kappa sigma clip value'+default, type=float, default=3.0)
    argopt('-last', help='use last template (-tpl <obj>/template.fits)', action='store_true')
    argopt('-look', help='slice of orders to view the fit [:]', nargs='?', default=[], const=':', type=arg2slice)
