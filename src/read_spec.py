@@ -80,7 +80,8 @@ sflag = nameddict(
    lowSN=   64, # too low S/N
    hiSN=   128, # too high S/N
    led=    256, # LED on during observation (CARM_VIS)
-   rvnan=  512
+   rvnan=  512,
+   user=  1024  # via command line option -n_excl
 )
 
 
@@ -356,7 +357,7 @@ def read_harps_ccf(s):
       if not extr: return ccf(0,0,0,0,0,0)
       s = tar.extractfile(extr)
    else:
-      s = glob.glob(s.replace("_e2ds","_bis_*")) + glob.glob(s.replace("_e2ds","_ccf_*"))
+      s = glob.glob(s.replace("_e2ds","_bis_*").replace("_s1d","_bis_*")) + glob.glob(s.replace("_e2ds","_ccf_*").replace("_s1d","_ccf_*"))
       if s: s = s[0]   # prefer bis
       else: return ccf(*[np.nan]*6)
       #else: return ccf(0,0,0,0,0,0)
