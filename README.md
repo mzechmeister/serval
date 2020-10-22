@@ -3,16 +3,12 @@ calculate radial velocities from stellar spectra
 
 The concept of SERVAL is described in http://adsabs.harvard.edu/abs/2017A&A...609A..12Z [[pdf](https://www.aanda.org/articles/aa/pdf/2018/01/aa31483-17.pdf)].
 
-Currently, SERVAL can process data from CARM_VIS, CARM_NIR, ELODIE, HARPS, HARPN, and SOPHIE.
-
-## Recent changes
-* request to simbad to get RADE, PM, and PLX via -targ
-* barycentric correction with Wright & Eastman (2014) is now default (requires https://github.com/shbhuk/barycorrpy)
+Currently, SERVAL can process data from CARM_VIS, CARM_NIR, ELODIE, ESPRESSO, HARPS, HARPN, and SOPHIE.
 
 ## Install instruction
 
 Requirements:
-- python 2.7 + numpy, scipy, pyfits, astropy
+- python (2.7 or 3.6+) + numpy, scipy, astropy
 - gnuplot
 
 Setup the path:
@@ -44,14 +40,9 @@ chmod u+x $SERVAL/src/read_spec.py
 
 Install barycorrpy:
 ```bash
-pip install barycorrpy
-```
-or if you don't have root rights:
-```bash
 pip install --user barycorrpy
 ```
 See also https://github.com/shbhuk/barycorrpy/wiki/1.-Installation for other possibilities.
-Note there is a numpy 1.14.0 einsum issue which I reported in https://github.com/astropy/astropy/issues/7051#issuecomment-356861381. I fixed this by removing the unicode_literals in https://github.com/astropy/astropy/blob/v2.0.x/astropy/coordinates/builtin_frames/utils.py. But there might be other ways.
 
 A few c programs come precompiled. But probably it is necessary to compile (e.g. Mac OS) ...
 ```bash
@@ -68,12 +59,12 @@ A first try to check whether there are any conflicts. It should list all availab
 $SERVAL/src/serval.py --help
 ```
 
-If you have a ~/bin folder, a useful shortcut is:
+If you have a `~/bin` folder, a useful shortcut is:
 ```bash
 ln -s $SERVAL/src/serval.py ~/bin/serval
 ln -s $SERVAL/src/srv.py ~/bin/srv
 ```
-Otherwise, an alias can be create and included in `~/.bashrc`.
+Otherwise, an alias can be created and included in `~/.bashrc`.
 ```bash
 alias serval=$SERVAL/src/serval.py
 ```
@@ -91,7 +82,7 @@ mkdir data
 serval gj699 data/HARPS/gj699/ -inst HARPS -targ gj699
 ```
 
-`-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used)
+`-targ` requests the coordinates from simbad (otherwise RA and DEC from fits header is used).
 
 After serval has finished, you can inspect the results with `srv.py`, for instance
 ```bash
