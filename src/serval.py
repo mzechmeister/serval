@@ -955,7 +955,7 @@ def serval():
 
    if atmspec:
       # standard telluric spectrum
-      if inst.name is not 'CARM_VIS':
+      if inst.name != 'CARM_VIS':
          pause('Only implemented for CARM_VIS')
       import astropy.io.fits as pyfits
       #hdu = pyfits.open('/home/astro115/carmenes/tellurics/stdatmos_vis/stdatmos_vis30a090rh0780p000t.fits')
@@ -1938,7 +1938,7 @@ def serval():
             fmod[o] = f2mod
             if par.perror is None: par.perror = [0.,0.,0.,0.]
             results[sp.timeid][o] = par
-            rv[n,o] = rvo = par.params[0] * 1000. #- sp.drift
+            rv[n,o] = rvo = par.params[0] * 1000. # to [km/s] - sp.drift
             snr[n,o] = stat['snr']
             rchi[n,o] = stat['std']
             Nok[n,o] = len(keep)
