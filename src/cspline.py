@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2020-04-03'
+__version__ = '2020-11-03'
 
 import numpy as np
 from scipy.linalg import solve_banded, solveh_banded
@@ -19,7 +19,7 @@ from ctypes import c_int, c_long, c_double
 ptr_double = np.ctypeslib.ndpointer(dtype=np.float)
 ptr_int = np.ctypeslib.ndpointer(dtype=np.int)
  
-_cbspline = np.ctypeslib.load_library(os.path.join(os.path.dirname(__file__), 'cbspline'), '.')
+_cbspline = np.ctypeslib.load_library('cbspline.so', os.path.dirname(__file__))
 
 _cbspline.cbspl_Bk.argtypes = [ptr_double,    # x
                                  ptr_double,  # G

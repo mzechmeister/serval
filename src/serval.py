@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2020-08-19'
+__version__ = '2020-11-03'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -63,9 +63,7 @@ servallib = servaldir + 'lib' + os.sep
 os.environ['ASTRO_DATA'] = servalsrc
 
 ptr = np.ctypeslib.ndpointer
-_pKolynomial0 = ctypes.CDLL(servalsrc+'polyregression.so')
-_pKolynomial0.polyfit.restype = c_double
-_pKolynomial = np.ctypeslib.load_library(servalsrc+'polyregression', '.')
+_pKolynomial = np.ctypeslib.load_library('polyregression.so', servalsrc)
 _pKolynomial.polyfit.restype = c_double
 _pKolynomial.polyfit.argtypes = [
    ptr(dtype=np.float),  # x2
