@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from read_spec import *
 from read_spec import Inst
 # Instrument parameters
@@ -51,7 +53,7 @@ def scan(self, s, pfits=True):
    r = hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan) /  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan)
    if r > 1.5:
       self.flag |= sflag.led
-      print r, hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan), hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan), "# This spectrum could be affected by LED; or back background"
+      print(r, hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan), hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan), "# This spectrum could be affected by LED; or back background")
    self.sn55 = min(hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 16', np.nan),  hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 17', np.nan))
    if self.dateobs[:10] in ('2016-01-13', '2016-01-14', '2016-01-22', '2016-01-23'):
       self.sn55 = min(self.sn55, 10.) # bug in NIR fits file
@@ -134,7 +136,7 @@ def data(self, orders, pfits=True):
          f = 1.*hdulist['SPEC'].section[orders]
          dim = f.shape
          if 1: # reshaping
-            dim = (dim[0]*2,dim[1]/2)
+            dim = (dim[0]*2,dim[1]//2)
             f = f.reshape(dim)
             bp[0], bp[1] = bp[0]*2, bp[1]%dim[1]
 
