@@ -654,7 +654,7 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
    v, e_v, a = SSRstat(vgrid, SSR, plot=(not safemode)*(1+plot))
 
    if np.isnan(e_v):
-      v = vgrid[nk/2]   # actually it should be nan, but may the next clipping loop or plot use vcen
+      v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
       print(" Setting  v=" % v)
    if vfix: v = 0.
    p, SSRmin, fmod = polyreg(x2, y2, e_y2, v, len(p))   # final call with v
