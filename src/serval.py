@@ -2004,8 +2004,8 @@ def serval():
             #
             # x = np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)    # lambda
             # x = 1/np.mean(np.exp(spt.w) if def_wlog else spt.w, axis=1)  # 1/lambda
-            x = np.mean(spt.w if def_wlog else np.log(spt.w), axis=1)  # ln(lambda)
-            xc = np.mean(x[ind])   # only to center the trend fit
+            x = np.nanmean(spt.w if def_wlog else np.log(spt.w), axis=1)  # ln(lambda)
+            xc = np.nanmean(x[ind])   # only to center the trend fit
             # fit trend with curve_fit to get parameter error
             pval, cov = curve_fit(func, x[ind]-xc, rv[n][ind], [0.0, 0.0], e_rv[n][ind])
             perr = np.sqrt(np.diag(cov))

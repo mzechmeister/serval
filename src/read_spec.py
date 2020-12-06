@@ -235,15 +235,16 @@ class Spectrum:
    def get_data(self, orders=np.s_[:], wlog=def_wlog, verb=False, **kwargs):
       """Returns only data."""
       o = orders
-      if self.w:
+      if self.w is not None:
          w, f, e, b = self.w[o], self.f[o], self.e[o], self.bpmap[o]
       else:
 #         w, f, e, b = read_spec(self, self.filename, inst=self.inst, orders=orders, **kwargs)
          w, f, e, b = self.data(self, orders=orders, **kwargs)
-         w = np.log(w) if wlog else w.astype(np.float)
          f = f.astype(float)
          e = e.astype(float)
          self.bflag |= np.bitwise_or.reduce(b.ravel())
+
+      w = np.log(w) if wlog else w.astype(np.float)
       return type('specdata', (object,),
                dict(w=w, f=f, e=e, bpmap=b, berv=self.berv, o=o))
 
