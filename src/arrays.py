@@ -41,56 +41,74 @@ class Arrays(np.ndarray):
     [[ 3  6  9 12],
      [21 24],
      [15 18 27 30]]
+    >>> print(a[a>6])
+    [[],
+     [7 8],
+     [ 9 10]]
 
     '''
     def __new__(cls, input_array, dims=None):
         obj = np.array(list(map(np.array, input_array))).view(cls)
         return obj
-    def __array_finalize__(self, obj):
-        if obj is None:  # __new__ handles instantiation
-            return
     def ravel(self):
         return np.hstack(self)
-    def astype(self, typ):
-        return self
+    def astype(self, dtype):
+        return Arrays(x.astype(dtype) for x in self)
     def __str__(self):
-        return '['+",\n ".join(map(str, self))+']'
+        return '[' + ",\n ".join(map(str, self)) + ']'
+    def __setitem__(self, ij, val):
+        if isinstance(ij, Arrays):
+            # apply setitem to the subdimension
+            [si.__setitem__(j, valj) for si,j,valj in zip(self, ij, val)]
+        else:
+            super(Arrays, self).__setitem__(ij, val)
     def __getitem__(self, ij):
         if isinstance(ij, tuple) and len(ij) > 1:
+            i, j = ij
             # handle twodimensional slicing
-            if isinstance(ij[0],slice) or hasattr(ij[0], '__iter__'):
+            if isinstance(i, slice) or hasattr(i, '__iter__'):
                 # [1:4,:] or [[1,2,3],[1,2]]
-                return Arrays([arr[ij[1]] for arr in self[ij[0]]])
-            return self[ij[0]][ij[1]] # [1,:] np.array
+                return Arrays(arr[j] for arr in self[i])
+            return self[i][j] # [1,:] np.array
+        elif isinstance(ij, Arrays):
+            # boolean indexing, e.g. a[a>0]
+            # output is not flatten, dimensions are kept
+            return Arrays(a[j] for a,j in zip(self,ij))
         return super(Arrays, self).__getitem__(ij)
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):  # this method is called whenever you use a ufunc
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        # this method is called whenever you use reduce (sum()), __call__ (sin), etc.
         '''this implementation of __array_ufunc__ makes sure that all custom attributes are maintained when a ufunc operation is performed on our class.'''
-        dimk = [hasattr(arg, '__iter__') and len(arg) or 1 for arg in inputs]
-        dim = max(dimk)
-        pad_inputs = [([i]*dim if (d<dim) else i) for d,i in zip(dimk, inputs)]
-        result = [np.ndarray.__array_ufunc__(self, ufunc, method, *x, **kwargs) for x in   zip(*pad_inputs)]         
+        axis = kwargs.pop('axis', None)
+        # repeat scalar inputs before zipping
+        pad_inputs = [arg if hasattr(arg, '__iter__') else [arg]*len(self) for arg in inputs]
+        result = [np.ndarray.__array_ufunc__(self, ufunc, method, *x, **kwargs) for x in zip(*pad_inputs)]
+        #print(len(inputs[0]), len(self))
         if method == 'reduce':
-           return np.array(result)
+            # handle sum, min, max, etc.
+            if axis == 1:
+                return np.array(result)
+            else:
+                # repeat over remaining axis
+                return np.ndarray.__array_ufunc__(self, ufunc, method, result, **kwargs)
         return Arrays(result)
 
-# patch for nanfunction that cannot handle the object-ndarrays along with second axis=-1
+# patch for nanfunction that cannot handle the object-ndarrays
 def nanpatch(func):
     def wrapper(a, axis=None, **kwargs):
         if isinstance(a, Arrays):
-           if axis==1:
-              #return func(a, **kwargs)
-              return np.array([func(x, **kwargs) for x in a])
-           else:
-              #return func(func(a, **kwargs))
-              return func(np.array([func(x, **kwargs) for x in a]))
+            rowresults = [func(x, **kwargs) for x in a]
+            if axis == 1:
+                return np.array(rowresults)
+            else:
+                # repeat over remaining axis
+                return func(rowresults)
+        # otherwise keep the original version
         return func(a, axis=axis, **kwargs)
     return wrapper
 
-np.sum = nanpatch(np.sum)
 np.nanmean = nanpatch(np.nanmean)
 np.nansum = nanpatch(np.nansum)
 np.nanmin = nanpatch(np.nanmin)
 np.nanmax = nanpatch(np.nanmax)
-
 
 
