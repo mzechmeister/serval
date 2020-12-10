@@ -1140,13 +1140,11 @@ def serval():
    ntpix = ptmax - ptmin
    pixxx = arange((ntpix-1)*4+1) / 4.
    osize = len(pixxx)
-   ww = np.ones((nord,osize))
-   ff = np.zeros((nord,osize))
+   ww = [0] * nord
+   ff = [0] * nord
 
 
    if inst.name == 'FEROS':
-      ww = [0] * nord
-      ff = [0] * nord
       ntopix = ptomax - ptomin
 
    is_ech_tpl = True   # echelle or continuous spectrum
@@ -1301,26 +1299,28 @@ def serval():
          coadd == 'post3'
          tpl = outdir + 'template_' +coadd + fibsuf + '.fits'
 
-         nk = int(osize / (8 if inst.name=='FEROS' else 4) * ofac)
-         wk = nans((nord,nk))
-         fk = nans((nord,nk))
-         ek = nans((nord,nk))
-         bk = np.zeros((nord,nk))
-
-         npix = len(spt.w[0,:])
          ntset = len(spoklist[tset])
-         wmod = nans((ntset,npix))
-         mod = zeros((ntset,npix))
-         emod = zeros((ntset,npix))
-         bmod = zeros((ntset,npix), dtype=int)
          spt.header['HIERARCH SERVAL OFAC'] = (ofac, 'oversampling factor per raw pixel')
          spt.header['HIERARCH SERVAL PSPLLAM'] = (pspllam, 'smoothing value of the psline')
          spt.header['HIERARCH SERVAL UTC'] = (datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), 'time of coadding')
          for o in corders:
             print("coadding o %02i: " % o, end='')     # continued below in iteration loop
+            npix = len(spt.w[o])
+            osize = len(spt.w[o][ptmin:ptmax]) - 1   # -1 for compatibility with previous version
+            nk = int(osize * ofac)
+            wk = nans((nord,nk))
+            fk = nans((nord,nk))
+            ek = nans((nord,nk))
+            bk = np.zeros((nord,nk))
+            wmod = nans((ntset,npix))
+            mod = zeros((ntset,npix))
+            emod = zeros((ntset,npix))
+            bmod = zeros((ntset,npix), dtype=int)
             for n,sp in enumerate(spoklist[tset]):
              '''get the polynomials'''
              if not sp.flag:
+               if cache:
+                   sp.read_data()
                sp = sp.get_data(pfits=2, orders=o)
                if atmspec:
                   ft = atmmod(sp.w)
@@ -1437,7 +1437,7 @@ def serval():
                #yfit = ww[o]* 0 # np.nan
                #ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
                #yfit[ind2] = smod(ww[o][ind2])
-               ww[o], yfit = smod.osamp(1.000000001*osize/smod.K)
+               ww[o], yfit = smod.osamp(1.000000001*(4*osize+1)/smod.K)  # store with (+1) for compatibility
                wko = smod.xk     # the knot positions
                fko = smod()      # the knot values
                eko = smod.e_yk   # the error estimates for knot values
@@ -1729,7 +1729,8 @@ def serval():
             #continue
             # introduced for drift measurement? but then Halpha is not appended and writing halpha.dat will fail
          #sp = copy.deepcopy(sp)  # to prevent attaching the data to spoklist
-         sp = copy.copy(sp)  # to prevent attaching the data to spoklist
+         if not cache:
+             sp = copy.copy(sp)  # to prevent attaching the data to spoklist
          if sp.filename.endswith('.gz') and sp.header:
             # for gz and if deepcopy and if file already open (after coadding header still present) this will result in "AttributeError: 'GzipFile' object has no attribute 'offset'"
             # deepcopy probably does not copy everything properly
@@ -2259,6 +2260,7 @@ if __name__ == "__main__":
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)
    argopt('-mskspec', help='Ascii 0-1 spectrum.'+default, default='')
+   argopt('-cache',  help='store the spectra in memory instead rereading', action='store_true')
    argopt('-ccf',  help='mode ccf [with files]', nargs='?', const='th_mask_1kms.dat', type=str)
    argopt('-ccfmode', help='type for ccf template', nargs='?', default='box',
                       choices=['box', 'binless', 'gauss', 'trapeze'])

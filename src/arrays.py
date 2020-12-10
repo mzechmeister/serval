@@ -73,7 +73,7 @@ class Arrays(np.ndarray):
         elif isinstance(ij, Arrays):
             # boolean indexing, e.g. a[a>0]
             # output is not flatten, dimensions are kept
-            return Arrays(a[j] for a,j in zip(self,ij))
+            return np.array([a[j] for a,j in zip(self,ij)])
         return super(Arrays, self).__getitem__(ij)
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         # this method is called whenever you use reduce (sum()), __call__ (sin), etc.

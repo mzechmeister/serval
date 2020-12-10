@@ -1,4 +1,5 @@
 from read_spec import *
+from arrays import Arrays
 
 # Instrument parameters
 name = __name__[5:]
@@ -7,7 +8,8 @@ obsname = None
 pat = '*.fits'
 
 iomax = 40
-pmax =  7800 - 300
+#pmax =  7800 - 300
+pmax =  -300
 #oset = ':66'
 snmax = 1900
 
@@ -41,32 +43,41 @@ def scan(self, s, pfits=True):
    self.header['OBJECT'] = hdr['Object name']
 
 def data(self, orders=None, pfits=True):
-   # read order data
-   w_air, f, e = np.loadtxt(self.filename, skiprows=2, usecols=(0,1,2), unpack=True)
+   # w_air, f, e = np.loadtxt(self.filename, skiprows=2, unpack=True) # very slow
+   with open(self.filename) as f:
+       f.readline()
+       f.readline()
+       _data = np.fromfile(f, sep=" ")
+
+   w_air, f, e = _data.reshape(-1,3).T
    w = airtovac(w_air*10*(1.000-self.drsberv/3e5 ))  # or /(1+berv)?
  
    # find the jumps and split into orders
    idx = list(np.where(abs(np.diff(w)) > 0.1)[0]+1)
    oidx = [slice(*sl) for sl in zip([0]+idx, idx+[None])]
-#   w = [w[oi] for oi in oidx]
-#   f = [f[oi] for oi in oidx]
-#   e = [e[oi] for oi in oidx]
-#   bpmap = [bpmap[oi] for oi in oidx]
+
    idx = [0] + idx + [len(f)]
-   nx = np.diff(idx).max()
-   no = len(oidx)
-   f_ = f
-   w_ = w
-   e_ = e
+   if 0:
+       # padding orders with nans
+       nx = np.diff(idx).max()
+       no = len(oidx)
+       f_ = f
+       w_ = w
+       e_ = e
    
-   self.f = f = np.zeros((no,nx)) * np.nan
-   self.w = w = np.zeros((no,nx)) * np.nan
-   self.e = e = np.zeros((no,nx)) * np.nan
+       self.f = f = np.zeros((no,nx)) * np.nan
+       self.w = w = np.zeros((no,nx)) * np.nan
+       self.e = e = np.zeros((no,nx)) * np.nan
    
-   for o in np.arange(no):
-       w[o,:idx[o+1]-idx[o]] = w_[oidx[o]]
-       f[o,:idx[o+1]-idx[o]] = f_[oidx[o]]
-       e[o,:idx[o+1]-idx[o]] = e_[oidx[o]]
+       for o in np.arange(no):
+           w[o,:idx[o+1]-idx[o]] = w_[oidx[o]]
+           f[o,:idx[o+1]-idx[o]] = f_[oidx[o]]
+           e[o,:idx[o+1]-idx[o]] = e_[oidx[o]]
+
+   else:
+       self.w = w = Arrays([w[oi] for oi in oidx])
+       self.f = f = Arrays([f[oi] for oi in oidx])
+       self.e = e = Arrays([e[oi] for oi in oidx])
 
    self.bpmap = bpmap = np.isnan(f).astype(int)            # flag 1 for nan
    with np.errstate(invalid='ignore'):

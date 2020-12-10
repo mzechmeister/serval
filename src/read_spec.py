@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
@@ -92,7 +92,7 @@ brvrefs = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
 
 class Spectrum:
    """
-   Compiles information from frame (filesname), instrument and target.
+   Compiles information from frame (filename), instrument and target.
    and provides method to read the data.
 
    Examples
@@ -243,8 +243,8 @@ class Spectrum:
          f = f.astype(float)
          e = e.astype(float)
          self.bflag |= np.bitwise_or.reduce(b.ravel())
+         w = np.log(w) if wlog else w.astype(np.float)
 
-      w = np.log(w) if wlog else w.astype(np.float)
       return type('specdata', (object,),
                dict(w=w, f=f, e=e, bpmap=b, berv=self.berv, o=o))
 
