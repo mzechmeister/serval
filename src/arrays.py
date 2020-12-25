@@ -42,30 +42,46 @@ class Arrays(np.ndarray):
      [21 24],
      [15 18 27 30]]
     >>> print(a[a>6])
-    [[],
-     [7 8],
-     [ 9 10]]
-
+    [array([], dtype=int64) array([7, 8]) array([ 9, 10])]
+    >>> a[a>6] = a[a>6]+99
+    >>> a
+    Arrays([array([1, 2, 3, 4]), array([106, 107]),
+            array([  5,   6, 108, 109])], dtype=object)
+    >>> a[1] = a[1]+99
+    >>> a
+    Arrays([array([1, 2, 3, 4]), array([205, 206]),
+            array([  5,   6, 108, 109])], dtype=object)
+    >>> a[1,:] = 0
+    >>> a[[0,2],:] = 1
+    >>> a.ravel()
+    array([1, 1, 1, 1, 0, 0, 1, 1, 1, 1])
     '''
     def __new__(cls, input_array, dims=None):
         obj = np.array(list(map(np.array, input_array))).view(cls)
         return obj
-    def ravel(self):
-        return np.hstack(self)
+    ravel = np.hstack
     def astype(self, dtype):
         return Arrays(x.astype(dtype) for x in self)
     def __str__(self):
         return '[' + ",\n ".join(map(str, self)) + ']'
     def __setitem__(self, ij, val):
-        if isinstance(ij, Arrays):
+        if isinstance(ij, tuple) and len(ij) > 1:
+            # handle twodimensional slicing [1,:]
+            i, j = ij
+            if isinstance(i, slice) or hasattr(i, '__iter__'):
+                # [1:4,:] or [[1,2,3],[1,2]]
+                [arr.__setitem__(j,val) for arr in self[i]]
+            else:
+                self[i].__setitem__(j,val)
+        elif isinstance(ij, Arrays):
             # apply setitem to the subdimension
-            [si.__setitem__(j, valj) for si,j,valj in zip(self, ij, val)]
+            list(map(np.ndarray.__setitem__, self, ij, val))
         else:
             super(Arrays, self).__setitem__(ij, val)
     def __getitem__(self, ij):
         if isinstance(ij, tuple) and len(ij) > 1:
-            i, j = ij
             # handle twodimensional slicing
+            i, j = ij
             if isinstance(i, slice) or hasattr(i, '__iter__'):
                 # [1:4,:] or [[1,2,3],[1,2]]
                 return Arrays(arr[j] for arr in self[i])
