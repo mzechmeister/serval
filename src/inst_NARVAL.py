@@ -28,7 +28,7 @@ def scan(self, s, pfits=True):
    self.mjd = float(hdr.get('Julian Date'))
    self.drift = np.nan
    self.e_drift = np.nan
-   self.sn55 = float(hdr.get('SnrMax', 50))   
+   self.sn55 = float(hdr.get('SnrMax', 50))
    self.fileid = self.dateobs
    self.calmode = "%s,%s,%s" % (hdr.get('Instrumental Mode', ''), hdr.get('Stokes', ''), hdr.get('P_NAME2', ''))
    self.timeid = self.fileid
@@ -49,9 +49,9 @@ def data(self, orders=None, pfits=True):
        f.readline()
        _data = np.fromfile(f, sep=" ")
 
-   w_air, f, e = _data.reshape(-1,3).T
+   w_air, f, e = _data.reshape(-1, 3).T
    w = airtovac(w_air*10*(1.000-self.drsberv/3e5 ))  # or /(1+berv)?
- 
+
    # find the jumps and split into orders
    idx = list(np.where(abs(np.diff(w)) > 0.1)[0]+1)
    oidx = [slice(*sl) for sl in zip([0]+idx, idx+[None])]
@@ -64,20 +64,20 @@ def data(self, orders=None, pfits=True):
        f_ = f
        w_ = w
        e_ = e
-   
-       self.f = f = np.zeros((no,nx)) * np.nan
-       self.w = w = np.zeros((no,nx)) * np.nan
-       self.e = e = np.zeros((no,nx)) * np.nan
-   
+
+       f = np.zeros((no,nx)) * np.nan
+       w = np.zeros((no,nx)) * np.nan
+       e = np.zeros((no,nx)) * np.nan
+
        for o in np.arange(no):
            w[o,:idx[o+1]-idx[o]] = w_[oidx[o]]
            f[o,:idx[o+1]-idx[o]] = f_[oidx[o]]
            e[o,:idx[o+1]-idx[o]] = e_[oidx[o]]
 
    else:
-       self.w = w = Arrays([w[oi] for oi in oidx])
-       self.f = f = Arrays([f[oi] for oi in oidx])
-       self.e = e = Arrays([e[oi] for oi in oidx])
+       w = Arrays([w[oi] for oi in oidx])
+       f = Arrays([f[oi] for oi in oidx])
+       e = Arrays([e[oi] for oi in oidx])
 
    self.bpmap = bpmap = np.isnan(f).astype(int)            # flag 1 for nan
    with np.errstate(invalid='ignore'):

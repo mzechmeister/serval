@@ -2260,7 +2260,7 @@ if __name__ == "__main__":
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)
    argopt('-mskspec', help='Ascii 0-1 spectrum.'+default, default='')
-   argopt('-cache',  help='store the spectra in memory instead rereading', action='store_true')
+   argopt('-cache',  help='store the spectra in memory instead rereading (intended for few spectra in ascii format)', action='store_true')
    argopt('-ccf',  help='mode ccf [with files]', nargs='?', const='th_mask_1kms.dat', type=str)
    argopt('-ccfmode', help='type for ccf template', nargs='?', default='box',
                       choices=['box', 'binless', 'gauss', 'trapeze'])
