@@ -84,11 +84,11 @@ sflag = nameddict(
    user=  1024  # via command line option -n_excl
 )
 
-
-# bpmap flags
 flag_cosm = flag.sat  # @ FEROS for now use same flag as sat
+
 def_wlog = True
 brvrefs = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
+
 
 class Spectrum:
    """
@@ -132,7 +132,6 @@ class Spectrum:
       self.utc = None
       self.ra = None
       self.de = None
-#      self.obs = type('specdata', (object,), {'lat': None, 'lon': None})
       self.obs = type('specdata', (object,), dict(lat=None, lon=None))
       self.airmass = np.nan
       self.inst = inst
@@ -144,7 +143,6 @@ class Spectrum:
       self.ccf = type('ccf',(), dict(rvc=np.nan, err_rvc=np.nan, bis=np.nan, fwhm=np.nan, contrast=np.nan, mask=0, header=0))
 
       # scan fits header for times, modes, snr, etc.
-      #read_spec(self, filename, inst=inst, pfits=pfits, verb=verb)
       self.scan(self, filename, pfits=pfits)
 
       if verb:
@@ -161,15 +159,15 @@ class Spectrum:
 
       if targ and targ.name == 'cal':
          self.bjd, self.berv = self.drsbjd, 0.
-      elif targ and targ.ra:  # unique coordinates
-         obsloc = inst.obsloc if hasattr(inst, 'obsloc') else {}
+      elif targ and targ.ra:   # unique coordinates
+         obsloc = getattr(inst, 'obsloc', {})
          if self.brvref == 'MH':
             # fastest version
             #sys.path.append(os.environ['HOME']+'/programs/BarCor/')
             sys.path.insert(1, sys.path[0]+os.sep+'BarCor')            # bary now in src/BarCor
             import bary
             self.bjd, self.berv = bary.bary(self.dateobs, targ.ra, targ.de, inst.name, epoch=2000, exptime=self.exptime*2* self.tmmean, pma=targ.pmra, pmd=targ.pmde, obsloc=obsloc)
-         if self.brvref in ('WEhtml', 'WEidl', 'WE'):
+         elif self.brvref in ('WEhtml', 'WEidl', 'WE'):
             # Wright & Eastman (2014) via online or idl request
             # cd /home/raid0/zechmeister/idl/exofast/bary
             # export ASTRO_DATA=/home/raid0/zechmeister/
@@ -178,7 +176,7 @@ class Spectrum:
             jd_utcs = [self.mjd + 2400000.5, jd_utc[0], self.mjd + 2400000.5 + self.exptime/24./3600]
             ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15  # [deg]
             de = (targ.de[0] + np.copysign(targ.de[1]/60. + targ.de[2]/3600., targ.de[0]))       # [deg]
-            obsname = inst.obsname #{'CARM_VIS':'ca', 'CARM_NIR':'ca', 'FEROS':'eso', 'HARPS':'eso', 'HARPN':'lapalma', 'HPF':'hpf'}[inst]
+            obsname = inst.obsname
             if self.brvref == 'WE':
                # pure python version
                import brv_we14py
@@ -226,7 +224,6 @@ class Spectrum:
 
       if orders is not None:
          self.read_data(orders=orders, wlog=wlog)
-#         self.data(orders=orders, wlog=wlog)
 
    def __get_item__(self, order):
       # spectrum needs to be dict like
@@ -236,7 +233,6 @@ class Spectrum:
       """Returns only data."""
       o = orders
       if self.w is not None:
-         #pause()
          w, f, e, b = self.w[o], self.f[o], self.e[o], self.bpmap[o]
       else:
          w, f, e, b = self.data(self, orders=orders, **kwargs)
@@ -262,21 +258,8 @@ class Inst:
       pass
 
 def read_spec(self, s, inst, plot=False, **kwargs):
-   #print s, inst
    sp = inst.read(self, s, **kwargs)
    return sp
-
-   if '.tar' in s: s = file_from_tar(s, inst=inst, fib=self.fib, **kwargs)
-   if 'HARP' in inst:  sp = read_harps(self, s, inst=inst, **kwargs)
-   elif inst == 'CARM_VIS':  sp = read_carm_vis(self, s, **kwargs)
-   elif inst == 'CARM_NIR':  sp = read_carm_nir(self, s, **kwargs)
-   elif inst == 'FEROS': sp = read_feros(self, s, **kwargs)
-   elif inst == 'FTS': sp = read_fts(self, s, **kwargs)
-   elif inst == 'HPF': sp = read_hpf(self, s, **kwargs)
-   else:
-      return None
-   #if hasattr(s, 'close'):
-      #s.close()
 
    if plot:
       gplot.xlabel("'wavelength'").ylabel("'intensity'")
@@ -732,7 +715,6 @@ class imhead(dict):
 
       if not extpos and hasattr(s, 'offset_data'):
          extpos = s.offset_data
-      #pause()
 
       #with open(s) as fi:
       if 1:
@@ -872,7 +854,7 @@ def bary(obj,bjd, exptime):
         hh+" "+mm+" "+ss, #"07 35 49",
         "Exptime (sec)",
         str(int(exptime))]
-   #pause(exptime)
+
    p = Popen(['./src/bary/eph'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
    eph = p.communicate(input="\n".join(s)+"\n")[0]
    if  'Star not in starlist' in eph: stop(obj, 'Star not in starlist')
@@ -944,7 +926,7 @@ taken from idl astrolib
 
 if __name__ == "__main__":
    if not 'debug' in sys.argv:
-      x=Spectrum(*sys.argv[1:], inst='HARPS', pfits=2)
+      x = Spectrum(*sys.argv[1:], inst='HARPS', pfits=2)
       x.read_data()
    else:
       sys.argv.remove('debug')
