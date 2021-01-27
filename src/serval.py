@@ -1574,7 +1574,7 @@ def serval():
             #ff[o][ind2] = yfit
             if ofacauto:
                # replace template.fits with optimal knot spacing (smoothing) for RVs
-               yfit = ff[o]* 0 # np.nan
+               yfit = ww[o] * 0 # np.nan
                ind2 = (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
                yfit[ind2] = smod(ww[o][ind2])
                # pause()
