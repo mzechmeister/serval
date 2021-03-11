@@ -59,6 +59,11 @@ class srv:
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0])   # as string
       self.snr = genfromtxt2d(pre+'.snr'+fibsuf+'.dat')
       self.dlw = genfromtxt2d(pre+'.dlw'+fibsuf+'.dat')
+      try:
+         self.e_dlw = genfromtxt2d(pre+'.e_dlw'+fibsuf+'.dat')
+      except:
+         print('No e_dlw. Consider updating and/or rerunning serval')
+         self.e_dlw = 0 * self.dlw
       self.rchi = genfromtxt2d(pre+'.chi'+fibsuf+'.dat')
       try:
          self.halpha = genfromtxt2d(pre+'.halpha.dat').T
@@ -289,7 +294,7 @@ class srv:
       print("use '$' to toggle between orders and wavelength")
       n = 0
       while 0 <= n < self.N:
-         gplot.key('tit "%s %s %s"'%(n+1, bjd[n], self.info[n]))
+         gplot.key('tit "%s\\n%s %s %s"'%(self.tag, n+1, bjd[n], self.info[n]))
          if 1:
             gplot.multiplot('layout 2,1')
             # top panel
@@ -308,7 +313,6 @@ class srv:
                   bjd[n]-2450000, RVc[n], e_RVc[n], 'us 1:2:3 w e pt 7 t "n=%s"'%(n+1))
 
          # bottom panel
-         gplot.xlabel('"order"').ylabel('"RV [m/s]"')
          gplot.xlabel('"wavelength"').ylabel('"RV [m/s]"')
          gplot.autoscale('noextend')
          gplot.put('i=2; bind "$" "i = i%2+1; xlab=i==1?\\"order\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; if (i==1) {unset log} else {set log x} ; repl"')
@@ -317,7 +321,7 @@ class srv:
          RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
 
-         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7'+hypertext+', "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,' us i:3:4 w e pt 7'+hypertext+', "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
 
          gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1, self.N, bjd[n], self.info[n]))
@@ -410,29 +414,24 @@ class srv:
 
    def plot_dlwno(self):
       '''Show RVs over order for each observation.'''
-      (bjd, dLW, e_dLW), dlw, e_rv = self.dlw.T[[0,1,2]], self.dlw[:,3:], self.allerr[:,5:]
+      (bjd, dLW, e_dLW), dlw, e_dlw = self.dlw.T[[0,1,2]], self.dlw[:,3:], self.e_dlw[:,3:]
+      lam_o = np.exp(self.tcrx[6:].T)
       n = 0
       while 0 <= n < self.N:
-         gplot.key('tit "%s %s %s"'%(n+1, bjd[n], self.info[n]))
+         gplot.key('tit "%s\\n%s %s %s"'%(self.tag, n+1, bjd[n], self.info[n]))
          if 1:
             gplot.multiplot('layout 2,1')
             # bottom panel
             gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000(m/s)^2]"')
             hypertext = ' "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
-            gplot(bjd-2450000, dLW, e_dLW, self.info, 'us 1:2:3 w e pt 6,'+hypertext, [bjd[n]-2450000], [dLW[n]], [e_dLW[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
+            gplot(bjd-2450000, dLW, e_dLW, self.info, 'us 1:2:3 w e pt 6,'+hypertext,
+                  [bjd[n]-2450000], [dLW[n]], [e_dLW[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
 
-         gplot.xlabel('"order"').ylabel('"dLW [m/s]"')
-         gplot(self.orders, dlw[n,self.orders], self.e_rv[n]*0, 'us 1:2:3 w e pt 7')
-         '''      , %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.50 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
-         gplot.xlabel('"wavelength"').ylabel('"RV [m/s]"')
-         gplot.autoscale('noextend')
+         gplot.xlabel('"wavelength"').ylabel('"dLW [1000(m/s)^2]"')
          gplot.put('i=2; bind "$" "i = i%2+1; xlab=i==1?\\"order\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; if (i==1) {unset log} else {set log x} ; repl"')
-         #gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], 'us i:3:4 w e pt 7, %s lt 3 t "%s +/- %sm/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t "", %s*(log(x)-%s)+%s lt 2, "+" us 1:(%s*(log(x)-%s)+%s):(%s*(log(x)-%s)+%s) w filledcurves lt 2 fs transparent solid 0.20 t ""' %(RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n], crx[n], lnlv[n], RVc[n], crx[n]-e_crx[n], lnlv[n], RVc[n], crx[n]+e_crx[n], lnlv[n], RVc[n]))
-         RVmod = crx[n]*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
-         RVlow = (crx[n]-e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
-         RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
-         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,'us i:3:4 w e pt 7, "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
-         '''
+         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], dLW[n], e_dLW[n])+ 'o: %d\\ndlw[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
+         gplot(self.orders, lam_o[n,self.orders], dlw[n,self.orders], e_dlw[n,self.orders], ' us i:3:4 w e pt 7' + hypertext,
+              ', %s t "%5g +/- %5g", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' % (dLW[n], dLW[n], e_dLW[n], dLW[n]- e_dLW[n], dLW[n]+ e_dLW[n]))
          gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
          try:

@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2020-11-03'
+__version__ = '2021-03-11'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -933,6 +933,7 @@ def serval():
    nadfile = outdir + obj + '.nad' + fibsuf + '.dat'
    irtfile = outdir + obj + '.cairt' + fibsuf + '.dat'
    dfwfile = outdir + obj + '.dlw' + fibsuf + '.dat'
+   e_dfwfile = outdir + obj + '.e_dlw' + fibsuf + '.dat'
 
    # (echo 0 0 ; awk '{if($2!=x2){print x; print $0}; x=$0; x2=$2;}' telluric_mask_atlas.dat )> telluric_mask_atlas_short.dat
    #################################
@@ -2158,6 +2159,7 @@ def serval():
       snrunit = [open(snrfile, 'w'), open(snrfile+'bad', 'w')]
       chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
       dlwunit = [open(dfwfile, 'w'), open(dfwfile+'bad', 'w')]
+      e_dlwunit = [open(e_dfwfile, 'w'), open(e_dfwfile+'bad', 'w')]
       if meas_index:
          halunit = [open(halfile, 'w'), open(halfile+'bad', 'w')]
       if meas_CaIRT:
@@ -2176,6 +2178,7 @@ def serval():
          print(sp.bjd, RVc[n], e_RVc[n], CRX[n], e_CRX[n], dLW[n], e_dLW[n], file=srvunit[rvflag])
          print(sp.bjd, mlRVc[n], e_mlRVc[n], mlCRX[n], e_mlCRX[n], dLW[n], e_dLW[n], file=mlcunit[rvflag])
          print(sp.bjd, dLW[n], e_dLW[n], " ".join(map(str,dlw[n])), file=dlwunit[rvflag])
+         print(sp.bjd, dLW[n], e_dLW[n], " ".join(map(str,e_dlw[n])), file=e_dlwunit[rvflag])
          print(sp.bjd, np.nansum(snr[n]**2)**0.5, " ".join(map(str,snr[n])), file=snrunit[rvflag])
          print(sp.bjd, " ".join(map(str,rchi[n])), file=chiunit[rvflag])
          if meas_index:

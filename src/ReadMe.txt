@@ -13,8 +13,9 @@ obj.cairt.dat  CAII IRT line index (requires absolute RVs)
 obj.chi.dat    sqrt(reduced chi^2) (orderwise)
 obj.crx.dat    Chromatic RV index (wavelength depedence of the RV)
 obj.dat        Radial velocity (drift and secular acceleration corrected, nan-drift excluded)
-obj.dlw.dat    Differential FWHM
+obj.dlw.dat    Differential line width (orderwise)
 obj.drs.dat    Online radial velocity from fits header
+obj.e_dlw.dat  Error for differential line width (orderwise)
 obj.fits       Template
 obj.halpha.dat Halpha line index (requires absolute RVs)
 obj.info.cvs   Infomation from fits file
@@ -147,6 +148,20 @@ Column Format Units     Label     Explanations
      5 D      km/s      BIS       Bisector span (HARPS DRS only)
      6 D      %         CONTRAST  Contrast (HARPS DRS only)
      7 A      ---       TIMEID    FILENAME from fits header
+--------------------------------------------------------------------------------
+
+
+Description of file: obj.e_dlw.dat
+--------------------------------------------------------------------------------
+Column Format Units     Label     Explanations
+--------------------------------------------------------------------------------
+     1 D      ---       BJD       Barycentric Julian date [1]
+     2 D      ---       dLW       Differential line width
+     3 D      ---     E_dLW       Error for dLW
+     4 D      ---     E_dLWO_00   Error for differential line width in order 0
+     5 D      ---     E_dLWO_01   Error for differential line width in order 1
+     6 D      ---     E_dLWO_02   Error for differential line width in order 2
+etc...
 --------------------------------------------------------------------------------
 
 
