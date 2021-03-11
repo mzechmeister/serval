@@ -91,16 +91,22 @@ def scan(self, s, pfits=True, verb=False):
          pause('\nWARNING: inst should be HARPS or HARPN, but got: '+self.inst+'\nSee option -inst for available inst.') 
       self.HIERARCH = HIERARCH
 
+      version = float(hdr[HIERINST+'DRS VERSION'])
       self.airmass = hdr.get('AIRMASS', np.nan)
       #self.exptime = hdr['EXPTIME']
       self.exptime = hdr[HIERINST+'CCD UIT']
       self.mjd = hdr[HIERINST+'OBS MJD']
+      if version < 0.50:
+          self.mjd -= 2400000.5  # now it is really MJD
+
       self.hdulist[0].verify('silentfix')
       if 'rounded' in hdr.comments[HIERINST+'OBS DATE START']:
           print 'WARNING: proprietary data, dates are rounded.'
           self.dateobs = hdr[HIERINST+'OBS DATE START'] + 'T00:00:00.000'
       else:
           self.dateobs = hdr[HIERINST+'OBS DATE START']
+          if self.dateobs[-4] == ":":  # old data (DRS <v0.50, ~<2007) format ms with colon: T00:00:00:000
+              self.dateobs = self.dateobs[:-4] + "." + self.dateobs[-3:]
 
       self.ra = hdr.get(HIERINST+'TEL ALPHA', hdr.get('HHIERARCH OHP TEL ALPHA')) # "HH" typo e.g. '2011-10-03T03:46:09.243' in v0.50
       self.de = hdr.get(HIERINST+'TEL DELTA', hdr.get('HHIERARCH OHP TEL DELTA'))
@@ -142,7 +148,7 @@ def scan(self, s, pfits=True, verb=False):
          self.timeid = fileid = hdr['FILENAME'][6:29]
          hdr['OBJECT'] = hdr[HIERINST+'OBS TARG NAME'] # HARPN has no OBJECT keyword
       elif self.instname == 'SOPHIE':
-         self.timeid = fileid = hdr['DATE']
+         self.timeid = fileid = self.dateobs # hdr['DATE']
 
       #calmode = hdr.get('IMAGETYP',0).split(",")[:2]
       calmode = hdr.get(HIERINST+'DPR TYPE','NOTFOUND').split(',')[:2]

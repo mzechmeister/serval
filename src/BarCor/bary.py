@@ -78,7 +78,7 @@ def bary(dateobs, rammss, demmss, inst, epoch=2000, exptime=0.0, pma=0.0, pmd=0.
    par.write("%10.4f%10.4f%10.4f"%rammss + "%10.4f%10.4f%10.4f"%demmss + "%5i%5i%10.4f%10.4f\n"%(epoch, instnum, pma, pmd))
    if not instnum:
        # pass via obs location via file (instead fortran hardcoding)
-       par.write("%s\n%s %s %s\n" % (inst, obsloc['lon'], obsloc['lat'], obsloc['elevation']))
+       par.write("%s\n%s %s %s\n" % (inst, obsloc['lat'], obsloc['lon'], obsloc['elevation']))
    par.seek(0)
    par.name
 
