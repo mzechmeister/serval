@@ -10,6 +10,7 @@ obsloc = dict(lat=30.681444,    # 30d40'53" N
 pat = '*.fits'
 pmax = 2048 - 300
 iomax = 28
+oset = "[4,5,6,14,15,16,17,18]"
 
 maskfile = 'telluric_mask_carm_short.dat'
 

@@ -10,7 +10,10 @@ obsloc = dict(lat=43.9308, lon=5.7133, elevation=650)
 # HIERARCH OHP TEL GEOELEV   =                650.00 /                            
 # HIERARCH OHP TEL GEOLAT    =             +43.92944 /                            
 # HIERARCH OHP TEL GEOLON    =               +5.7125 /                            
+oset = '2:'
+pmax = 900
 iomax = 67
+
 pat = '*_s2d.fits'
 
 #maskfile = 'telluric_mask_carm_short.dat'

@@ -6,6 +6,7 @@ inst = __name__[5:]   # HARPS, HARPSpre, HARPSpost, HARPN
 name = inst[:5]       # HARPS, HARPN  (passed to bary)
 obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name[:5]] # for barycorrpy
 iomax = {'HARPS': 72, 'HARPN': 69}[name[:5]]
+oset = {'HARPS':'10:71', 'HARPN':'10:'}[name[:5]]
 
 #maskfile = 'telluric_mask_carm_short.dat'
 

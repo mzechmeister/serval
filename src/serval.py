@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2021-03-11'
+__version__ = '2021-03-12'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -932,8 +932,8 @@ def serval():
    halfile = outdir + obj + '.halpha' + fibsuf + '.dat'
    nadfile = outdir + obj + '.nad' + fibsuf + '.dat'
    irtfile = outdir + obj + '.cairt' + fibsuf + '.dat'
-   dfwfile = outdir + obj + '.dlw' + fibsuf + '.dat'
-   e_dfwfile = outdir + obj + '.e_dlw' + fibsuf + '.dat'
+   dlwfile = outdir + obj + '.dlw' + fibsuf + '.dat'
+   e_dlwfile = outdir + obj + '.e_dlw' + fibsuf + '.dat'
 
    # (echo 0 0 ; awk '{if($2!=x2){print x; print $0}; x=$0; x2=$2;}' telluric_mask_atlas.dat )> telluric_mask_atlas_short.dat
    #################################
@@ -2158,8 +2158,8 @@ def serval():
       mypfile = [open(rvofile+'err', 'w'), open(rvofile+'errbad', 'w')]
       snrunit = [open(snrfile, 'w'), open(snrfile+'bad', 'w')]
       chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
-      dlwunit = [open(dfwfile, 'w'), open(dfwfile+'bad', 'w')]
-      e_dlwunit = [open(e_dfwfile, 'w'), open(e_dfwfile+'bad', 'w')]
+      dlwunit = [open(dlwfile, 'w'), open(dlwfile+'bad', 'w')]
+      e_dlwunit = [open(e_dlwfile, 'w'), open(e_dlwfile+'bad', 'w')]
       if meas_index:
          halunit = [open(halfile, 'w'), open(halfile+'bad', 'w')]
       if meas_CaIRT:
@@ -2171,22 +2171,22 @@ def serval():
          rvflag = int((sp.flag&(sflag.config+sflag.iod+sflag.rvnan)) > 0)
          if rvflag: 'nan RV for file: '+sp.filename
          print(sp.bjd, RVc[n], e_RVc[n], file=rvunit[int(rvflag or np.isnan(sp.drift))])
-         print(sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], " ".join(map(str,rv[n])), file=rvounit[rvflag])
-         print(sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], " ".join(map(str,e_rv[n])), file=mypfile[rvflag])
+         print(sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], *rv[n], file=rvounit[rvflag])
+         print(sp.bjd, RV[n], e_RV[n], rvm[n], rvmerr[n], *e_rv[n], file=mypfile[rvflag])
          print(sp.bjd, RVc[n], e_RVc[n], sp.drift, sp.e_drift, RV[n], e_RV[n], sp.berv, sp.sa, file=rvcunit[rvflag])
-         print(sp.bjd, " ".join(list(map(str,tCRX[n]))+list(map(str,xo[n]))), file=crxunit[rvflag])
+         print(sp.bjd, *(list(tCRX[n])+list(xo[n])), file=crxunit[rvflag])
          print(sp.bjd, RVc[n], e_RVc[n], CRX[n], e_CRX[n], dLW[n], e_dLW[n], file=srvunit[rvflag])
          print(sp.bjd, mlRVc[n], e_mlRVc[n], mlCRX[n], e_mlCRX[n], dLW[n], e_dLW[n], file=mlcunit[rvflag])
-         print(sp.bjd, dLW[n], e_dLW[n], " ".join(map(str,dlw[n])), file=dlwunit[rvflag])
-         print(sp.bjd, dLW[n], e_dLW[n], " ".join(map(str,e_dlw[n])), file=e_dlwunit[rvflag])
-         print(sp.bjd, np.nansum(snr[n]**2)**0.5, " ".join(map(str,snr[n])), file=snrunit[rvflag])
-         print(sp.bjd, " ".join(map(str,rchi[n])), file=chiunit[rvflag])
+         print(sp.bjd, dLW[n], e_dLW[n], *dlw[n], file=dlwunit[rvflag])
+         print(sp.bjd, dLW[n], e_dLW[n], *e_dlw[n], file=e_dlwunit[rvflag])
+         print(sp.bjd, np.nansum(snr[n]**2)**0.5, *snr[n], file=snrunit[rvflag])
+         print(sp.bjd, *rchi[n], file=chiunit[rvflag])
          if meas_index:
-            print(sp.bjd, " ".join(map(str, lineindex(halpha[n],harigh[n],haleft[n]) + halpha[n] + haleft[n] + harigh[n] + lineindex(cai[n],harigh[n],haleft[n]))), file=halunit[rvflag])  #,cah[n][0],cah[n][1]
+            print(sp.bjd, *(lineindex(halpha[n],harigh[n],haleft[n]) + halpha[n] + haleft[n] + harigh[n] + lineindex(cai[n],harigh[n],haleft[n])), file=halunit[rvflag])  #,cah[n][0],cah[n][1]
          if meas_CaIRT:
-            print(sp.bjd, " ".join(map(str, lineindex(irt1[n], irt1a[n], irt1b[n]) + lineindex(irt2[n], irt2a[n], irt2b[n]) + lineindex(irt3[n], irt3a[n], irt3b[n]))), file=irtunit[rvflag])
+            print(sp.bjd, *(lineindex(irt1[n], irt1a[n], irt1b[n]) + lineindex(irt2[n], irt2a[n], irt2b[n]) + lineindex(irt3[n], irt3a[n], irt3b[n])), file=irtunit[rvflag])
          if meas_NaD:
-            print(sp.bjd, " ".join(map(str, lineindex(nad1[n],nadr1[n],nadr2[n]) + lineindex(nad2[n],nadr2[n],nadr3[n]))), file=nadunit[rvflag])
+            print(sp.bjd, *(lineindex(nad1[n],nadr1[n],nadr2[n]) + lineindex(nad2[n],nadr2[n],nadr3[n])), file=nadunit[rvflag])
       for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit + srvunit + mlcunit + dlwunit:
          ifile.close()
 
@@ -2233,8 +2233,8 @@ if __name__ == "__main__":
 
    # instrument specific default (see inst_*.py)
    pmin = getattr(inst, 'pmin', 300)
-   pmax = getattr(inst, 'pmax', {'CARM_NIR':1800, 'ELODIE':900}.get(inst.name, 3800))
-   oset = getattr(inst, 'oset', {'HARPS':'10:71', 'HARPN':'10:', 'HPF':"[4,5,6,14,15,16,17,18]", 'FEROS':'10:', 'ELODIE':'2:'}.get(inst.name,':'))
+   pmax = getattr(inst, 'pmax', 3800)
+   oset = getattr(inst, 'oset', {'FEROS':'10:'}.get(inst.name,':'))
    coset = getattr(inst, 'coset', None)
    ofac = getattr(inst, 'ofac', 1.)
    snmax = getattr(inst, 'snmax', 400.)
