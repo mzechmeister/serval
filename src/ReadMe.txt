@@ -1,7 +1,7 @@
 Format Description
 
 default format (*.dat): columns separated by blanks time series
-*.cvs:                  columns separated by semicolon
+*.csv:                  columns separated by semicolon
 
 File Summary:
 --------------------------------------------------------------------------------
@@ -18,7 +18,7 @@ obj.drs.dat    Online radial velocity from fits header
 obj.e_dlw.dat  Error for differential line width (orderwise)
 obj.fits       Template
 obj.halpha.dat Halpha line index (requires absolute RVs)
-obj.info.cvs   Infomation from fits file
+obj.info.csv   Infomation from fits file
 obj.mlc.dat    RV and CRX averages via maximum likelihood maps (experimental)
 obj.nad.dat    NaD line index (requires absolute RVs)
 obj.post.dat   post processed RVs with re-weighting of orders (experimental)
@@ -26,7 +26,7 @@ obj.pre.dat    RVs measured against highest S/N spectrum, before coadding
 obj.rvo.dat    Radial velocity (orderwise, not drift corrected)
 obj.snr.dat    Signal-to-noise (orderwise)
 obj.srv.dat    Serval products time series compilation
-obj.targ.cvs   Target properties from catalog request
+obj.targ.csv   Target properties from catalog request
 lastcmd.txt    Used SERVAL options
 log.obj        Plain text logfile of SERVAL stdout
 --------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------
 
 
-Description of file: obj.info.cvs
+Description of file: obj.info.csv
 --------------------------------------------------------------------------------
 Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ Column Format Units     Label     Explanations
      7 D      m^2/s^2 E_DLW       Error in DLW
 --------------------------------------------------------------------------------
 
-Description of file: obj.targ.cvs
+Description of file: obj.targ.csv
 --------------------------------------------------------------------------------
 Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------

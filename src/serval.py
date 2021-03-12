@@ -852,7 +852,7 @@ def serval():
    if targ.name == 'cal':
       print('no barycentric correction (calibration)')
    elif targ.ra and targ.de or targ.name:
-      targ = Targ(targ.name, targrade, targpm, plx=targplx, rv=targrv, csv=obj+'/'+obj+'.targ.cvs')
+      targ = Targ(targ.name, targrade, targpm, plx=targplx, rv=targrv, csv=obj+'/'+obj+'.targ.csv')
       print(' using sa=', targ.sa, 'm/s/yr', 'ra=', targ.ra, 'de=', targ.de, 'pmra=', targ.pmra, 'pmde=', targ.pmde)
    else:
       print('using barycentric correction from DRS')
@@ -923,7 +923,7 @@ def serval():
       print(' '.join(sys.argv), file=f)
 
    badfile = open(outdir + obj + '.flagdrs' + fibsuf + '.dat', 'w')
-   infofile = open(outdir + obj + '.info' + fibsuf + '.cvs', 'w')
+   infofile = open(outdir + obj + '.info' + fibsuf + '.csv', 'w')
    bervfile = open(outdir + obj + '.brv' + fibsuf + '.dat', 'w')
    prefile = outdir + obj + '.pre' + fibsuf + '.dat'
    rvofile = outdir + obj + '.rvo' + fibsuf + '.dat'
@@ -1594,7 +1594,7 @@ def serval():
          spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
          spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
          if targ.rv is not None and np.isfinite(targ.rv):
-            spt.header['HIERARCH SERVAL TARG RV CSV'] = (targ.rv, '[km/s] RV from targ.cvs')
+            spt.header['HIERARCH SERVAL TARG RV CSV'] = (targ.rv, '[km/s] RV from targ.csv')
          if np.isfinite(targrvs['drsspt']):
             spt.header['HIERARCH SERVAL TARG RV DRSSPT'] = (targrvs['drsspt'], '[km/s] DRS RV of spt')
          if np.isfinite(targrvs['drsmed']):

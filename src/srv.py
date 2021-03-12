@@ -76,11 +76,15 @@ class srv:
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
       # info includes also flagged files; exclude them based on unpairable bjd
-      # (due to different formatting use bjd from brv.dat not info.cvs.)
+      # (due to different formatting use bjd from brv.dat not info.csv.)
       bjd = np.atleast_1d(np.genfromtxt(pre+'.brv.dat', usecols=[0]))
 
       nn = [n for (n,t) in enumerate(bjd) if t in self.allrv[:,0]]
-      self.info = np.atleast_1d(np.genfromtxt(pre+'.info.cvs', dtype=str, usecols=[0], delimiter=';'))[nn]
+      try:
+          self.info = np.atleast_1d(np.genfromtxt(pre+'.info.csv', dtype=str, usecols=[0], delimiter=';'))[nn]
+      except:
+          self.info = np.atleast_1d(np.genfromtxt(pre+'.info.cvs', dtype=str, usecols=[0], delimiter=';'))[nn]
+          print('suffix cvs was renamed to csv. Update by rerunning serval.')
 
       if not self.info.ndim:
          self.info = self.info[np.newaxis]
@@ -260,8 +264,12 @@ class srv:
 
    def targ(self):
      try:
-      with open(self.pre+'.targ.cvs') as f:
-         self.line = f.read()
+      try:
+          with open(self.pre+'.targ.csv') as f:
+              self.line = f.read()
+      except:
+          with open(self.pre+'.targ.cvs') as f:
+              self.line = f.read()
       line = self.line.split(';')        # ['gj699', "NAME Barnard's star", ' 17 57 ...]
       print(line[0],"; ", line[1])
       line = " ".join(line[2:]).split()
