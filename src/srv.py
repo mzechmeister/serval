@@ -98,15 +98,15 @@ class srv:
       if self.inst:
          self.keytitle += ' (' + self.inst.replace('_', ' ') + ')'
 
-      self.tcrx = genfromtxt2d(pre+'.crx.dat', dtype=None).T
+      self.tcrx = genfromtxt2d(pre+'.crx.dat').T
 
       self.N = len(self.allrv)
       #if self.N == 1:
          #return   # just one line, e.g. drift
 
-      self.tsrv = genfromtxt2d(pre+'.srv.dat', dtype=None).T
+      self.tsrv = genfromtxt2d(pre+'.srv.dat').T
       self.trvc = self.bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa \
-                = genfromtxt2d(pre+'.rvc'+fibsuf+'.dat', dtype=None).T
+                = genfromtxt2d(pre+'.rvc'+fibsuf+'.dat').T
       self.drs = genfromtxt2d(pre+'.drs.dat')
       try:
          self.tmlc = genfromtxt2d(pre+'.mlc'+fibsuf+'.dat')

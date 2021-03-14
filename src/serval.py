@@ -222,7 +222,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    if np.size(allrv) == 1:
       return   # just one line, e.g. drift
 
-   bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa = np.genfromtxt(obj+'/'+obj+'.rvc'+fibsuf+'.dat', dtype=None).T
+   bjd, RVc_old, e_RVc_old, RVd, e_RVd, RV_old, e_RV_old, BRV, RVsa = np.genfromtxt(obj+'/'+obj+'.rvc'+fibsuf+'.dat', unpack=True)
 
    orders, = np.where(np.sum(allerr[:,5:]>0, 0))   # orders with all zero error values
    if oidx is not None:
@@ -970,7 +970,7 @@ def serval():
          maskfile = servallib + atmfile
 
       print('maskfile', maskfile)
-      mask = np.genfromtxt(maskfile, dtype=None)
+      mask = np.genfromtxt(maskfile)
 
       if 'telluric_mask_atlas_short.dat' in maskfile:
          lcorr = 0.000009  # Guillems mask needs this shift of 2.7 km/s
@@ -981,7 +981,7 @@ def serval():
    if skyfile:
       if skyfile=='auto' and inst.name=='CARM_NIR':
          skyfile = servallib + 'sky_carm_nir'
-         sky = np.genfromtxt(skyfile, dtype=None)
+         sky = np.genfromtxt(skyfile)
          skymsk = interp(lam2wave(sky[:,0]), sky[:,1])
 
 
@@ -1005,7 +1005,7 @@ def serval():
       print('using telluric mask: ', maskfile)
 
    if 0:
-      mask2 = np.genfromtxt('telluric_add.dat', dtype=None)
+      mask2 = np.genfromtxt('telluric_add.dat')
       # DO YOU NEED THIS: mask2[:,0] = airtovac(mask2[:,0])  ??
       i0 = 0 #where(mask[:,0]<mask2[0][0])[0][-1]
       for ran in mask2:
@@ -1282,7 +1282,7 @@ def serval():
    if skippre or vtfix:
       # restore the pre RVs
       if os.path.isfile(prefile):
-         bjd, RV, e_RV = np.genfromtxt(prefile, dtype=None, unpack=True)
+         bjd, RV, e_RV = np.genfromtxt(prefile, unpack=True)
       else:
          pause('pre RV file', prefile, 'does not exist')
 
