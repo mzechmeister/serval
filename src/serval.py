@@ -1304,15 +1304,18 @@ def serval():
          spt.header['HIERARCH SERVAL OFAC'] = (ofac, 'oversampling factor per raw pixel')
          spt.header['HIERARCH SERVAL PSPLLAM'] = (pspllam, 'smoothing value of the psline')
          spt.header['HIERARCH SERVAL UTC'] = (datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), 'time of coadding')
+
+         wk = [[np.nan]] * nord
+         fk = [[np.nan]] * nord
+         ek = [[np.nan]] * nord
+         bk = [[0]] * nord
+
          for o in corders:
             print("coadding o %02i: " % o, end='')     # continued below in iteration loop
             npix = len(spt.w[o])
             osize = len(spt.w[o][ptmin:ptmax]) - 1   # -1 for compatibility with previous version
             nk = int(osize * ofac)
-            wk = nans((nord,nk))
-            fk = nans((nord,nk))
-            ek = nans((nord,nk))
-            bk = np.zeros((nord,nk))
+
             wmod = nans((ntset,npix))
             mod = zeros((ntset,npix))
             emod = zeros((ntset,npix))

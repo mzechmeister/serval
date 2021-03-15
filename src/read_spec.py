@@ -268,33 +268,8 @@ def read_spec(self, s, inst, plot=False, **kwargs):
          pause(o)
    return sp
 
-def write_template(filename, flux, wave, header=None, hdrref=None, clobber=False):
-   if not header and hdrref: header = pyfits.getheader(hdrref)
-   hdu = pyfits.PrimaryHDU(header=header)
-   warnings.resetwarnings() # supress nasty overwrite warning http://pythonhosted.org/pyfits/users_guide/users_misc.html
-   warnings.filterwarnings('ignore', category=UserWarning, append=True)
-   hdu.writeto(filename, clobber=clobber, output_verify='fix')
-   warnings.resetwarnings()
-   warnings.filterwarnings('always', category=UserWarning, append=True)
-
-   if isinstance(flux, np.ndarray):
-      pyfits.append(filename, flux)
-      pyfits.append(filename, wave)
-   else:
-      # pad arrays with zero to common size
-      maxpix = max(arr.size for arr in flux if isinstance(arr, np.ndarray))
-      flux_new = np.zeros((len(flux), maxpix))
-      wave_new = np.zeros((len(flux), maxpix))
-      for o,arr in enumerate(flux):
-          if isinstance(arr, np.ndarray): flux_new[o,:len(arr)] = arr
-      for o,arr in enumerate(wave):
-          if isinstance(arr, np.ndarray): wave_new[o,:len(arr)] = arr
-      pyfits.append(filename, flux_new)
-      pyfits.append(filename, wave_new)
-
-   pyfits.setval(filename, 'EXTNAME', value='SPEC', ext=1)
-   pyfits.setval(filename, 'EXTNAME', value='WAVE', ext=2)
-   #fitsio.write(filename, flux)
+def write_template(filename, flux, wave, *args, **kwargs):
+   write_res(filename, {'FLUX':flux, 'WAVE':wave}, ('FLUX', 'WAVE'), *args, **kwargs)
 
 def write_res(filename, datas, extnames, header='', hdrref=None, clobber=False):
    if not header and hdrref: header = pyfits.getheader(hdrref)
@@ -306,13 +281,16 @@ def write_res(filename, datas, extnames, header='', hdrref=None, clobber=False):
    warnings.filterwarnings('always', category=UserWarning, append=True)
 
    for i,extname in enumerate(extnames):
-     data = datas[extname]
-     if isinstance(data, np.ndarray):
-        pyfits.append(filename, data)
-     else:
-        1/0
+       data = datas[extname]
+       if not isinstance(data, np.ndarray):
+           # pad arrays with zero to common size
+           maxpix = max(arr.size for arr in data if isinstance(arr, np.ndarray))
+           data = np.zeros((len(data), maxpix))  # dtype=data.dtype)
+           for o,arr in enumerate(datas[extname]):
+               if isinstance(arr, np.ndarray): data[o,:len(arr)] = arr
 
-     pyfits.setval(filename, 'EXTNAME', value=extname, ext=i+1)
+       pyfits.append(filename, data)
+       pyfits.setval(filename, 'EXTNAME', value=extname, ext=i+1)
    #fitsio.write(filename, flux)
 
 def write_fits(filename, data, header='', hdrref=None, clobber=True):
@@ -324,9 +302,8 @@ def write_fits(filename, data, header='', hdrref=None, clobber=True):
    warnings.filterwarnings('always', category=UserWarning, append=True)
 
 def read_template(filename):
-   hdu = pyfits.open(filename)
-   #return hdu[1].data, hdu[0].data  # wave, flux
-   return hdu[2].data, hdu[1].data, hdu[0].header  # wave, flux
+    hdu = pyfits.open(filename)
+    return hdu['WAVE'].data, hdu['FLUX'].data, hdu[0].header
 
 def read_harps_ccf(s):
    ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask')
