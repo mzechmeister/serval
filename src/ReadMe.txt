@@ -15,7 +15,8 @@ obj.crx.dat    Chromatic RV index (wavelength depedence of the RV)
 obj.dat        Radial velocity (drift and secular acceleration corrected, nan-drift excluded)
 obj.dlw.dat    Differential line width (orderwise)
 obj.drs.dat    Online radial velocity from fits header
-obj.e_dlw.dat  Error for differential line width (orderwise)
+obj.e_dlw.dat  Errors for differential line width (orderwise)
+obj.e_rvo.dat  Errors for radial velocity (orderwise, not drift corrected)
 obj.fits       Template
 obj.halpha.dat Halpha line index (requires absolute RVs)
 obj.info.csv   Infomation from fits file
@@ -268,7 +269,7 @@ etc...
 --------------------------------------------------------------------------------
 
 
-Description of file: obj.rvo.daterr
+Description of file: obj.e_rvo.dat
 --------------------------------------------------------------------------------
 Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------

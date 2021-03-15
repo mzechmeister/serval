@@ -215,7 +215,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    """
    print(obj+'/'+obj+'.rvc'+fibsuf+'.dat')
    allrv = np.genfromtxt(obj+'/'+obj+'.rvo'+fibsuf+'.dat')
-   allerr = np.genfromtxt(obj+'/'+obj+'.rvo'+fibsuf+'.daterr')
+   allerr = np.genfromtxt(obj+'/'+obj+'.e_rvo'+fibsuf+'.dat')
    sbjd = np.genfromtxt(obj+'/'+obj+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0]) # as string
    snr = np.genfromtxt(obj+'/'+obj+'.snr'+fibsuf+'.dat')
 
@@ -927,6 +927,7 @@ def serval():
    bervfile = open(outdir + obj + '.brv' + fibsuf + '.dat', 'w')
    prefile = outdir + obj + '.pre' + fibsuf + '.dat'
    rvofile = outdir + obj + '.rvo' + fibsuf + '.dat'
+   e_rvofile = outdir + obj + '.e_rvo' + fibsuf + '.dat'
    snrfile = outdir + obj + '.snr' + fibsuf + '.dat'
    chifile = outdir + obj + '.chi' + fibsuf + '.dat'
    halfile = outdir + obj + '.halpha' + fibsuf + '.dat'
@@ -2158,7 +2159,7 @@ def serval():
       crxunit = [open(crxfile, 'w'), open(crxfile+'bad', 'w')]
       mlcunit = [open(mlcfile, 'w'), open(mlcfile+'bad', 'w')]
       srvunit = [open(srvfile, 'w'), open(srvfile+'bad', 'w')]
-      mypfile = [open(rvofile+'err', 'w'), open(rvofile+'errbad', 'w')]
+      mypfile = [open(e_rvofile, 'w'), open(e_rvofile+'bad', 'w')]
       snrunit = [open(snrfile, 'w'), open(snrfile+'bad', 'w')]
       chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
       dlwunit = [open(dlwfile, 'w'), open(dlwfile+'bad', 'w')]

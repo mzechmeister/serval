@@ -55,13 +55,14 @@ class srv:
 
       print(pre+'.rvc'+fibsuf+'.dat')
       self.allrv = genfromtxt2d(pre+'.rvo'+fibsuf+'.dat')
-      self.allerr = genfromtxt2d(pre+'.rvo'+fibsuf+'.daterr')
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0])   # as string
       self.snr = genfromtxt2d(pre+'.snr'+fibsuf+'.dat')
       self.dlw = genfromtxt2d(pre+'.dlw'+fibsuf+'.dat')
       try:
+         self.allerr = genfromtxt2d(pre+'.e_rvo'+fibsuf+'.dat')
          self.e_dlw = genfromtxt2d(pre+'.e_dlw'+fibsuf+'.dat')
       except:
+         self.allerr = genfromtxt2d(pre+'.rvo'+fibsuf+'.daterr')
          print('No e_dlw. Consider updating and/or rerunning serval')
          self.e_dlw = 0 * self.dlw
       self.rchi = genfromtxt2d(pre+'.chi'+fibsuf+'.dat')
