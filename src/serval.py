@@ -2325,7 +2325,7 @@ if __name__ == "__main__":
    argopt('-vtfix', help='fix RV in template creation', action='store_true')
    argopt('-wfix', help='fix wavelength solution', action='store_true')
    argopt('-debug', help='debug flag', nargs='?', default=0, const=1)
-   argopt('-bp',   help='break points', nargs='*', type=int)
+   argopt('-bp',   help='break points, e.g.: read_spec.py:125', nargs='*', type=str)
    argopt('-pdb',  help='debug post_mortem', action='store_true')
    argopt('-cprofile', help='profiling', action='store_true')
    # use add_help=false and re-add with more arguments
@@ -2385,25 +2385,25 @@ if __name__ == "__main__":
       exit()
 
    if bp:
-      with open('.pdbrc', 'w') as f:
-         for bp_line in bp:
-             print('break ', bp_line, file=f)
-      #os.system('python -m pdb '+" ".join(sys.argv))
+      try:
+         from StringIO import StringIO ## for Python 2
+      except ImportError:
+         from io import StringIO ## for Python 3
       import pdb
-      #pdb.run("pass", globals(), locals());
+
+      bp = ('break %s\n' * len(bp)) % tuple(bp)
+      #bp += "sys.stdin = sys.__stdin__\n"
+      sys.stdin = StringIO(bp+'cont')
+      #pdb.run("sys.stdin = sys.__stdin__; serval()")
+      pdb.set_trace()
+      sys.stdin = sys.__stdin__
       print('mode d:  logging turned off, stdout reseted')
       sys.stdout = sys.__stdout__
-      pdb.set_trace()
-      print("enter 'c' to continue")
-   else:
-      os.system('rm -f .pdbrc')
 
-   if not pdb:
-      sys.exit(serval())
-   else:
-      try:
-         sys.exit(serval())
-      except:
+   try:
+      serval()
+   except:
+      if not args.pdb:
          print('ex')
          import pdb
          e, m, tb = sys.exc_info()
