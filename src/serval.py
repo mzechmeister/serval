@@ -13,7 +13,6 @@ import argparse
 import copy
 import ctypes
 from ctypes import c_void_p, c_double, c_int
-import csv
 # from datetime import datetime imported with read_spec!
 import glob
 import os
@@ -1033,7 +1032,6 @@ def serval():
    spi = None
    SN55best = 0.
    print("    # %*s %*s OBJECT    BJD        SN  DRSBERV  DRSdrift flag calmode" % (-len(inst.name)-6, "inst_mode", -len(os.path.basename(files[0])), "timeid"))
-   infowriter = csv.writer(infofile, delimiter=';', lineterminator="\n")
 
    for n,filename in enumerate(files):   # scanning fitsheader
       print('%3i/%i ' % (n+1, nspec), end='')
@@ -1060,8 +1058,7 @@ def serval():
       else:
          print(sp.bjd, sp.ccf.rvc, sp.ccf.err_rvc, sp.timeid, sp.flag, file=badfile)
       print(sp.bjd, sp.berv, sp.drsbjd, sp.drsberv, sp.drift, sp.timeid, sp.tmmean, sp.exptime, sp.berv_start, sp.berv_end, file=bervfile)
-      infowriter.writerow([sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag, sp.airmass, sp.ra, sp.de])
-      #print >>infofile, sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag
+      print(sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag, sp.airmass, sp.ra, sp.de, sep=';', file=infofile)
 
    badfile.close()
    bervfile.close()
@@ -2403,7 +2400,7 @@ if __name__ == "__main__":
    try:
       serval()
    except:
-      if not args.pdb:
+      if args.pdb:
          print('ex')
          import pdb
          e, m, tb = sys.exc_info()
