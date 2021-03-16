@@ -1533,7 +1533,8 @@ def serval():
             sn = np.sum(np.array(sn)**2)**0.5
 
             print(' S/N: %.5f' % sn)
-            spt.header['HIERARCH SERVAL COADD SN%03i' % o] = (float("%.3f" % sn), 'signal-to-noise estimate')
+            if not np.isnan(sn):
+               spt.header['HIERARCH SERVAL COADD SN%03i' % o] = (float("%.3f" % sn), 'signal-to-noise estimate')
             if ofacauto:
                spt.header['HIERARCH SERVAL COADD K%03i' % o] = (Ko, 'optimal knot number')
 
@@ -2051,7 +2052,10 @@ def serval():
                gg.plot()
                pause(n, mlRV[n], e_mlRV[n])
 
-            mlCRX[n], e_mlCRX[n] = gg.mlcrx(x, xc, oo)
+            try:
+               mlCRX[n], e_mlCRX[n] = gg.mlcrx(x, xc, oo)
+            except:
+               print("Could not compute mlCRX for n=", n)
 
             if lookmlCRX:
                gg.plot_fit()
