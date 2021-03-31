@@ -6,6 +6,8 @@ from read_spec import Inst
 
 name = 'CARM_NIR'
 obsname = 'ca'
+obsloc = dict(lat=37.2236, lon= -2.5463, elevation=2168.)
+
 iomax = 28
 iomax *= 2 # reshaping
 pmax = 1800

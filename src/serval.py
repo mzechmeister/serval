@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2021-03-12'
+__version__ = '2021-03-31'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -132,6 +132,19 @@ class Logger(object):
        print('logging to', logfilename)
 
 def minsec(t): return '%um%.3fs' % divmod(t, 60)   # format time
+
+
+class Vectorise(list):
+    '''
+    Bundles instances and gets and sets attributes on all instances.
+    '''
+    __getattr__ = lambda self, attr: np.array([getattr(s, attr) for s in self])
+
+    def __setattr__(self, attr, vals):
+        if hasattr(vals, '__len__'):
+            [setattr(s, attr, val) for (s,val) in zip(self,vals)]
+        else:
+            [setattr(s, attr, vals) for s in self]
 
 
 class interp:
@@ -1028,7 +1041,7 @@ def serval():
          print("Many files! Adapting ulimit from %s to (4096, 4096)." % (ulimit,))
          resource.setrlimit(resource.RLIMIT_OFILE, (4096,4096))
 
-   splist = []
+   splist = Vectorise([])
    spi = None
    SN55best = 0.
    print("    # %*s %*s OBJECT    BJD        SN  DRSBERV  DRSdrift flag calmode" % (-len(inst.name)-6, "inst_mode", -len(os.path.basename(files[0])), "timeid"))
@@ -1058,24 +1071,52 @@ def serval():
       else:
          print(sp.bjd, sp.ccf.rvc, sp.ccf.err_rvc, sp.timeid, sp.flag, file=badfile)
       print(sp.bjd, sp.berv, sp.drsbjd, sp.drsberv, sp.drift, sp.timeid, sp.tmmean, sp.exptime, sp.berv_start, sp.berv_end, file=bervfile)
-      print(sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag, sp.airmass, sp.ra, sp.de, sep=';', file=infofile)
 
    badfile.close()
    bervfile.close()
-   infofile.close()
    sys.stdout.logname(obj+'/log.'+obj)
 
    t1 = time.time() - t0
    print(nspec, "spectra read (%s)\n" % minsec(t1))
 
+   obsloc = getattr(inst, 'obsloc', {})
+   if obsloc:
+       # The computation have a lot of overhead and are done in vectorised fashion.
+       from astropy.time import Time
+       from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+       from astropy.coordinates import solar_system_ephemeris, get_moon, get_sun
+       import astropy.units as u
+
+       dateobs = Time(splist.dateobs)
+       loc = EarthLocation.from_geodetic(lat=obsloc['lat'], lon=obsloc['lon'], height=obsloc['elevation'])
+       aa = AltAz(location=loc, obstime=dateobs)
+       sc = SkyCoord("%i:%i:%s" %targ.ra, "%i:%i:%s" %targ.de, unit=(u.hourangle, u.deg), obstime=dateobs)
+       with solar_system_ephemeris.set('builtin'):
+           sun = get_sun(dateobs)
+           moon = get_moon(dateobs, loc)
+
+       splist.sunalt = sun.transform_to(aa).alt.deg
+       splist.secz = sc.transform_to(aa).secz    # airmass estimate
+       splist.moonsep = moon.separation(sc).deg
+       splist.moonphase = moon.separation(sun).deg   # https://astroplan.readthedocs.io/en/latest/_modules/astroplan/moon.html
+       #splist.moonillumination = splist.moonphase
+       splist.flag |= sflag.daytime * (splist.sunalt > sunalt)
+       splist.flag |= sflag.moon * (splist.moonsep < moonsep)
+
    # filter for the good spectra
    check_daytime = True
-   spoklist = []
+   spoklist = Vectorise([])
    for sp in splist:
-      if sp.flag & (sflag.nosci|sflag.config|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|check_daytime*sflag.daytime|sflag.user):
-         print('bad spectra:', sp.timeid, sp.obj, sp.calmode, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag)))
+      print(sp.timeid, sp.bjd, sp.berv, sp.sn55, sp.obj, sp.exptime, sp.ccf.mask, sp.flag, sp.airmass, sp.ra, sp.de, sp.sunalt, sp.moonsep, sp.moonphase, sep=';', file=infofile)
+      if sp.flag & (sflag.nosci|sflag.config|sflag.iod|sflag.dist|sflag.lowSN|sflag.hiSN|sflag.led|sflag.user):
+         print('bad spectrum:', sp.timeid, sp.obj, sp.calmode, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag)))
       else:
+         if sp.flag & (check_daytime*sflag.daytime|sflag.moon):
+             # we calcuate RVs, but dLW can be biased upwards (not used in coadding)
+             print('poor spectrum:', sp.timeid, sp.obj, sp.calmode, 'sn: %s flag: %s %s' % (sp.sn55, sp.flag, sflag.translate(sp.flag)))
          spoklist += [sp]
+
+   infofile.close()
 
    nspecok = len(spoklist)
    if not nspecok:
@@ -1320,7 +1361,7 @@ def serval():
             bmod = zeros((ntset,npix), dtype=int)
             for n,sp in enumerate(spoklist[tset]):
              '''get the polynomials'''
-             if not sp.flag:
+             if not sp.flag:  # every flagged spectrum is excluded; more stringent than in RV loop
                if cache:
                    sp.read_data()
                sp = sp.get_data(pfits=2, orders=o)
@@ -1607,7 +1648,7 @@ def serval():
          # Oversampled template
          write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
          # Knot sampled template
-         write_res(outdir+obj+'.fits', {'spec':fk, 'sig':ek, 'wave':wk, 'nmap':bk}, tfmt, spt.header, hdrref='', clobber=1)
+         write_res(outdir+obj+'.fits', {'SPEC':fk, 'SIG':ek, 'WAVE':wk, 'NMAP':bk}, tfmt, spt.header, hdrref='', clobber=1)
          os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
          print('\ntemplate written to ', tpl)
          if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
@@ -2293,6 +2334,7 @@ if __name__ == "__main__":
    argopt('-lookssr', help='slice of orders to view the ssr function [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookmlRV', help='chi2map and master', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
+   argopt('-moonsep', help='Flag threshold for min. moon separation'+default, type=float, default=7.)
    argopt('-nclip', help='max. number of clipping iterations'+default, type=int, default=2)
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)'+default, default=oset, type=arg2slice)
@@ -2315,7 +2357,8 @@ if __name__ == "__main__":
    argopt('-skymsk', help='Sky emission line mask ('' for no masking)'+default, default='auto', dest='skyfile')
    argopt('-snmin', help='minimum S/N (considered as not bad and used in template building)'+default, default=10, type=float)
    argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=snmax, type=float)
-   argopt('-tfmt', help='output format of the template. nmap is a an estimate for the number of good data points for each knot. ddspec is the second derivative for cubic spline reconstruction. (default: spec sig wave)', nargs='*', choices=['spec', 'sig', 'wave', 'nmap', 'ddspec'], default=['spec', 'sig', 'wave'])
+   argopt('-sunalt', help='Flag threshold for max. altitude of Sun above the horizon'+default, type=float, default=-12.)
+   argopt('-tfmt', help='output format of the template. NMAP is a an estimate for the number of good data points for each knot. DDSPEC is the second derivative for cubic spline reconstruction. (default: SPEC SIG WAVE)', nargs='*', choices=['SPEC', 'SIG', 'WAVE', 'NMAP', 'DDSPEC'], default=['SPEC', 'SIG', 'WAVE'])
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)
@@ -2410,4 +2453,7 @@ if __name__ == "__main__":
          e, m, tb = sys.exc_info()
          sys.stdout = sys.__stdout__
          pdb.post_mortem(tb)
+      else:
+         raise
+
 

@@ -76,12 +76,13 @@ sflag = nameddict(
    iod=      2,
    config=   4, # bad configuration/setup (e.g. HARPS eggs, pre, post)
    dist=    16, # coordinates too much off
-   daytime= 32, # not within nautical twilight
-   lowSN=   64, # too low S/N
-   hiSN=   128, # too high S/N
-   led=    256, # LED on during observation (CARM_VIS)
-   rvnan=  512,
-   user=  1024  # via command line option -n_excl
+   lowSN=   32, # too low S/N
+   hiSN=    64, # too high S/N
+   daytime=128, # not within nautical twilight
+   moon=   256, # not within nautical twilight
+   led=   2**9, # LED on during observation (CARM_VIS)
+   rvnan=2**10,
+   user= 2**11  # via command line option -n_excl
 )
 
 flag_cosm = flag.sat  # @ FEROS for now use same flag as sat
@@ -137,6 +138,9 @@ class Spectrum:
       self.inst = inst
       self.scan = self.inst.scan
       self.data = self.inst.data
+      self.sunalt = np.nan
+      self.moonsep = np.nan
+      self.moonphase = np.nan
 
       if '.gz' in filename: pfits=True
 
@@ -269,7 +273,7 @@ def read_spec(self, s, inst, plot=False, **kwargs):
    return sp
 
 def write_template(filename, flux, wave, *args, **kwargs):
-   write_res(filename, {'FLUX':flux, 'WAVE':wave}, ('FLUX', 'WAVE'), *args, **kwargs)
+   write_res(filename, {'SPEC':flux, 'WAVE':wave}, ('SPEC', 'WAVE'), *args, **kwargs)
 
 def write_res(filename, datas, extnames, header='', hdrref=None, clobber=False):
    if not header and hdrref: header = pyfits.getheader(hdrref)
@@ -303,7 +307,7 @@ def write_fits(filename, data, header='', hdrref=None, clobber=True):
 
 def read_template(filename):
     hdu = pyfits.open(filename)
-    return hdu['WAVE'].data, hdu['FLUX'].data, hdu[0].header
+    return hdu['WAVE'].data, hdu['SPEC'].data, hdu[0].header
 
 def read_harps_ccf(s):
    ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask')

@@ -4,6 +4,8 @@ from read_spec import *
 
 name = 'CARM_VIS'
 obsname = 'ca'
+obsloc = dict(lat=37.2236, lon= -2.5463, elevation=2168.)
+
 iomax = 61 # NAXIS2
 snmax = 500
 oset = '10:52'

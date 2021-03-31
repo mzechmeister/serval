@@ -24,7 +24,7 @@ except:
 import chi2map
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2018-12-27'
+__version__ = '2021-03-31'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -82,7 +82,13 @@ class srv:
 
       nn = [n for (n,t) in enumerate(bjd) if t in self.allrv[:,0]]
       try:
-          self.info = np.atleast_1d(np.genfromtxt(pre+'.info.csv', dtype=str, usecols=[0], delimiter=';'))[nn]
+          self.info = np.genfromtxt(pre+'.info.csv', dtype=None, delimiter=';', encoding=None)[nn]
+          self.info.dtype.names = ('timeid', 'bjd', 'berv', 'sn55', 'obj', 'exptime', 'ccf.mask', 'flag', 'airmass', 'ra', 'de', 'sunalt', 'moonsep', 'moonphase')
+          self.sunalt = self.info['sunalt']
+          self.moonsep = self.info['moonsep']
+          self.moonphase = self.info['moonphase']
+          self.flag = self.info['flag']
+          self.info = self.info['timeid']
       except:
           self.info = np.atleast_1d(np.genfromtxt(pre+'.info.cvs', dtype=str, usecols=[0], delimiter=';'))[nn]
           print('suffix cvs was renamed to csv. Update by rerunning serval.')
@@ -132,7 +138,7 @@ class srv:
       self.RVc = self.RV - np.nan_to_num(RVd) - np.nan_to_num(RVsa)
       self.e_RVc = np.sqrt(self.e_RV**2 + np.nan_to_num(e_RVd)**2)
 
-   def plot_dlw(self):
+   def plot_dlw(self, *args, **kwargs):
       '''Show RVs over order for each observation.'''
       bjd, dLW, e_dLW = self.bjd, self.dLW, self.e_dLW
       arg = ''
@@ -140,15 +146,17 @@ class srv:
          arg += 'us 1:2:3 w e pt 6 lt 7 t "dLW no drift"'
       if self.has_d.any():
          if arg: arg += ', "" '
-         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "dLW"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+         arg += 'us 1:2:($3/$4):8 w e pt 7 palette t "dLW"'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\nflag: %d\\nsunalt: %.2f deg\\nmoonsep: %.2f deg\\nmoonphase: %.2f deg",$0+1, stringcolumn(5),$1, $2, $3, $6, $7, $8, $9)):8 w labels hypertext point pt 7 palette t "",'
       arg += hypertext
 
-      gplot.key('tit "%s"'%(self.keytitle))
-      gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]"')
+      gplot.key('right Right top tit "%s" right'%(self.keytitle))
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]"').cblabel('"moon separation [deg]"')
+      gplot.palette('defined (0 "yellow", 1 "black")')\
+           .cbrange('[5:30]')
 
-      gplot(bjd-2450000, dLW, e_dLW, self.has_d, self.info, arg)
-      pause('dLW ', self.tag)
+      gplot(bjd-2450000, dLW, e_dLW, self.has_d, self.info, self.flag, np.nan_to_num(self.sunalt), np.nan_to_num(self.moonsep), np.nan_to_num(self.moonphase), arg, *args, **kwargs)
+      if not args: pause('dLW ', self.tag)
 
    def plot_halpha(self):
       '''Show Halpha time series.'''
@@ -431,16 +439,14 @@ class srv:
          if 1:
             gplot.multiplot('layout 2,1')
             # bottom panel
-            gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000(m/s)^2]"')
-            hypertext = ' "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f+/-%f",$0+1, stringcolumn(4), $1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
-            gplot(bjd-2450000, dLW, e_dLW, self.info, 'us 1:2:3 w e pt 6,'+hypertext,
-                  [bjd[n]-2450000], [dLW[n]], [e_dLW[n]], 'us 1:2:3 w e pt 7 t""', flush=' \n')
+            self.plot_dlw([bjd[n]-2450000], [dLW[n]], 'us 1:2 lc "#ff0000" pt 4 ps 1. t "n=%s (%s)"'%(n+1, self.info[n]), flush=' \n')
 
-         gplot.xlabel('"wavelength"').ylabel('"dLW [1000(m/s)^2]"')
+         gplot.xlabel('"wavelength {/Symbol l} [A]"')\
+              .ylabel('"dLW [1000(m/s)^2]"')
          gplot.put('i=2; bind "$" "i = i%2+1; xlab=i==1?\\"order\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; if (i==1) {unset log} else {set log x} ; repl"')
          hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], dLW[n], e_dLW[n])+ 'o: %d\\ndlw[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
-         gplot(self.orders, lam_o[n,self.orders], dlw[n,self.orders], e_dlw[n,self.orders], ' us i:3:4 w e pt 7' + hypertext,
-              ', %s t "%5g +/- %5g", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' % (dLW[n], dLW[n], e_dLW[n], dLW[n]- e_dLW[n], dLW[n]+ e_dLW[n]))
+         gplot(self.orders, lam_o[n,self.orders], dlw[n,self.orders], e_dlw[n,self.orders], ' us i:3:4 w e pt 7 t "dLW_{%s,o} (%s)"' % (n+1, self.info[n]) + hypertext,
+              ', %s t "dLW_{%s} = %5g +/- %5g", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' % (dLW[n], n+1, dLW[n], e_dLW[n], dLW[n]- e_dLW[n], dLW[n]+ e_dLW[n]))
          gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
          try:
@@ -450,6 +456,8 @@ class srv:
                n -= 1
             elif nn in ('^'):
                n = 0
+            elif nn in ('z'):
+               break
             elif nn in ('$'):
                n = self.N - 1
             else:
