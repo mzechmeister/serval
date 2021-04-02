@@ -91,7 +91,6 @@ def nans(*args, **kwargs):
 
 # default values
 postiter = 3     # number of iterations for post rvs (postclip=3)
-debug = 0
 sp, fmod = None, None    # @getHalpha
 apar = zeros(3)      # parabola parameters
 astat = zeros(3*2-1)
@@ -1709,7 +1708,6 @@ def serval():
          aa[-1]=12
          lstarmask = interp(aa,bb) # only 1D arrays
          #lstarmask = interpolate.interp1d(aa, bb)
-         #pause()
 
 
       ### Least square fitting
@@ -1808,7 +1806,6 @@ def serval():
             b2[skymsk(w2)>0.01] |= flag.sky
             b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag for bad template
             b2[(skymsk(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT
-            #pause()
             #if inst.name == 'HARPS':
                #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
                #pause()
@@ -2260,13 +2257,6 @@ def arg2slice(arg):
       arg = eval('np.s_['+arg+']')
    return [arg] if isinstance(arg, int) else arg
 
-def flexdefault(arg):
-   """Convert string argument to a slice."""
-   # We want four cases for indexing: None, int, list of ints, slices.
-   # Use [] as default, so 'in' can be used.
-   if isinstance(arg, str):
-      arg = eval('np.s_['+arg+']')
-   return [arg] if isinstance(arg, int) else arg
 
 if __name__ == "__main__":
    insts = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
