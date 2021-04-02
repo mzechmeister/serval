@@ -104,7 +104,6 @@ def Using(point, verb=False):
                 (usage[2]*resource.getpagesize())/1000000.0))
     return (usage[2]*resource.getpagesize())/1000000.0
 
-
 class Logger(object):
 
    def __init__(self):
@@ -768,7 +767,7 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
 
 def serval():
 
-   sys.stdout = Logger()
+   if not bp: sys.stdout = Logger()
 
    global obj, targ, oset, coadd, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
 
@@ -1074,7 +1073,7 @@ def serval():
 
    badfile.close()
    bervfile.close()
-   sys.stdout.logname(obj+'/log.'+obj)
+   bp or sys.stdout.logname(obj+'/log.'+obj)
 
    t1 = time.time() - t0
    print(nspec, "spectra read (%s)\n" % minsec(t1))
@@ -1082,6 +1081,7 @@ def serval():
    obsloc = getattr(inst, 'obsloc', {})
    if obsloc:
        # The computation have a lot of overhead and are done in vectorised fashion.
+       print('Calculating moon separation')
        from astropy.time import Time
        from astropy.coordinates import SkyCoord, EarthLocation, AltAz
        from astropy.coordinates import solar_system_ephemeris, get_moon, get_sun
@@ -2246,7 +2246,7 @@ def serval():
       x = analyse_rv(obj, postiter=postiter, fibsuf=fibsuf, safemode=safemode)
       if safemode<2: pause('TheEnd')
 
-   sys.stdout.logfile.close()
+   bp or sys.stdout.logfile.close()
 
 
 def arg2slice(arg):
@@ -2429,20 +2429,20 @@ if __name__ == "__main__":
       exit()
 
    if bp:
+      # bp seems to slow down astropy imports (moon)
       try:
          from StringIO import StringIO ## for Python 2
       except ImportError:
          from io import StringIO ## for Python 3
       import pdb
 
+      # initial continue must be given via stdin, emulate this here
       bp = ('break %s\n' * len(bp)) % tuple(bp)
-      #bp += "sys.stdin = sys.__stdin__\n"
       sys.stdin = StringIO(bp+'cont')
-      #pdb.run("sys.stdin = sys.__stdin__; serval()")
       pdb.set_trace()
       sys.stdin = sys.__stdin__
-      print('mode d:  logging turned off, stdout reseted')
-      sys.stdout = sys.__stdout__
+      print('logging turned off')
+      # Reset the Logger function, forking the output + set_trace yields "^[[A" in command history
 
    try:
       serval()
@@ -2451,7 +2451,7 @@ if __name__ == "__main__":
          print('ex')
          import pdb
          e, m, tb = sys.exc_info()
-         sys.stdout = sys.__stdout__
+         sys.stdout = sys.__stdout__  # resets the Logger
          pdb.post_mortem(tb)
       else:
          raise
