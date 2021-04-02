@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
@@ -2206,6 +2206,7 @@ def serval():
       chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
       dlwunit = [open(dlwfile, 'w'), open(dlwfile+'bad', 'w')]
       e_dlwunit = [open(e_dlwfile, 'w'), open(e_dlwfile+'bad', 'w')]
+      halunit = irtunit = nadunit = []
       if meas_index:
          halunit = [open(halfile, 'w'), open(halfile+'bad', 'w')]
       if meas_CaIRT:
@@ -2233,7 +2234,9 @@ def serval():
             print(sp.bjd, *(lineindex(irt1[n], irt1a[n], irt1b[n]) + lineindex(irt2[n], irt2a[n], irt2b[n]) + lineindex(irt3[n], irt3a[n], irt3b[n])), file=irtunit[rvflag])
          if meas_NaD:
             print(sp.bjd, *(lineindex(nad1[n],nadr1[n],nadr2[n]) + lineindex(nad2[n],nadr2[n],nadr3[n])), file=nadunit[rvflag])
-      for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit + srvunit + mlcunit + dlwunit:
+
+      for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit \
+                 + srvunit + mlcunit + dlwunit +e_dlwunit + halunit + irtunit + nadunit:
          ifile.close()
 
       t2 = time.time() - t0
