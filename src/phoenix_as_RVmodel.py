@@ -1,12 +1,9 @@
 #! /usr/bin/python
 from __future__ import print_function
 
-try:
-   import astropy.io.fits as pyfits
-except:
-   import pyfits
 import sys
 import os
+import astropy.io.fits as pyfits
 
 wmax=8000
 wmin=3500

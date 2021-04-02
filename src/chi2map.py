@@ -1,10 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
-try:
-   import astropy.io.fits as pyfits
-except:
-   import pyfits
+import astropy.io.fits as pyfits
 
 import cspline as spl
 import paraboloid

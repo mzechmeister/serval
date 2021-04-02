@@ -46,6 +46,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     tpl1d(**vars(args))
 
-# .tpl1d.py '/home/astro115/carmenes/data/svn/serval/CARM_VIS/J12479+097/template.fits'
-# filename = '/home/astro115/carmenes/data/svn/serval/HARPS/J12479+097/template.fits'
-# filename = '/home/astro115/carmenes/data/svn/serval/CARM_VIS/J12479+097/template.fits'
+# ./tpl1d.py /home/astro115/carmenes/data/svn/serval/CARM_VIS/J12479+097/template.fits J12479+097_tpl.fits

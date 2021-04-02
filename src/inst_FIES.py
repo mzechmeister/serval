@@ -169,11 +169,8 @@ Apologies for any IDL-isms that remain!
 """
 
 import numpy as np
-#from astropy.io import fits as pyfits
-try:
-   import astropy.io.fits as pyfits
-except:
-   import pyfits
+import astropy.io.fits as pyfits
+
 
 
 def nonlinearwave(nwave, specstr, verbose=False):

@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
@@ -998,10 +998,7 @@ def serval():
 
    msksky = [0] * iomax
    if 1 and inst.name=='CARM_VIS':
-      try:
-         import astropy.io.fits as pyfits
-      except:
-         import pyfits
+      import astropy.io.fits as pyfits
       msksky = flag.atm * pyfits.getdata(servallib + 'carm_vis_tel_sky.fits')
 
    if msklist: # convert line list to mask
@@ -2436,6 +2433,8 @@ if __name__ == "__main__":
       sys.stdin = sys.__stdin__
       print('logging turned off')
       # Reset the Logger function, forking the output + set_trace yields "^[[A" in command history
+
+   # sys.modules['keyring'] = sys.modules['os'] # astroquery> keyrings slows down
 
    try:
       serval()

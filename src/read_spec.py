@@ -25,11 +25,7 @@ except:
    file = io.FileIO
    brvrefs += ['AP']   # BERV from astropy
 
-
-try:
-   import astropy.io.fits as pyfits
-except:
-   import pyfits
+import astropy.io.fits as pyfits
 #import fitsio
 import numpy as np
 
@@ -279,7 +275,7 @@ def write_res(filename, datas, extnames, header='', hdrref=None, clobber=False):
    hdu = pyfits.PrimaryHDU(header=header)
    warnings.resetwarnings() # supress nasty overwrite warning http://pythonhosted.org/pyfits/users_guide/users_misc.html
    warnings.filterwarnings('ignore', category=UserWarning, append=True)
-   hdu.writeto(filename, clobber=clobber, output_verify='fix')
+   hdu.writeto(filename, overwrite=clobber, output_verify='fix')
    warnings.resetwarnings()
    warnings.filterwarnings('always', category=UserWarning, append=True)
 
@@ -300,7 +296,7 @@ def write_fits(filename, data, header='', hdrref=None, clobber=True):
    if not header and hdrref: header = pyfits.getheader(hdrref)
    warnings.resetwarnings() # supress nasty overwrite warning http://pythonhosted.org/pyfits/users_guide/users_misc.html
    warnings.filterwarnings('ignore', category=UserWarning, append=True)
-   pyfits.writeto(filename, data, header, clobber=clobber, output_verify='fix')
+   pyfits.writeto(filename, data, header, overwrite=clobber, output_verify='fix')
    warnings.resetwarnings()
    warnings.filterwarnings('always', category=UserWarning, append=True)
 
