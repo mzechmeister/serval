@@ -14,6 +14,8 @@ import time
 import warnings
 from collections import namedtuple
 
+brvrefs = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
+
 try:
    # Python 2
    type(file)
@@ -21,6 +23,7 @@ except:
    # Python 3
    import io
    file = io.FileIO
+   brvrefs += ['AP']   # BERV from astropy
 
 
 try:
@@ -88,7 +91,6 @@ sflag = nameddict(
 flag_cosm = flag.sat  # @ FEROS for now use same flag as sat
 
 def_wlog = True
-brvrefs = ['DRS', 'MH', 'WEhtml', 'WEidl', 'WE']
 
 
 class Spectrum:
@@ -171,7 +173,7 @@ class Spectrum:
             sys.path.insert(1, sys.path[0]+os.sep+'BarCor')            # bary now in src/BarCor
             import bary
             self.bjd, self.berv = bary.bary(self.dateobs, targ.ra, targ.de, inst.name, epoch=2000, exptime=self.exptime*2* self.tmmean, pma=targ.pmra, pmd=targ.pmde, obsloc=obsloc)
-         elif self.brvref in ('WEhtml', 'WEidl', 'WE'):
+         elif self.brvref in ('WEhtml', 'WEidl', 'WE', 'AP'):
             # Wright & Eastman (2014) via online or idl request
             # cd /home/raid0/zechmeister/idl/exofast/bary
             # export ASTRO_DATA=/home/raid0/zechmeister/
@@ -181,7 +183,18 @@ class Spectrum:
             ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15  # [deg]
             de = (targ.de[0] + np.copysign(targ.de[1]/60. + targ.de[2]/3600., targ.de[0]))       # [deg]
             obsname = inst.obsname
-            if self.brvref == 'WE':
+            if self.brvref == 'AP':
+                # only python 3/astropy v4
+                from astropy.time import Time
+                from astropy.coordinates import SkyCoord, EarthLocation
+                import astropy.units as u
+                sc = SkyCoord(ra=ra*u.deg, dec=de*u.deg, pm_ra_cosdec=targ.pmra*u.mas/u.yr, pm_dec=targ.pmde*u.mas/u.yr, distance=1e99*u.pc)
+                times = Time(jd_utcs, format='jd', scale='utc')
+                loc = EarthLocation.from_geodetic(lat=obsloc['lat']*u.deg, lon=obsloc['lon']*u.deg, height=obsloc['elevation']*u.m)
+                berv = sc.radial_velocity_correction(obstime=times, location=loc)
+                self.berv_start, self.berv, self.berv_end = berv.to(u.m/u.s).value
+                self.bjd_start, self.bjd, self.bjd_end = (times.tdb + times.light_travel_time(sc, location=loc)).value
+            elif self.brvref == 'WE':
                # pure python version
                import brv_we14py
                #self.bjd, self.berv = brv_we14py.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
