@@ -37,7 +37,6 @@ import brv_we14idl
 import brv_we14html
 from pause import pause, stop
 from gplot import *
-import sunrise
 
 class nameddict(dict):
    """
@@ -225,19 +224,6 @@ class Spectrum:
       #self.header['HIERARCH SERVAL DE'] = (targ.ra[0], 'Barycentric code')
       #self.header['HIERARCH SERVAL PMRA'] = (targ.ra[0], 'Barycentric code')
       #self.header['HIERARCH SERVAL PMDE'] = (targ.ra[0], 'Barycentric code')
-
-      if self.utc:
-         date = self.utc.year, self.utc.month, self.utc.day
-         sunris = sunrise.sun(*date, lon=self.obs.lon, lat=self.obs.lat)
-         sunset = sunrise.sun(*date, lon=self.obs.lon, lat=self.obs.lat, rise=False)
-         ut = self.utc.hour + self.utc.minute/60. +  self.utc.second/3600.
-         utend = ut + self.exptime/3600.
-         dark = ((sunset < ut <= utend < sunris) or   # |****S__UT__R***|
-                 (sunris < sunset < ut <= utend) or   # |__R*******S__UT|
-                 (utend < sunris < sunset < ut)  or   # |T__R********S_U|
-                 (ut < utend < sunris < sunset))      # |UT__R********S_|
-         #if not dark:
-            #self.flag |= sflag.daytime
 
       if orders is not None:
          self.read_data(orders=orders, wlog=wlog)
