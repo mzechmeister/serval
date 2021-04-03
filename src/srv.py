@@ -411,9 +411,6 @@ class srv:
       bjdmap = np.tile(bjd[:,np.newaxis], rv.shape[1])
       omap = np.tile(np.arange(len(self.dlw.T)), dlw.shape[0]).T
 
-      # Drift and sa yet no applied to rvo
-      # gplot(bjd, RV, e_RV, 'us 1:2:3 w e pt 7',)
-      # gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
       gplot.palette('define (0 "blue", 1 "green", 2 "red")').key('tit "%s"'% self.keytitle)
       gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]')
@@ -813,9 +810,10 @@ if __name__ == "__main__":
    for tag in args.tags:
       obj = srv(tag, plotrvo='plotrvo' in sys.argv)
       obj.targ()
-      #obj.kcita()
       obj.stat()
-      if args.i:
+      if not True in args.__dict__.values():
+         obj.plotrv()
+      elif args.i:
          while True:
             g = pause('next 0, q: quit')
             if g=='r': obj.plotrv()
@@ -862,6 +860,8 @@ if __name__ == "__main__":
             obj.plot_dlwno()
          if args.postrv:
             obj.postrv()
+
+
 
 
 
