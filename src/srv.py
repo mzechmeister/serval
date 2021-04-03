@@ -55,6 +55,7 @@ class srv:
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0])   # as string
       self.snr = genfromtxt2d(pre+'.snr'+fibsuf+'.dat')
       self.dlw = genfromtxt2d(pre+'.dlw'+fibsuf+'.dat')
+
       try:
          self.allerr = genfromtxt2d(pre+'.e_rvo'+fibsuf+'.dat')
          self.e_dlw = genfromtxt2d(pre+'.e_dlw'+fibsuf+'.dat')
@@ -73,6 +74,7 @@ class srv:
          print('warning: %s not found' % pre+'.pre'+fibsuf+'.dat')
       self.dLW, self.e_dLW = self.dlw.T[[1,2]]
 
+      self.brv = genfromtxt2d(pre+'.brv'+fibsuf+'.dat')
       # info includes also flagged files; exclude them based on unpairable bjd
       # (due to different formatting use bjd from brv.dat not info.csv.)
       bjd = np.atleast_1d(np.genfromtxt(pre+'.brv.dat', usecols=[0]))
@@ -144,16 +146,18 @@ class srv:
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:2:($3/$4):8 w e pt 7 palette t "dLW"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\nflag: %d\\nsunalt: %.2f deg\\nmoonsep: %.2f deg\\nmoonphase: %.2f deg",$0+1, stringcolumn(5),$1, $2, $3, $6, $7, $8, $9)):8 w labels hypertext point pt 7 palette t "",'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\nflag: %d\\nsunalt: %.2f deg\\nmoonsep: %.2f deg\\nmoonphase: %.2f deg",$0+1, stringcolumn(5),$1, $2, $3, $6, $7, $8, $9)):8 w labels hypertext point pt 7 palette t ""'
       arg += hypertext
+      arg += ', "" us 1:2:7 palette pt 6 ps 1.2'
 
       gplot.key('right Right top tit "%s" right'%(self.keytitle))
-      gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]"').cblabel('"moon separation [deg]"')
-      gplot.palette('defined (0 "yellow", 1 "black")')\
-           .cbrange('[5:30]')
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"dLW [1000 (m/s)^2]"').cblabel('"     Sun altitude [deg]    Moon separation [deg]"')
+      gplot.palette('defined (-30 "black", -5 "yellow", -4.9 "white", 4.9 "white", 5 "yellow", 30 "black")')\
+            .cbrange('[-30:30]')
 
+      args += (",", self.brv.T, ' us ($1-2450000):(-($10-$9)) lc 1 pt 12 t "-dBERV [m/s]"')
       gplot(bjd-2450000, dLW, e_dLW, self.has_d, self.info, self.flag, np.nan_to_num(self.sunalt), np.nan_to_num(self.moonsep), np.nan_to_num(self.moonphase), arg, *args, **kwargs)
-      if not args: pause('dLW ', self.tag)
+      if len(args)==3: pause('dLW ', self.tag)
 
    def plot_halpha(self):
       '''Show Halpha time series.'''
@@ -436,7 +440,7 @@ class srv:
          if 1:
             gplot.multiplot('layout 2,1')
             # bottom panel
-            self.plot_dlw([bjd[n]-2450000], [dLW[n]], 'us 1:2 lc "#ff0000" pt 4 ps 1. t "n=%s (%s)"'%(n+1, self.info[n]), flush=' \n')
+            self.plot_dlw(",", [bjd[n]-2450000], [dLW[n]], 'us 1:2 lc "#ff0000" pt 4 ps 1. t "n=%s (%s)"'%(n+1, self.info[n]), flush=' \n')
 
          gplot.xlabel('"wavelength {/Symbol l} [A]"')\
               .ylabel('"dLW [1000(m/s)^2]"')
