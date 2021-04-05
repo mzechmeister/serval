@@ -768,7 +768,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coadd, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -1331,9 +1331,7 @@ def serval():
          ################################
          ### create high S_N template ###
          ################################
-         print('coadding method: post3')
-         coadd == 'post3'
-         tpl = outdir + 'template_' +coadd + fibsuf + '.fits'
+         tpl = outdir + obj + '.tpl' + fibsuf + '.fits'
 
          ntset = len(spoklist[tset])
          spt.header['HIERARCH SERVAL OFAC'] = (ofac, 'oversampling factor per raw pixel')
@@ -1626,7 +1624,6 @@ def serval():
             bk[o] = bko
 
          if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
-         spt.header['HIERARCH SERVAL COADD TYPE'] = (coadd, 'coadd method')
          spt.header['HIERARCH SERVAL COADD OMIN'] = (omin, 'minimum order for RV')
          spt.header['HIERARCH SERVAL COADD OMAX'] = (omax, 'maximum order for RV')
          spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
@@ -2303,8 +2300,6 @@ if __name__ == "__main__":
    argopt('-ccf',  help='mode ccf [with files]', nargs='?', const='th_mask_1kms.dat', type=str)
    argopt('-ccfmode', help='type for ccf template', nargs='?', default='box',
                       choices=['box', 'binless', 'gauss', 'trapeze'])
-   argopt('-coadd', help='coadd method'+default, default='post3',
-                   choices=['post3'])
    argopt('-coset', help='index for order in coadding (default: oset)'+default, default=coset, type=arg2slice)
    argopt('-co_excl', help='orders to exclude in coadding (default: o_excl)', type=arg2slice)
    argopt('-ckappa', help='kappa sigma (or lower and upper) clip value in coadding. Zero values for no clipping'+default, nargs='+', type=float, default=(4.,4.))
