@@ -198,6 +198,9 @@ Column Format Units     Label     Explanations
      8 D      ---       AIRMASS   Air mass from fits header
      9 D      deg       RA        Telescope Ascension (degrees)
     10 D      deg       DE        Telescope declination (degrees)
+    11 D      deg       SUNALT    Sun altitude (degrees)
+    12 D      deg       MOONSEP   Moon separation (degrees)
+    13 D      deg       MOONPHASE Moon phase (degrees)
 --------------------------------------------------------------------------------
 
 

@@ -155,7 +155,7 @@ class srv:
       gplot.palette('defined (-30 "black", -5 "yellow", -4.9 "white", 4.9 "white", 5 "yellow", 30 "black")')\
             .cbrange('[-30:30]')
 
-      args += (",", self.brv.T, ' us ($1-2450000):(-($10-$9)) lc 1 pt 12 t "-dBERV [m/s]"')
+      args += (",", self.brv.T, ' us ($1-2450000):(-($10-$9)) lc 2 pt 12 t "-dBERV [m/s]"')
       gplot(bjd-2450000, dLW, e_dLW, self.has_d, self.info, self.flag, np.nan_to_num(self.sunalt), np.nan_to_num(self.moonsep), np.nan_to_num(self.moonphase), arg, *args, **kwargs)
       if len(args)==3: pause('dLW ', self.tag)
 
