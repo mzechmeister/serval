@@ -1075,7 +1075,7 @@ def serval():
    print(nspec, "spectra read (%s)\n" % minsec(t1))
 
    obsloc = getattr(inst, 'obsloc', {})
-   if obsloc:
+   if obsloc and targ.ra:
        # The computation have a lot of overhead and are done in vectorised fashion.
        print('Calculating moon separation')
        from astropy.time import Time
@@ -1291,24 +1291,32 @@ def serval():
              }
 
    if targrv_src=='auto':
-      if np.isfinite(targrvs['drsspt']):
+      if targ.name == 'cal':
+         targrv_src = 'user'
+         targrvs['user'] = 0
+      elif np.isfinite(targrvs['drsspt']):
          targrv_src = 'drsspt'
       else:
          print('DRS RV is NaN in spt, trying median')
          if np.isfinite(targrvs['drsmed']):
             targrv_src = 'drsmed'
-         else:
+         elif targrvs['simbad'] is not None:
             print('DRS RV is NaN in all spec, simbad RV')
             targrv_src = 'simbad'
+         else:
+            print('DRS RV is NaN in all spec, simbad RV')
+            targrv_src = 'usertpl'  # e.g. phoenix + online mode
 
    targrv = targrvs.get(targrv_src, 0)
    print('setting targ RV to: %s km/s (%s)' % (targrv, targrv_src))
 
-   if tplrv_src=='auto' and np.isfinite(TPLrv):
-      # for external templates take value from fits header
-      tplrv_src = 'tpl'
-   else:
-      tplrv_src = targrv_src
+   if tplrv_src=='auto':
+      if np.isfinite(TPLrv):
+          # for external templates take value from fits header
+          tplrv_src = 'tpl'
+      else:  # e.g. simbad
+          tplrv_src = targrv_src
+   # no action for: tplrv_src=='usertpl'
 
    tplrv = targrvs.get(tplrv_src, 0)
    print('setting tpl RV to:  %s km/s (%s)' % (tplrv, tplrv_src))
