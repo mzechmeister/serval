@@ -1,4 +1,5 @@
 from read_spec import *
+from astropy.time import Time
 
 # Instrument parameters
 name = __name__[5:]   # FIES (iraf), FIES_CERES
@@ -7,7 +8,7 @@ name = __name__[5:]   # FIES (iraf), FIES_CERES
 obsname = "not" # for barycorrpy
 obsname = "lapalma" # for barycorrpy
 
-pat = '*.fits'
+pat = '*[vs][ep].fits'  # _wave, _sp
 
 iomax = {'FIES': 79, 'FIES_CERES': 76}[name]
 pmax =  {'FIES': 2048, 'FIES_CERES': 2102}[name] - 300
@@ -50,7 +51,6 @@ def scan(self, s, pfits=True):
       self.mjd = hdr.get('HIERARCH MJD')
       self.drift = np.nan
       self.e_drift = np.nan
-      self.sn55 = hdr.get('SNR', 50)   # always 50
       self.fileid = self.dateobs
       self.calmode = "%s,%s,%s" % (hdr.get('SCI-OBJ', ''), hdr.get('CAL-OBJ', ''), hdr.get('SKY-OBJ', ''))
       self.timeid = self.fileid
@@ -70,14 +70,12 @@ def scan(self, s, pfits=True):
       self.sn55 = self.snr[55]
       hdr['OBJECT'] = hdr['HIERARCH TARGET NAME']
    else:
-      # IRAF header
+      # IRAF header, *_wave.fits
       self.instname = hdr['INSTRUME']
       self.drsberv = hdr.get('BERV', np.nan)
       self.drsbjd = hdr.get('HJD', np.nan)
       self.dateobs = hdr['DATE-OBS']
-      # dateobs is used by MH, but date-obs seems more reliable from FILENAME
-      # CARACAL computes mjd-obs also from FILENAME
-      self.mjd = hdr.get('JD') - 2400000.5
+      self.mjd = hdr.get('JD', Time(self.dateobs, scale='utc').jd) - 2400000.5
       # for HPF spectra the drift is already included in the wavelength solution
       self.drift = hdr.get(HIERARCH+'CARACAL DRIFT FP RV', hdr.get(HIERARCH+'CARACAL DRIFT RV', np.nan))
       self.e_drift = hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT RVERR', np.nan))
@@ -100,6 +98,9 @@ def scan(self, s, pfits=True):
       if self.tmmean == 0: self.tmmean = 0.5
       # estimate SNR
       f = hdulist[0].section
+      if len(f.hdu.shape) == 3:
+          # We have cube. Assuming f[0] flux, f[1] similar flux (linear) f[2] error
+          f = f[0]
       self.snr = np.median(np.abs(f[:,1:]/(f[:,1:]- f[:,:-1])), axis=1)
       self.sn55 = self.snr[55]
 
@@ -111,13 +112,17 @@ def data(self, orders=None, pfits=True):
       w = hdulist[0].section[0][orders] / (1.00004)
       e = 1/np.sqrt(hdulist[0].section[2][orders])
    else:
-      f = hdulist[0].section[orders]
       # stupid iraf header
       gg = readmultispec(self.filename, reform=True, quiet=True)
       # "".join(self.header['WAT2_0*'].values()).split("spec")
       w = airtovac(gg['wavelen'][orders])
-      f = hdulist[0].section[orders]
-      e = f*0 + 1/self.snr[orders, np.newaxis] *0.5
+      f = hdulist[0].section
+      if len(f.hdu.shape) == 3:
+          e = f[2][orders]
+          f = f[0][orders]
+      else:
+          f = f[orders]
+          e = f*0 + 1/self.snr[orders, np.newaxis] *0.5
 
    bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
