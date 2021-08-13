@@ -162,9 +162,9 @@ def data(self, orders, pfits=True):
          orders, det = divmod(orders,2)
          f = 1.*hdulist['SPEC'].section[orders]
          if 1:
-            # split and renumber the orders and indidexs
+            # split and renumber the orders and indices
             sl = [None, None]
-            sl[1-det] = f.shape[0]/2
+            sl[1-det] = int(f.shape[0]/2)
             sl = slice(*sl)
             f = f[sl]
             bp[0], bp[1] = bp[0]*2, bp[1]%f.shape[0]
