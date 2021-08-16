@@ -1,6 +1,8 @@
 from read_spec import *
+from astropy.time import Time
 
 # Instrument parameters
+# 2021-08-16: Continuing here with Goldilooks format, which might become the default.
 name = 'HPF'
 obsname = "hpf" # for barycorrpy
        # wikipedia
@@ -41,9 +43,8 @@ def scan(self, s, orders=None, pfits=True, verb=True):
       self.drsberv = hdr.get('BERV', np.nan)
       self.drsbjd = hdr.get('BJD', np.nan) + 2400000
       self.dateobs = hdr['DATE-OBS']
-      # dateobs is used by MH, but date-obs seems more reliable from FILENAME
-      # CARACAL computes mjd-obs also from FILENAME
-      self.mjd = hdr.get('JD_FW18') - 2400000.5
+      # self.mjd = hdr.get('JD_FW18') - 2400000.5   # PSU keyword
+      self.mjd = Time(self.dateobs, format='isot', scale='utc').mjd
       # for HPF spectra the drift is already included in the wavelength solution
       self.drift = hdr.get(HIERARCH+'CARACAL DRIFT FP RV', hdr.get(HIERARCH+'CARACAL DRIFT RV', np.nan))
       self.e_drift = hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT RVERR', np.nan))
@@ -66,14 +67,18 @@ def scan(self, s, orders=None, pfits=True, verb=True):
 def data(self, orders, pfits=True):
    hdulist = self.hdulist
    if 1:  # read order data
-      f = hdulist['Sci Flux'].section[orders]
-      w =  hdulist['Sci Wavl'].section[orders]
+      f = hdulist['Sci Flux'].section[orders] - hdulist['Sky Flux'].section[orders]   # better for fast rotators
+      w = hdulist['Sci Wavl'].section[orders]
+   if 'Sci Error' in hdulist:  # read order data
+      e = hdulist['Sci Error'].section[orders]
+   else:
       e = (hdulist['Sci Variance'].section[orders])**0.5
-      bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
-      with np.errstate(invalid='ignore'):
-        bpmap[f < -3*e] |= flag.neg
-        bpmap[e==0] |= flag.nan
+   bpmap = np.isnan(f).astype(int)            # flag 1 for nan
+
+   with np.errstate(invalid='ignore'):
+      bpmap[f < -3*e] |= flag.neg
+      bpmap[e==0] |= flag.nan
 
       return w, f, e, bpmap
 
