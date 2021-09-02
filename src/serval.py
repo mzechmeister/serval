@@ -1132,7 +1132,7 @@ def serval():
       spi = 0
 
    if last:
-      tpl = outdir + 'template' + fibsuf + '.fits'
+      tpl = outdir + obj + fibsuf + '.fits'
    elif tpl is None:
       tpl = spi   # choose highest S/N spectrum
 
@@ -1309,6 +1309,13 @@ def serval():
 
    targrv = targrvs.get(targrv_src, 0)
    print('setting targ RV to: %s km/s (%s)' % (targrv, targrv_src))
+
+   if np.isnan(targrv):
+       raise ValueError(
+          '\n  Absolute RV is not available from header or simbad or user.' +
+          '\n  It is required to measure line indices.' +
+          '\n  You could specify e.g. "-targrv 0", but re-check your estimate on some prominent lines e.g. with "-looki".'
+       )
 
    if tplrv_src=='auto':
       if np.isfinite(TPLrv):
