@@ -47,7 +47,11 @@ def simbad_query(targ):
 
    site = 'http://simbad.u-strasbg.fr/simbad/sim-script'
    result = urlopen(site, str.encode('submit=submit+script&script='+query)).read().decode()
-
+   if result.startswith('::error'):
+       print(result)
+       print('There was a problem with resolving "%s".'% targ)
+       print('The target can be checked directly on: https://simbad.u-strasbg.fr/simbad/sim-fid')
+       exit()
    return result
 
 class Targ:
