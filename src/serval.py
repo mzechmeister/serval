@@ -1132,7 +1132,7 @@ def serval():
       spi = 0
 
    if last:
-      tpl = outdir + obj + fibsuf + '.fits'
+      tpl =  outdir + obj + '.tpl%s.fits' % fibsuf
    elif tpl is None:
       tpl = spi   # choose highest S/N spectrum
 
@@ -1205,11 +1205,11 @@ def serval():
                is_ech_tpl = False
                TPL = [Tpl(ww, ff, spline_cv, spline_ev, vsini=tplvsini)] * nord
                TPLrv = 0.
-            elif tpl.endswith('template.fits') or os.path.isdir(tpl):
+            elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
                # last option
                # read a spectrum stored order wise
                print("tplvsini", tplvsini)
-               ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
+               ww, ff, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
                TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini) for wo,fo in zip(ww,ff)]
                if 'HIERARCH SERVAL COADD NUM' in head:
                   print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
