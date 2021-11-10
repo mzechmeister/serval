@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
-import warnings
-
 __author__ = 'Mathias Zechmeister'
 __version__ = '2021-03-31'
 
@@ -234,8 +232,6 @@ def rotbroad(x, f, v):
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
    """
    """
-   warnings.simplefilter("ignore", ResourceWarning)
-
    print(obj+'/'+obj+'.rvc'+fibsuf+'.dat')
    allrv = np.genfromtxt(obj+'/'+obj+'.rvo'+fibsuf+'.dat')
    allerr = np.genfromtxt(obj+'/'+obj+'.e_rvo'+fibsuf+'.dat')
@@ -399,7 +395,6 @@ lines = {
 }
 
 def get_o_of_line(typ, wavemap):
-   warnings.simplefilter("ignore", ResourceWarning)
    # find the orders of a spectral line
    wcen, dv1, dv2 = lines.get(typ, (None, None, None))
    wcen = lam2wave(airtovac(wcen))
@@ -419,9 +414,6 @@ def getHalpha(v, typ='Halpha', line_o=None, rel=False, plot=False):
    sp,fmod as global variables !
    deblazed sp should be used !
    """
-
-   warnings.simplefilter("ignore", ResourceWarning)
-
    o = line_o.get(typ)
    if o is None: return np.nan, np.nan
    wcen, dv1, dv2 = lines[typ]
@@ -453,9 +445,7 @@ def getHalpha(v, typ='Halpha', line_o=None, rel=False, plot=False):
 
 def polyreg(x2, y2, e_y2, v, deg=1, retmod=True):   # polynomial regression
    """Returns polynomial coefficients and goodness of fit."""
-   warnings.simplefilter("ignore", ResourceWarning)
    fmod = calcspec(x2, v, 1.)  # get the shifted template
-
    if 0: # python version
       ind = fmod>0.01     # avoid zero flux, negative flux and overflow
       p,stat = polynomial.polyfit(x2[ind]-calcspec.wcen, y2[ind]/fmod[ind], deg-1, w=fmod[ind]/e_y2[ind], full=True)
@@ -495,7 +485,6 @@ def optidrift(ft, df, f2, e2=None):
       f(v) = A*f - A*df/dv * v/c
 
    """
-   warnings.filterwarnings("ignore", category=DeprecationWarning) 
    # pre-normalise
    #A = np.dot(ft, f2) / np.dot(ft, ft)   # unweighted (more robust against bad error estimate)
    A = np.dot(1/e2**2*ft, f2) / np.dot(1/e2**2*ft, ft)
@@ -643,8 +632,6 @@ def CCF(wt, ft, x2, y2, va, vb, e_y2=None, keep=None, plot=False, ccfmode='trape
    return type('par',(),{'params': params, 'perror':perror, 'ssr':SSRmin, 'niter':0}), fmod, (vgrid, SSR, SSRmod), stat
 
 def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
-   warnings.filterwarnings("ignore", category=DeprecationWarning) 
-
    # analyse peak
    k = SSR[dk:-dk].argmin() + dk   # best point (exclude borders)
    vpeak = vgrid[k-dk:k+dk+1]
@@ -675,7 +662,6 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
    performs a mini CCF; the grid stepping
    returns best v and errors from parabola curvature
    """
-   warnings.filterwarnings("ignore", category=DeprecationWarning) 
    vgrid = np.arange(va, vb, v_step)
    nk = len(vgrid)
 
@@ -846,7 +832,6 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
 
 
 def serval():
-   warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
    if not bp: sys.stdout = Logger()
 
@@ -1215,7 +1200,7 @@ def serval():
       spi = 0
 
    if last:
-      tpl = outdir + obj + fibsuf + '.fits'
+      tpl =  outdir + obj + '.tpl%s.fits' % fibsuf
    elif tpl is None:
       tpl = spi   # choose highest S/N spectrum
 
@@ -1288,13 +1273,12 @@ def serval():
                is_ech_tpl = False
                TPL = [Tpl(ww, ff, spline_cv, spline_ev, vsini=tplvsini)] * nord
                TPLrv = 0.
-            elif tpl.endswith('template.fits') or os.path.isdir(tpl):
+            elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
                # last option
                # read a spectrum stored order wise
                print("tplvsini", tplvsini)
-               ww, ff, head = read_template(tpl+(os.sep+'template.fits' if os.path.isdir(tpl) else ''))
+               ww, ff, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
                TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini) for wo,fo in zip(ww,ff)]
-            
                if 'HIERARCH SERVAL COADD NUM' in head:
                   print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
@@ -1306,7 +1290,6 @@ def serval():
                #ww, ff = barshift(spt.w,spt.berv), spt.f
                TPL = [Tpl(wo, fo, spline_cv, spline_ev, mask=True, berv=spt.berv) for wo,fo in zip(barshift(spt.w,spt.berv),spt.f)]
                TPLrv = spt.ccf.rvc
-
          except:
             print('ERROR: could not read template:', tpl)
             exit()
@@ -1432,7 +1415,7 @@ def serval():
          pause('pre RV file', prefile, 'does not exist')
 
 
-   
+
    for iterate in range(1, niter+1):
 
       print('\nIteration %s / %s (%s)' % (iterate, niter, obj))
@@ -1667,11 +1650,11 @@ def serval():
                      
                      # set up data for fitting
                      ### sort by wavelength (for calcspec)
-                     sind = np.argsort(wmod[ind])
+                     sind = np.argsort(wmod[bmod==0])
 
-                     x = wmod[ind][sind]
-                     y = mod[ind][sind]
-                     yerr = emod[ind][sind] 
+                     x = wmod[bmod==0][sind]
+                     y = mod[bmod==0][sind]
+                     yerr = emod[bmod==0][sind] 
   
                      ### cut a further part of the edges
                      lx = len(x) 
@@ -1700,8 +1683,10 @@ def serval():
 
                      # plotting gplot
                      if o in lookvsini:
-                        gplot(x,y, 'w d,', x,TPL0[o](x), 'w lp ps 0.3,', x, fModkeep, 'w lp ps 0.3')
-                        gplot2(ssr[0],ssr[1], 'w lp,', vsini, min(ssr[1]), 'lc 3 pt 7')
+                        gplot.xlabel('"ln(wavelength)"').ylabel('"flux"')
+                        gplot(TPL0[o].wk,TPL0[o].fk, 'w l lc 2 t "tpl",', x,y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o), rotbroad(TPL0[o].wk,TPL0[o].fk,vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
+                        gplot2.xlabel('"vsini [km/s]"').ylabel('"SSR"')
+                        gplot2(ssr[0],ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
 
                         pause()
 
@@ -2391,7 +2376,6 @@ def serval():
          print(sp.bjd, dLW[n], e_dLW[n], *e_dlw[n], file=e_dlwunit[rvflag])
          print(sp.bjd, np.nansum(snr[n]**2)**0.5, *snr[n], file=snrunit[rvflag])
          print(sp.bjd, *rchi[n], file=chiunit[rvflag])
-
          if meas_index:
             print(sp.bjd, *(lineindex(halpha[n],harigh[n],haleft[n]) + halpha[n] + haleft[n] + harigh[n] + lineindex(cai[n],harigh[n],haleft[n])), file=halunit[rvflag])  #,cah[n][0],cah[n][1]
          if meas_CaIRT:
