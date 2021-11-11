@@ -1622,73 +1622,72 @@ def serval():
                #pause()
                if it < n_iter: ind[ind] *=  okmap
 
-               if ofacauto:
-                  # BIC to get optimal knot spacing (smoothing)
-                  chired = []
-                  BIC = []
-                  K = np.logspace(np.log10(10), np.log10(ntpix), dtype=int)
-                  for Ki in K:
-                     smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ki, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
-                     chi = ((mod[ind] - ymod)**2*we[ind]).sum()
-                     chired += [ chi / (we[ind].size-Ki)]
-                     BIC += [ chi + np.log(we[ind].size)*Ki]
-               
-                  Ko = K[np.argmin(BIC)]
-                  smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ko, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
-                  print("K=%d " % Ko, end='')
-               
-                  if 0:
-                     gplot2(K, BIC, 'w lp,', Ko, min(BIC), 'lc 3 pt 7')
-                     gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p')
-                     #pause()
-     
-               if vsiniauto:
-                  if it == n_iter:
-                     # vsini steps
-                     vs_hi = 150
-                     vs_step = 1
-                     
-                     # set up data for fitting
-                     ### sort by wavelength (for calcspec)
-                     sind = np.argsort(wmod[bmod==0])
+            if ofacauto:
+                # BIC to get optimal knot spacing (smoothing)
+                chired = []
+                BIC = []
+                K = np.logspace(np.log10(10), np.log10(ntpix), dtype=int)
+                for Ki in K:
+                    smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ki, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
+                    chi = ((mod[ind] - ymod)**2*we[ind]).sum()
+                    chired += [ chi / (we[ind].size-Ki)]
+                    BIC += [ chi + np.log(we[ind].size)*Ki]
+            
+                Ko = K[np.argmin(BIC)]
+                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ko, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
+                print("K=%d " % Ko, end='')
+            
+                if 0:
+                    gplot2(K, BIC, 'w lp,', Ko, min(BIC), 'lc 3 pt 7')
+                    gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p')
+                    #pause()
+    
+            if vsiniauto:
+                # vsini steps
+                vs_hi = 150
+                vs_step = 1
+                
+                # set up data for fitting
+                ### sort by wavelength (for calcspec)
+                sind = np.argsort(wmod[bmod==0])
 
-                     x = wmod[bmod==0][sind]
-                     y = mod[bmod==0][sind]
-                     yerr = emod[bmod==0][sind] 
-  
-                     ### cut a further part of the edges
-                     lx = len(x) 
-                     a = 0.05
-                     alx = int(a*lx)
-                     x = x[alx:lx-alx]
-                     y = y[alx:lx-alx]
-                     yerr = yerr[alx:lx-alx]
+                x = wmod[bmod==0][sind]
+                y = mod[bmod==0][sind]
+                yerr = emod[bmod==0][sind] 
+
+                ### cut a further part of the edges
+                lx = len(x) 
+                a = 0.05
+                alx = int(a*lx)
+                x = x[alx:lx-alx]
+                y = y[alx:lx-alx]
+                yerr = yerr[alx:lx-alx]
 
 
-                     # fit the template
-                     par, fModkeep = optivsini(0, vs_hi, vs_step, 0, #tplrv,
-                                                x,y,yerr,
-                                                TPL0[o],
-                                                [1,0,0,0],plot=False)
+                # fit the template
+                par, fModkeep = optivsini(0, vs_hi, vs_step, 0, #tplrv,
+                                        x,y,yerr,
+                                        TPL0[o],
+                                        [1,0,0,0],plot=False)
 
-                     # chi2, vsini
-                     ssr = par.ssr    
-                     vsini = par.params[0]     
-                     evsini = par.perror[0]  
-                     VSINI[o] = [vsini,evsini]
+                # chi2, vsini
+                ssr = par.ssr    
+                vsini = par.params[0]     
+                evsini = par.perror[0]  
+                VSINI[o] = [vsini,evsini]
 
-                     # return best fitting vsini
-                     if not np.isnan(evsini):
-                        print("\nvsini=%0.5f +/- %0.5f km/s (order %i)\n" % (vsini,evsini,o), end='')
+                # return best fitting vsini
+                if not np.isnan(evsini):
+                    print("\nvsini = %0.5f +/- %0.5f km/s (order %i)\n" % (vsini,evsini,o), end='')
 
-                     # plotting gplot
-                     if o in lookvsini:
-                        gplot.xlabel('"ln(wavelength)"').ylabel('"flux"')
-                        gplot(TPL0[o].wk,TPL0[o].fk, 'w l lc 2 t "tpl",', x,y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o), rotbroad(TPL0[o].wk,TPL0[o].fk,vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
-                        gplot2.xlabel('"vsini [km/s]"').ylabel('"SSR"')
-                        gplot2(ssr[0],ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
+                # plotting gplot
+                if o in lookvsini:
+                    gplot.xlabel('"ln(wavelength)"').ylabel('"flux"')
+                    gplot(TPL0[o].wk,TPL0[o].fk, 'w l lc 2 t "tpl",', x,y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o), rotbroad(TPL0[o].wk,TPL0[o].fk,vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
+                    gplot2.xlabel('"vsini [km/s]"').ylabel('"SSR"')
+                    gplot2(ssr[0],ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
 
-                        pause()
+                    pause()
 
             # estimate the number of valid points for each knot
             edges = 0.5 * (wko[1:]+wko[:-1])
