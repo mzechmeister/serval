@@ -172,7 +172,8 @@ class Tpl:
          # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
          self.wk, self.fk = rotbroad(self.wk, self.fk, vsini)
       self.berv = berv
-      self.funcarg = initfunc(self.wk, self.fk)
+      self.initfunc = initfunc
+      self.funcarg = self.initfunc(self.wk, self.fk)
       self.evalfunc = evalfunc
    def __call__(self, w, der=0):
       return self.evalfunc(w, self.funcarg, der=der)
@@ -186,6 +187,14 @@ class Tpl:
          return msk(barshift(w,-self.berv)) > 0.01
       else:
          return slice(0,0) # empty
+   def rotbroad(self,vsini=0):
+      if vsini > 0:
+         # broaden template
+         self.wk, self.fk = rotbroad(self.wk, self.fk, vsini)
+
+         # update funcarg for evaluation
+         self.funcarg = self.initfunc(self.wk, self.fk)
+      
 
 def rotbroad(x, f, v):
     '''
@@ -677,6 +686,64 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
       pause(v)
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
+
+def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=False):
+   """
+   performs a mini CCF; the grid stepping
+   returns best vsini and errors from parabola curvature
+   """
+   warnings.filterwarnings("ignore", category=DeprecationWarning) 
+   vgrid = np.arange(va, vb, v_step)
+   nk = len(vgrid)
+
+   SSR = np.empty(nk)
+
+   # set up wcen
+   calcspec.wcen = np.mean(x2)
+   
+   for k in range(nk):
+
+      # set up template
+      calcspec.tpl = copy.deepcopy(tpl)
+     
+      # broaden template
+      calcspec.tpl.rotbroad(vgrid[k])
+
+      # fitting
+      p, SSR[k] = polyreg(x2, y2, e_y2, vtpl, len(p), retmod=False)
+
+   # analyse the CCF peak fitting
+   v, e_v, a = SSRstat(vgrid, SSR, plot=(not safemode)*(1+plot))
+
+   if np.isnan(e_v):
+      v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
+      print(" Setting  v=" % v)
+   if p[0] < 0:
+      e_v = np.nan
+      print("Negative scale value. Setting  e_v= %f" % e_v)
+
+   if np.argmin(SSR) == 0:
+      # if the minimum is at zero, we cannot use parabola
+      # take vstep as uncertainty
+      v = 0
+      e_v = v_step
+
+
+   # template with fitted vsini
+   calcspec.tpl = copy.deepcopy(tpl)
+
+   # broaden template
+   calcspec.tpl.rotbroad(v)
+
+   # final call with v
+   p, SSRmin, fmod = polyreg(x2, y2, e_y2, vtpl, len(p)) 
+  
+   if 1 and (np.isnan(e_v) or plot) and not safemode:
+      gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
+      pause(v)
+   return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
+
+
 def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
    """
    Performs the robust least square fit via iterative clipping.
@@ -768,7 +835,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -925,6 +992,7 @@ def serval():
    if lookt: lookt = np.arange(iomax)[lookt]
    if lookp: lookp = np.arange(iomax)[lookp]
    if lookssr: lookssr = np.arange(iomax)[lookssr]
+   if lookvsini: lookvsini = np.arange(iomax)[lookvsini]
 
    if outfmt or outchi: os.system('mkdir -p '+obj+'/res')
    with open(outdir+'lastcmd.txt', 'w') as f:
@@ -1281,6 +1349,16 @@ def serval():
          #gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv),spt.f[o,ptmin:ptmax])
          #ogplot(ww[o],ff[o]); pause()
 
+   if vsiniauto:
+      # if use automatic determination of vsini
+
+      # save original template (without broadening)
+      TPL0 = copy.deepcopy(TPL)
+
+      # set up array for vsini
+      VSINI = np.nan*np.empty([nord,2])
+
+
    rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
    targrvs = {'simbad': targ.rv,
               'tpl': TPLrv,
@@ -1554,15 +1632,62 @@ def serval():
                   chi = ((mod[ind] - ymod)**2*we[ind]).sum()
                   chired += [ chi / (we[ind].size-Ki)]
                   BIC += [ chi + np.log(we[ind].size)*Ki]
-
+         
                Ko = K[np.argmin(BIC)]
                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ko, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
                print("K=%d " % Ko, end='')
-
+         
                if 0:
                   gplot2(K, BIC, 'w lp,', Ko, min(BIC), 'lc 3 pt 7')
                   gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p')
                   #pause()
+    
+            if vsiniauto:
+               # vsini steps
+               vs_hi = 150
+               vs_step = 1
+               
+               # set up data for fitting
+               ### sort by wavelength (for calcspec)
+               sind = np.argsort(wmod[bmod==0])
+
+               x = wmod[bmod==0][sind]
+               y = mod[bmod==0][sind]
+               yerr = emod[bmod==0][sind] 
+
+               ### cut a further part of the edges
+               lx = len(x) 
+               a = 0.05
+               alx = int(a*lx)
+               x = x[alx:lx-alx]
+               y = y[alx:lx-alx]
+               yerr = yerr[alx:lx-alx]
+
+
+               # fit the template
+               par, fModkeep = optivsini(0, vs_hi, vs_step, 0, #tplrv,
+                                       x,y,yerr,
+                                       TPL0[o],
+                                       [1,0,0,0],plot=False)
+
+               # chi2, vsini
+               ssr = par.ssr    
+               vsini = par.params[0]     
+               evsini = par.perror[0]  
+               VSINI[o] = [vsini,evsini]
+
+               # return best fitting vsini
+               if not np.isnan(evsini):
+                  print("\nvsini = %0.5f +/- %0.5f km/s (order %i)\n" % (vsini,evsini,o), end='')
+
+               # plotting gplot
+               if o in lookvsini:
+                  gplot.xlabel('"ln(wavelength)"').ylabel('"flux"')
+                  gplot(TPL0[o].wk,TPL0[o].fk, 'w l lc 2 t "tpl",', x,y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o), rotbroad(TPL0[o].wk,TPL0[o].fk,vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
+                  gplot2.xlabel('"vsini [km/s]"').ylabel('"SSR"')
+                  gplot2(ssr[0],ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
+
+                  pause()
 
             # estimate the number of valid points for each knot
             edges = 0.5 * (wko[1:]+wko[:-1])
@@ -1637,6 +1762,12 @@ def serval():
             fk[o] = fko
             ek[o] = eko
             bk[o] = bko
+         
+         # apply fitted roational broadening
+         if vsiniauto:
+            for o in orders:
+               # update template with median vsini
+               TPL[o].rotbroad(np.nanmedian(VSINI[:,0]))
 
          if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
          spt.header['HIERARCH SERVAL COADD OMIN'] = (omin, 'minimum order for RV')
@@ -2201,12 +2332,14 @@ def serval():
       crxfile = outdir+obj+'.crx'+fibsuf+'.dat'
       mlcfile = outdir+obj+'.mlc'+fibsuf+'.dat' # maximum likehood estimated RVCs and CRX
       srvfile = outdir+obj+'.srv'+fibsuf+'.dat' # serval top-level file
+      vsinifile = outdir+obj+'.vsini'+fibsuf+'.dat'
       rvunit = [open(rvfile, 'w'), open(outdir+obj+'.badrv'+fibsuf+'.dat', 'w')]
       rvounit = [open(rvofile, 'w'), open(rvofile+'bad', 'w')]
       rvcunit = [open(rvcfile, 'w'), open(rvcfile+'bad', 'w')]
       crxunit = [open(crxfile, 'w'), open(crxfile+'bad', 'w')]
       mlcunit = [open(mlcfile, 'w'), open(mlcfile+'bad', 'w')]
       srvunit = [open(srvfile, 'w'), open(srvfile+'bad', 'w')]
+      vsiniunit = [open(vsinifile, 'w')]
       mypfile = [open(e_rvofile, 'w'), open(e_rvofile+'bad', 'w')]
       snrunit = [open(snrfile, 'w'), open(snrfile+'bad', 'w')]
       chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
@@ -2219,6 +2352,14 @@ def serval():
          irtunit = [open(irtfile, 'w'), open(irtfile+'bad', 'w')]
       if meas_NaD:
          nadunit = [open(nadfile, 'w'), open(nadfile+'bad', 'w')]
+
+      if vsiniauto:
+         print('Median vsini [km/s]:', file=vsiniunit[0])
+         print(np.nanmedian(VSINI[:,0]),np.sqrt(2/np.pi)*np.nanstd(VSINI[:,0]), file=vsiniunit[0])
+         print('\norder', 'vsini[km/s]','error[km/s]', file=vsiniunit[0])
+         for o in range(nord):          
+            print(o, VSINI[o,0],VSINI[o,1], file=vsiniunit[0])
+
       for n,sp in enumerate(spoklist):
          if np.isnan(rvm[n]): sp.flag |= sflag.rvnan
          rvflag = int((sp.flag&(sflag.config+sflag.iod+sflag.rvnan)) > 0)
@@ -2332,6 +2473,7 @@ if __name__ == "__main__":
    argopt('-lookt', help='slice of orders to view the coadd fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookp', help='slice of orders to view the preRV fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookssr', help='slice of orders to view the ssr function [:]', nargs='?', default=[], const=':', type=arg2slice)
+   argopt('-lookvsini', help='slice of orders to view vsini fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookmlRV', help='chi2map and master', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookmlCRX', help='chi2map and CRX fit ', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-moonsep', help='Flag threshold for min. moon separation'+default, type=float, default=7.)
@@ -2342,6 +2484,7 @@ if __name__ == "__main__":
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=ofac, type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
+   argopt('-vsiniauto', help='automatic vsini computation.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
    argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'waverest', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')
@@ -2445,6 +2588,10 @@ if __name__ == "__main__":
       # Reset the Logger function, forking the output + set_trace yields "^[[A" in command history
 
    # sys.modules['keyring'] = sys.modules['os'] # astroquery> keyrings slows down
+
+   if vsiniauto:
+      if niter<3:
+         niter=3
 
    try:
       serval()
