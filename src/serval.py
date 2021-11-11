@@ -186,15 +186,15 @@ class Tpl:
      # mask as before berv correction
          return msk(barshift(w,-self.berv)) > 0.01
       else:
-         return slice(0,0) # empty
-   def rotbroad(self,vsini=0):
+         return slice(0, 0) # empty
+   def rotbroad(self, vsini=0):
       if vsini > 0:
          # broaden template
          self.wk, self.fk = rotbroad(self.wk, self.fk, vsini)
 
          # update funcarg for evaluation
          self.funcarg = self.initfunc(self.wk, self.fk)
-      
+
 
 def rotbroad(x, f, v):
     '''
@@ -1356,7 +1356,7 @@ def serval():
       TPL0 = copy.deepcopy(TPL)
 
       # set up array for vsini
-      VSINI = np.nan*np.empty([nord,2])
+      VSINI = np.nan * np.empty([nord,2])
 
 
    rvdrs = np.array([sp.ccf.rvc for sp in spoklist])
@@ -1632,31 +1632,31 @@ def serval():
                   chi = ((mod[ind] - ymod)**2*we[ind]).sum()
                   chired += [ chi / (we[ind].size-Ki)]
                   BIC += [ chi + np.log(we[ind].size)*Ki]
-         
+
                Ko = K[np.argmin(BIC)]
                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ko, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
                print("K=%d " % Ko, end='')
-         
+
                if 0:
                   gplot2(K, BIC, 'w lp,', Ko, min(BIC), 'lc 3 pt 7')
                   gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p')
                   #pause()
-    
+
             if vsiniauto:
                # vsini steps
                vs_hi = 150
                vs_step = 1
-               
+
                # set up data for fitting
                ### sort by wavelength (for calcspec)
                sind = np.argsort(wmod[bmod==0])
 
                x = wmod[bmod==0][sind]
                y = mod[bmod==0][sind]
-               yerr = emod[bmod==0][sind] 
+               yerr = emod[bmod==0][sind]
 
                ### cut a further part of the edges
-               lx = len(x) 
+               lx = len(x)
                a = 0.05
                alx = int(a*lx)
                x = x[alx:lx-alx]
@@ -1666,26 +1666,28 @@ def serval():
 
                # fit the template
                par, fModkeep = optivsini(0, vs_hi, vs_step, 0, #tplrv,
-                                       x,y,yerr,
+                                       x, y, yerr,
                                        TPL0[o],
-                                       [1,0,0,0],plot=False)
+                                       [1,0,0,0], plot=False)
 
                # chi2, vsini
-               ssr = par.ssr    
-               vsini = par.params[0]     
-               evsini = par.perror[0]  
-               VSINI[o] = [vsini,evsini]
+               ssr = par.ssr
+               vsini = par.params[0]
+               e_vsini = par.perror[0]
+               VSINI[o] = [vsini, e_vsini]
 
                # return best fitting vsini
-               if not np.isnan(evsini):
-                  print("\nvsini = %0.5f +/- %0.5f km/s (order %i)\n" % (vsini,evsini,o), end='')
+               if not np.isnan(e_vsini):
+                  print("\nvsini = %0.5f +/- %0.5f km/s (order %i)\n" % (vsini,e_vsini,o), end='')
 
                # plotting gplot
                if o in lookvsini:
                   gplot.xlabel('"ln(wavelength)"').ylabel('"flux"')
-                  gplot(TPL0[o].wk,TPL0[o].fk, 'w l lc 2 t "tpl",', x,y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o), rotbroad(TPL0[o].wk,TPL0[o].fk,vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
+                  gplot(TPL0[o].wk, TPL0[o].fk, 'w l lc 2 t "tpl",',
+                        x, y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o),
+                        rotbroad(TPL0[o].wk, TPL0[o].fk, vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
                   gplot2.xlabel('"vsini [km/s]"').ylabel('"SSR"')
-                  gplot2(ssr[0],ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
+                  gplot2(ssr[0], ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
 
                   pause()
 
@@ -1762,7 +1764,7 @@ def serval():
             fk[o] = fko
             ek[o] = eko
             bk[o] = bko
-         
+
          # apply fitted roational broadening
          if vsiniauto:
             for o in orders:
@@ -2357,8 +2359,8 @@ def serval():
          print('Median vsini [km/s]:', file=vsiniunit[0])
          print(np.nanmedian(VSINI[:,0]),np.sqrt(2/np.pi)*np.nanstd(VSINI[:,0]), file=vsiniunit[0])
          print('\norder', 'vsini[km/s]','error[km/s]', file=vsiniunit[0])
-         for o in range(nord):          
-            print(o, VSINI[o,0],VSINI[o,1], file=vsiniunit[0])
+         for o in range(nord):
+            print(o, VSINI[o,0], VSINI[o,1], file=vsiniunit[0])
 
       for n,sp in enumerate(spoklist):
          if np.isnan(rvm[n]): sp.flag |= sflag.rvnan
@@ -2484,7 +2486,6 @@ if __name__ == "__main__":
    #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=ofac, type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
-   argopt('-vsiniauto', help='automatic vsini computation.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
    argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'waverest', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')
@@ -2508,6 +2509,7 @@ if __name__ == "__main__":
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
+   argopt('-vsiniauto', help='automatic vsini computation. Requires external serval template (-tpl)', action='store_true')
    argopt('-vrange', help='[km/s] velocity grid around targrv (v_lo, v_hi, v_step)'+default, nargs='*', default=(v_lo, v_hi, v_step), type=float)
    argopt('-vtfix', help='fix RV in template creation', action='store_true')
    argopt('-wfix', help='fix wavelength solution', action='store_true')
@@ -2590,8 +2592,8 @@ if __name__ == "__main__":
    # sys.modules['keyring'] = sys.modules['os'] # astroquery> keyrings slows down
 
    if vsiniauto:
-      if niter<3:
-         niter=3
+      if niter < 3:
+         niter = 3
 
    try:
       serval()
