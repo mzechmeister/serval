@@ -2334,7 +2334,6 @@ def serval():
       crxunit = [open(crxfile, 'w'), open(crxfile+'bad', 'w')]
       mlcunit = [open(mlcfile, 'w'), open(mlcfile+'bad', 'w')]
       srvunit = [open(srvfile, 'w'), open(srvfile+'bad', 'w')]
-      vsiniunit = [open(vsinifile, 'w')]
       mypfile = [open(e_rvofile, 'w'), open(e_rvofile+'bad', 'w')]
       snrunit = [open(snrfile, 'w'), open(snrfile+'bad', 'w')]
       chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
@@ -2349,11 +2348,12 @@ def serval():
          nadunit = [open(nadfile, 'w'), open(nadfile+'bad', 'w')]
 
       if vsiniauto:
-         print('Median vsini [km/s]:', file=vsiniunit[0])
-         print(np.nanmedian(VSINI[:,0]),np.sqrt(2/np.pi)*np.nanstd(VSINI[:,0]), file=vsiniunit[0])
-         print('\norder', 'vsini[km/s]','error[km/s]', file=vsiniunit[0])
-         for o in range(nord):
-            print(o, VSINI[o,0], VSINI[o,1], file=vsiniunit[0])
+         with open(vsinifile, 'w') as vsiniunit:
+            print('#Median vsini [km/s]:', file=vsiniunit)
+            print(np.nanmedian(VSINI[:,0]),np.sqrt(2/np.pi)*np.nanstd(VSINI[:,0]), file=vsiniunit)
+            print('\n#order', 'vsini[km/s]','error[km/s]', file=vsiniunit)
+            for o in range(nord):
+               print(o, VSINI[o,0], VSINI[o,1], file=vsiniunit)
 
       for n,sp in enumerate(spoklist):
          if np.isnan(rvm[n]): sp.flag |= sflag.rvnan
