@@ -566,6 +566,13 @@ class srv:
          gplot(o.ravel(), self.rvc.ravel(), bjd.ravel(), 'us 1:2:($3-2450000) palette')
          pause('spaghetti %s' % self.keytitle)
 
+   def plot_vsini(self):
+         gplot.ylabel('"rotation velocity vsini [km/s]"')
+         gplot.xlabel('"order index o"')
+         gplot('"%s" us (0.5):(med=$1):(e_vsini=$2) every :::0::0' % (self.pre+'.vsini.dat') )
+         gplot('med+e_vsini w filledcurves y=med-e_vsini fc rgb "#e3f3ff" t "", med lc 3 t sprintf("median = %.2f +/- %.2f km/s", med, e_vsini)', ', "" us 1:2:3 every :::1::1  w e lc 1 pt 6 t "%s"' % self.tag)
+         pause('vsini %s' % self.keytitle)
+
    def disp(self):
       orddisp = self.rv - self.RV[:,np.newaxis]
       #ok &= np.abs(orddisp-d_ordmean) <= 3*ordstd  # clip and update mask
@@ -801,6 +808,7 @@ if __name__ == "__main__":
    argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel ', action='store_true')
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
    argopt('-spaghetti', help='plot o-rvno colorcoded', action='store_true')
+   argopt('-vsini', help='plot measured vsini for each order (see serval option -vsiniauto)', action='store_true')
    argopt('-x', help='cross plot'+default, action='store_true')
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
 
@@ -854,14 +862,13 @@ if __name__ == "__main__":
             obj.plot_mlcrx()
          if args.rvo:
             obj.plotrvo()
+         if args.vsini:
+            obj.plot_vsini()
          if args.dlwo:
             obj.plot_dlwo()
          if args.dlwno:
             obj.plot_dlwno()
          if args.postrv:
             obj.postrv()
-
-
-
 
 
