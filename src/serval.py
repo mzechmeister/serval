@@ -700,12 +700,12 @@ def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=False):
 
    # set up wcen
    calcspec.wcen = np.mean(x2)
-   
+
    for k in range(nk):
 
       # set up template
       calcspec.tpl = copy.deepcopy(tpl)
-     
+
       # broaden template
       calcspec.tpl.rotbroad(vgrid[k])
 
@@ -736,8 +736,8 @@ def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=False):
    calcspec.tpl.rotbroad(v)
 
    # final call with v
-   p, SSRmin, fmod = polyreg(x2, y2, e_y2, vtpl, len(p)) 
-  
+   p, SSRmin, fmod = polyreg(x2, y2, e_y2, vtpl, len(p))
+
    if 1 and (np.isnan(e_v) or plot) and not safemode:
       gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
       pause(v)
@@ -1648,21 +1648,14 @@ def serval():
                vs_step = 1
 
                # set up data for fitting
-               ### sort by wavelength (for calcspec)
-               sind = np.argsort(wmod[bmod==0])
+               ### cut 200 km/s at the edges, buffer for rotbroadening
+               okmap = np.where((bmod==0) & (wmod > TPL0[o].wk[0]+200/c) & (wmod < TPL0[o].wk[-1]-200/c))
+               ### sort by wavelength (for spl_evf in calcspec)
+               sind = np.argsort(wmod[okmap])
 
-               x = wmod[bmod==0][sind]
-               y = mod[bmod==0][sind]
-               yerr = emod[bmod==0][sind]
-
-               ### cut a further part of the edges
-               lx = len(x)
-               a = 0.05
-               alx = int(a*lx)
-               x = x[alx:lx-alx]
-               y = y[alx:lx-alx]
-               yerr = yerr[alx:lx-alx]
-
+               x = wmod[okmap][sind]
+               y = mod[okmap][sind]
+               yerr = emod[okmap][sind]
 
                # fit the template
                par, fModkeep = optivsini(0, vs_hi, vs_step, 0, #tplrv,
@@ -1685,9 +1678,9 @@ def serval():
                   gplot.xlabel('"ln(wavelength)"').ylabel('"flux"')
                   gplot(TPL0[o].wk, TPL0[o].fk, 'w l lc 2 t "tpl",',
                         x, y, 'lc 1 pt 1 ps 0.3 t "%s [o=%s]",'%(obj,o),
-                        rotbroad(TPL0[o].wk, TPL0[o].fk, vsini), 'w l t "tpl (vsini=%.2f km/s)"'% vsini)
+                        rotbroad(TPL0[o].wk, TPL0[o].fk, vsini), 'w l t "tpl (vsini=%.2f +/- %.2f km/s)"'% (vsini,e_vsini))
                   gplot2.xlabel('"vsini [km/s]"').ylabel('"SSR"')
-                  gplot2(ssr[0], ssr[1], 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f km/s"'%vsini)
+                  gplot2(ssr, 'w lp t "",', vsini, min(ssr[1]), 'lc 3 pt 7 t "vsini = %.2f +/- %.2f km/s"' % (vsini,e_vsini))
 
                   pause()
 
