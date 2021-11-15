@@ -636,9 +636,10 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
    k = SSR[dk:-dk].argmin() + dk   # best point (exclude borders)
    vpeak = vgrid[k-dk:k+dk+1]
    SSRpeak = SSR[k-dk:k+dk+1] - SSR[k]
+   dv = vgrid[dk] - vgrid[0]
    # interpolating parabola a0+a1*x+a2*x**2 (direct solution) through the three pixels in the minimum
-   a = np.array([0, (SSR[k+dk]-SSR[k-dk])/(2*v_step), (SSR[k+dk]-2*SSR[k]+SSR[k-dk])/(2*v_step**2)])  # interpolating parabola for even grid
-   v = (SSR[k+dk]-SSR[k-dk]) / (SSR[k+dk]-2*SSR[k]+SSR[k-dk]) * 0.5 * v_step
+   a = np.array([0, (SSR[k+dk]-SSR[k-dk])/(2*dv), (SSR[k+dk]-2*SSR[k]+SSR[k-dk])/(2*dv**2)])  # interpolating parabola for even grid
+   v = (SSR[k+dk]-SSR[k-dk]) / (SSR[k+dk]-2*SSR[k]+SSR[k-dk]) * 0.5 * dv
 
    v = vgrid[k] - a[1]/2./a[2]   # position of parabola minimum
    e_v = np.nan
