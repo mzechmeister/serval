@@ -631,8 +631,12 @@ def CCF(wt, ft, x2, y2, va, vb, e_y2=None, keep=None, plot=False, ccfmode='trape
    params[0] *= -1
    return type('par',(),{'params': params, 'perror':perror, 'ssr':SSRmin, 'niter':0}), fmod, (vgrid, SSR, SSRmod), stat
 
-def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
-   # analyse peak
+def SSRstat(vgrid, SSR, dk=1, plot=2):
+   '''analyse peak
+   plot: 0 - never
+         1 - always
+         2 - on exception
+   '''
    k = SSR[dk:-dk].argmin() + dk   # best point (exclude borders)
    vpeak = vgrid[k-dk:k+dk+1]
    SSRpeak = SSR[k-dk:k+dk+1] - SSR[k]
@@ -651,17 +655,20 @@ def SSRstat(vgrid, SSR, dk=1, plot='maybe'):
       print('opti warning: v not in [va,vb].')
    else:
       e_v = 1. / a[2]**0.5
-   if (plot==1 and np.isnan(e_v)) or plot==2:
+   if plot&1 or (plot&2 and np.isnan(e_v)):
       gplot.yrange('[*:%f]' % SSR.max())
       gplot(vgrid, SSR-SSR[k], " w lp, v1="+str(vgrid[k])+", %f+(x-v1)*%f+(x-v1)**2*%f," % tuple(a), [v,v], [0,SSR[1]], 'w l t "%f km/s"'%v)
       ogplot(vpeak, SSRpeak, ' lt 1 pt 6; set yrange [*:*]')
       pause(v)
    return v, e_v, a
 
-def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
+def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=2):
    """ vfix to fix v for RV constant stars?
    performs a mini CCF; the grid stepping
    returns best v and errors from parabola curvature
+   plot: 0 - never
+         1 - always
+         2 - on exception
    """
    vgrid = np.arange(va, vb, v_step)
    nk = len(vgrid)
@@ -671,7 +678,7 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
       p, SSR[k] = polyreg(x2, y2, e_y2, vgrid[k], len(p), retmod=False)
 
    # analyse the CCF peak fitting
-   v, e_v, a = SSRstat(vgrid, SSR, plot=(not safemode)*(1+plot))
+   v, e_v, a = SSRstat(vgrid, SSR, plot=plot)
 
    if np.isnan(e_v):
       v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
@@ -682,13 +689,13 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=False):
       e_v = np.nan
       print("Negative scale value. Setting  e_v= %f" % e_v)
 
-   if 1 and (np.isnan(e_v) or plot) and not safemode:
+   if plot&1 or (plot&2 and np.isnan(e_v)):
       gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
       pause(v)
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
 
-def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=False):
+def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=2):
    """
    performs a mini CCF; the grid stepping
    returns best vsini and errors from parabola curvature
@@ -714,7 +721,7 @@ def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=False):
       p, SSR[k] = polyreg(x2, y2, e_y2, vtpl, len(p), retmod=False)
 
    # analyse the CCF peak fitting
-   v, e_v, a = SSRstat(vgrid, SSR, plot=(not safemode)*(1+plot))
+   v, e_v, a = SSRstat(vgrid, SSR, plot=plot)
 
    if np.isnan(e_v):
       v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
@@ -739,13 +746,13 @@ def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=False):
    # final call with v
    p, SSRmin, fmod = polyreg(x2, y2, e_y2, vtpl, len(p))
 
-   if 1 and (np.isnan(e_v) or plot) and not safemode:
+   if plot&1 or (plot&2 and np.isnan(e_v)):
       gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
       pause(v)
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
 
-def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=False, deg=3, chi2map=False):
+def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=2, deg=3, chi2map=False):
    """
    Performs the robust least square fit via iterative clipping.
 
@@ -1508,7 +1515,7 @@ def serval():
 
                # get poly from fit with mean RV
                par, fmod, keep, stat = fitspec(TPL[o],
-                  w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg)   # RV  (in dopshift instead of v=RV; easier masking?)
+                  w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg, plot=0)   # RV  (in dopshift instead of v=RV; easier masking?)
                poly = calcspec(w2, *par.params, retpoly=True)
                wmod[n] = w2
                mod[n] = sp.f / poly   # be careful if  poly<0
@@ -2022,7 +2029,7 @@ def serval():
                   gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
                   pause(o)
 
-               par, f2mod, keep, stat = fitspec((spt.w[o],spt.f[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=o in lookssr)
+               par, f2mod, keep, stat = fitspec((spt.w[o],spt.f[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=(o in lookssr)|(2*(not safemode)))
 
                e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
                e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
@@ -2049,7 +2056,7 @@ def serval():
 
                # pause()
                if o==41: pind=pind[:-9]   # @CARM_NIR?
-               par, f2mod, keep, stat, chi2mapo = fitspec(TPL[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=o in lookssr, deg=deg, chi2map=True)
+               par, f2mod, keep, stat, chi2mapo = fitspec(TPL[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=(o in lookssr)|(2*(not safemode)), deg=deg, chi2map=True)
 
                if diff_width:
                   '''we need the model at the observation and oversampled since we need the second derivative including the polynomial'''
