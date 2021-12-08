@@ -39,7 +39,7 @@ class srv:
    
    '''
 
-   def __init__(self, obj, fibsuf='', oidx=None, safemode=False, pdf=False, plotrvo=True):
+   def __init__(self, obj, fibsuf='', oidx=None, safemode=False, pdf=False, plotrvo=True, cen=False):
       '''
       Load all SERVAL products into an object.
 
@@ -135,6 +135,10 @@ class srv:
       # drift corrected
       self.rvc = self.rv - np.nan_to_num(RVd[:,np.newaxis]) - np.nan_to_num(RVsa[:,np.newaxis])
       self.RVc = self.RV - np.nan_to_num(RVd) - np.nan_to_num(RVsa)
+      if cen:
+          off = np.nanmedian(self.RVc)
+          self.RVc -= off
+          self.rvc -= off
       self.e_RVc = np.sqrt(self.e_RV**2 + np.nan_to_num(e_RVd)**2)
 
    def plot_dlw(self, *args, **kwargs):
@@ -303,7 +307,7 @@ class srv:
       print('wrms_RVc [m/s]:   %.2f\njitter [m/s]: %.2f' % self.mlrms)
       #pause()
 
-   def plotrvno(self):
+   def plotrvno(self, mode=1):
       '''Show RVs over order for each observation.'''
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
       crx, e_crx = self.tcrx[1:3]
@@ -339,7 +343,14 @@ class srv:
          RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
 
-         gplot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp,' us i:3:4 w e pt 7'+hypertext+', "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
+         plot = gplot
+         if mode > 1:
+             # plot all rvos as a background
+             o = np.tile(self.orders, (self.rvc.shape[0],1))
+             gplot-(o.ravel(), lam_o[:,self.orders].ravel(), self.rvc.ravel(), ' us i:3 pt 7 lc rgb "#99cccccc" t "all"')
+             plot = gplot.oplot
+
+         plot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp, ' us i:3:4 w e lc 1 pt 7 t "n = %i"'%(n+1)+hypertext+', "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
 
          gplot.unset('multiplot')
          nn = pause('%i/%i %s %s'% (n+1, self.N, bjd[n], self.info[n]))
@@ -790,6 +801,7 @@ if __name__ == "__main__":
    parser = argparse.ArgumentParser(description=description, epilog=epilog, add_help=False)
    argopt = parser.add_argument   # function short cut
    argopt('tags', nargs='*', help='Tag, output directory and file prefix')
+   argopt('-cen', help='center RVs to zero median', action='store_true')
    argopt('-chi2map', help='plot the chi2map', action='store_true')
    argopt('-disp', help='plot order dispersion', action='store_true')
    argopt('-dlw', help='plot dLW', action='store_true')
@@ -805,7 +817,7 @@ if __name__ == "__main__":
    argopt('-pre', help='plot preRV vs RVc', action='store_true')
    argopt('-postrv', help='kappa sigma clip value', action='store_true')
    argopt('-rv', help='plot rv', action='store_true')
-   argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel ', action='store_true')
+   argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel (mode=2 to plot all rvo as background)', nargs='?', const=1)
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
    argopt('-spaghetti', help='plot o-rvno colorcoded', action='store_true')
    argopt('-vsini', help='plot measured vsini for each order (see serval option -vsiniauto)', action='store_true')
@@ -816,7 +828,7 @@ if __name__ == "__main__":
    #globals().update(vars(args))
 
    for tag in args.tags:
-      obj = srv(tag, plotrvo='plotrvo' in sys.argv)
+      obj = srv(tag, plotrvo='plotrvo' in sys.argv, cen=args.cen)
       obj.targ()
       obj.stat()
       if not True in args.__dict__.values():
@@ -828,7 +840,7 @@ if __name__ == "__main__":
             if g=='1': obj.drsrv()
             if g=='x': obj.xcorr()
             if g=='g': obj.gls()
-            if g=='4': obj.plotrvno()
+            if g=='4': obj.plotrvno(args.rvno)
             if g=='5': obj.plotrvo()
             if g=='6': obj.postrv()
       else:
@@ -855,7 +867,7 @@ if __name__ == "__main__":
          if args.mlc:
             obj.mlc()
          if args.rvno:
-            obj.plotrvno()
+            obj.plotrvno(args.rvno)
          if args.chi2map:
             obj.plot_chi2map()
          if args.mlcrx:
