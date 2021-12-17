@@ -1151,29 +1151,33 @@ def serval():
    print(nspec, "spectra read (%s)\n" % minsec(t1))
 
    obsloc = getattr(inst, 'obsloc', {})
-   if obsloc and targ.ra:
+   if obsloc and targ.ra and moonsep:
        # The computation have a lot of overhead and are done in vectorised fashion.
        print('Calculating moon separation')
-       from astropy.time import Time
-       from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-       from astropy.coordinates import solar_system_ephemeris, get_moon, get_sun
-       import astropy.units as u
+       try:
+           from astropy.time import Time
+           from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+           from astropy.coordinates import solar_system_ephemeris, get_moon, get_sun
+           import astropy.units as u
 
-       dateobs = Time(splist.dateobs)
-       loc = EarthLocation.from_geodetic(lat=obsloc['lat'], lon=obsloc['lon'], height=obsloc['elevation'])
-       aa = AltAz(location=loc, obstime=dateobs)
-       sc = SkyCoord("%i:%i:%s" %targ.ra, "%i:%i:%s" %targ.de, unit=(u.hourangle, u.deg), obstime=dateobs)
-       with solar_system_ephemeris.set('builtin'):
-           sun = get_sun(dateobs)
-           moon = get_moon(dateobs, loc)
+           dateobs = Time(splist.dateobs)
+           loc = EarthLocation.from_geodetic(lat=obsloc['lat'], lon=obsloc['lon'], height=obsloc['elevation'])
+           aa = AltAz(location=loc, obstime=dateobs)
+           sc = SkyCoord("%i:%i:%s" %targ.ra, "%i:%i:%s" %targ.de, unit=(u.hourangle, u.deg), obstime=dateobs)
+           with solar_system_ephemeris.set('builtin'):
+               sun = get_sun(dateobs)
+               moon = get_moon(dateobs, loc)
 
-       splist.sunalt = sun.transform_to(aa).alt.deg
-       splist.secz = sc.transform_to(aa).secz    # airmass estimate
-       splist.moonsep = moon.separation(sc).deg
-       splist.moonphase = moon.separation(sun).deg   # https://astroplan.readthedocs.io/en/latest/_modules/astroplan/moon.html
-       #splist.moonillumination = splist.moonphase
-       splist.flag |= sflag.daytime * (splist.sunalt > sunalt)
-       splist.flag |= sflag.moon * (splist.moonsep < moonsep)
+           splist.sunalt = sun.transform_to(aa).alt.deg
+           splist.secz = sc.transform_to(aa).secz    # airmass estimate
+           splist.moonsep = moon.separation(sc).deg
+           splist.moonphase = moon.separation(sun).deg   # https://astroplan.readthedocs.io/en/latest/_modules/astroplan/moon.html
+           #splist.moonillumination = splist.moonphase
+           splist.flag |= sflag.daytime * (splist.sunalt > sunalt)
+           splist.flag |= sflag.moon * (splist.moonsep < moonsep)
+       except Exception as e:
+            print(e)
+            pause('Warning: Could not compute moon separation. Use "-moonsep 0" to skip.')
 
    # filter for the good spectra
    check_daytime = True
@@ -1396,7 +1400,7 @@ def serval():
    targrv = targrvs.get(targrv_src, 0)
    print('setting targ RV to: %s km/s (%s)' % (targrv, targrv_src))
 
-   if np.isnan(targrv):
+   if targrv is None or np.isnan(targrv):
        raise ValueError(
           '\n  Absolute RV is not available from header or simbad or user.' +
           '\n  It is required to measure line indices.' +
