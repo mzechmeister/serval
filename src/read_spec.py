@@ -193,7 +193,7 @@ class Spectrum:
                # pure python version
                import brv_we14py
                #self.bjd, self.berv = brv_we14py.bjdbrv(jd_utc=jd_utc[0], ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0])
-               (_, self.bjd, _), (self.berv_start, self.berv, self.berv_end) = brv_we14py.bjdbrv(jd_utc=jd_utcs, ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], **obsloc)
+               (_, self.bjd, _), (self.berv_start, self.berv, self.berv_end) = brv_we14py.bjdbrv(jd_utc=jd_utcs, ra=ra, dec=de, obsname=obsname, pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], leap_update=False, **obsloc)
             elif self.brvref == 'WEhtml':
                self.bjd = brv_we14html.utc2bjd(jd_utc=jd_utc, ra=ra, dec=de)
                #self.berv = brv_we14html.bvc(jd_utc=jd_utc, ra="%s+%s+%s"%targ.ra, dec="%s+%s+%s"%targ.de, obsname='ca', pmra=targ.pmra, pmdec=targ.pmde, parallax=0., rv=0., zmeas=[0], raunits='hours', deunits='degrees')[0]
