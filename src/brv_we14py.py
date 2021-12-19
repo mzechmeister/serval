@@ -6,7 +6,8 @@ from astropy import time, coordinates as coord, units as u
 # https://github.com/shbhuk/barycorrpy/wiki/11.-USNO-IERS-servers-are-down
 # https://github.com/astropy/astropy/issues/9427
 from astropy.utils.iers import conf as iers_conf
-iers_conf.iers_auto_url = 'https://astroconda.org/aux/astropy_mirror/iers_a_1/finals2000A.all'
+iers_conf.iers_auto_url = 'https://astroconda.org/aux/astropy_mirror/iers_a_1/finals2000A.all'   # outdated see: https://github.com/mzechmeister/serval/issues/47#issuecomment-997350597
+iers_conf.iers_auto_url = 'https://datacenter.iers.org/data/9/finals2000A.all'
 iers_conf.auto_max_age = None
 
 def bjdbrv(jd_utc, ra, dec, obsname=None, lat=0., lon=0., elevation=None,
