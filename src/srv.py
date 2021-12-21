@@ -100,6 +100,7 @@ class srv:
       if '-nir.fits' in info: self.inst = 'CARM_NIR'
       if '_e2ds' in info: self.inst = 'HARPS'
 
+      gplot.key_tit('"" noenh')
       self.keytitle = self.tag
       if self.inst:
          self.keytitle += ' (' + self.inst.replace('_', ' ') + ')'
@@ -307,7 +308,7 @@ class srv:
       print('wrms_RVc [m/s]:   %.2f\njitter [m/s]: %.2f' % self.mlrms)
       #pause()
 
-   def plotrvno(self, mode=1):
+   def plotrvno(self, rvobkg=False):
       '''Show RVs over order for each observation.'''
       bjd, RVc, e_RVc = self.bjd, self.RVc, self.e_RVc
       crx, e_crx = self.tcrx[1:3]
@@ -344,7 +345,7 @@ class srv:
          hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
 
          plot = gplot
-         if mode > 1:
+         if rvobkg:
              # plot all rvos as a background
              o = np.tile(self.orders, (self.rvc.shape[0],1))
              gplot-(o.ravel(), lam_o[:,self.orders].ravel(), self.rvc.ravel(), ' us i:3 pt 7 lc rgb "#99cccccc" t "all"')
@@ -817,7 +818,8 @@ if __name__ == "__main__":
    argopt('-pre', help='plot preRV vs RVc', action='store_true')
    argopt('-postrv', help='kappa sigma clip value', action='store_true')
    argopt('-rv', help='plot rv', action='store_true')
-   argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel (mode=2 to plot all rvo as background)', nargs='?', const=1)
+   argopt('-rvno', help='plot rv and the rvo for spectrum n in a lower panel', action='store_true')
+   argopt('-rvnno', help='plot rv and the rvo for spectrum n in a lower panel with all rvo as background', action='store_true')
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
    argopt('-spaghetti', help='plot o-rvno colorcoded', action='store_true')
    argopt('-vsini', help='plot measured vsini for each order (see serval option -vsiniauto)', action='store_true')
@@ -825,7 +827,6 @@ if __name__ == "__main__":
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
 
    args = parser.parse_args()
-   #globals().update(vars(args))
 
    for tag in args.tags:
       obj = srv(tag, plotrvo='plotrvo' in sys.argv, cen=args.cen)
@@ -840,7 +841,7 @@ if __name__ == "__main__":
             if g=='1': obj.drsrv()
             if g=='x': obj.xcorr()
             if g=='g': obj.gls()
-            if g=='4': obj.plotrvno(args.rvno)
+            if g=='4': obj.plotrvno(rvobkg=args.rvnno)
             if g=='5': obj.plotrvo()
             if g=='6': obj.postrv()
       else:
@@ -866,8 +867,8 @@ if __name__ == "__main__":
             obj.gls()
          if args.mlc:
             obj.mlc()
-         if args.rvno:
-            obj.plotrvno(args.rvno)
+         if args.rvno or args.rvnno:
+            obj.plotrvno(rvobkg=args.rvnno)
          if args.chi2map:
             obj.plot_chi2map()
          if args.mlcrx:
