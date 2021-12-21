@@ -1159,6 +1159,8 @@ def serval():
            from astropy.coordinates import SkyCoord, EarthLocation, AltAz
            from astropy.coordinates import solar_system_ephemeris, get_moon, get_sun
            import astropy.units as u
+           from astropy.utils.iers import conf as iers_conf
+           iers_conf.iers_auto_url = 'https://datacenter.iers.org/data/9/finals2000A.all'
 
            dateobs = Time(splist.dateobs)
            loc = EarthLocation.from_geodetic(lat=obsloc['lat'], lon=obsloc['lon'], height=obsloc['elevation'])
