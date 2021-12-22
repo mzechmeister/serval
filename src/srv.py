@@ -790,6 +790,37 @@ class srv:
 
       pause(obj)
 
+def compare(tag1, tag2, **kwargs):
+
+    obj1 = srv(tag1, **kwargs)
+    obj1.stat()
+    obj2 = srv(tag2, **kwargs)
+    obj2.stat()
+
+    if 1:
+        arg1 = ''
+        arg2 = ''
+        if not obj1.has_d.all():
+           arg1 += 'us 1:2:3 w e pt 6 lt 1 t "%s no drift (rms = %.3g m/s)" noenh' % (obj1.keytitle, obj1.mlrms[0])
+        if obj1.has_d.any():
+           if arg1: arg1 += ', "" '
+           arg1 += 'us 1:($2/$4):3 w e pt 7 lt 1 t "RVc"'
+        if not obj2.has_d.all():
+           arg2 += 'us 1:2:3 w e pt 6 lt 3 t "%s no drift (rms = %.3g m/s)" noenh' % (obj2.keytitle, obj2.mlrms[0])
+        if obj2.has_d.any():
+           if arg2: arg2 += ', "" '
+           arg2 += 'us 1:($2/$4):3 w e pt 7 lt 3 t "RVc"'
+  
+        hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0'
+        arg1 += hypertext + 'lc 1 t ""'
+        arg2 += hypertext + 'lc 3 t ""'
+        gplot.key('tit "RVCs"')
+        gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
+        gplot-(obj1.bjd-2450000, obj1.RVc, obj1.e_RVc, obj1.has_d, obj1.info, arg1)
+        gplot+(obj2.bjd-2450000, obj2.RVc, obj2.e_RVc, obj2.has_d, obj2.info, arg2)
+    pause('cmp rv ', obj1.tag, 'vs.', obj2.tag)
+
+
 if __name__ == "__main__":
    '''
    Example:
@@ -804,6 +835,7 @@ if __name__ == "__main__":
    argopt('tags', nargs='*', help='Tag, output directory and file prefix')
    argopt('-cen', help='center RVs to zero median', action='store_true')
    argopt('-chi2map', help='plot the chi2map', action='store_true')
+   argopt('-cmp', help='compare two data set', action='store_true')
    argopt('-disp', help='plot order dispersion', action='store_true')
    argopt('-dlw', help='plot dLW', action='store_true')
    argopt('-dlwo', help='plot dLW_o colorcoded', action='store_true')
@@ -827,6 +859,10 @@ if __name__ == "__main__":
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
 
    args = parser.parse_args()
+
+   if args.cmp:
+      compare(*args.tags, cen=args.cen)
+      exit()
 
    for tag in args.tags:
       obj = srv(tag, cen=args.cen)
