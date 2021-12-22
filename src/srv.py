@@ -39,7 +39,7 @@ class srv:
    
    '''
 
-   def __init__(self, obj, fibsuf='', oidx=None, safemode=False, pdf=False, plotrvo=True, cen=False):
+   def __init__(self, obj, fibsuf='', oidx=None, pdf=False, cen=False):
       '''
       Load all SERVAL products into an object.
 
@@ -489,7 +489,7 @@ class srv:
       gplot(bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg)
       pause('rv ', self.tag)
 
-   def postrv(self, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False, plotrvo=True):
+   def postrv(self, postiter=1, fibsuf='', oidx=None, pdf=False):
       """
       """
       #pause()
@@ -829,7 +829,7 @@ if __name__ == "__main__":
    args = parser.parse_args()
 
    for tag in args.tags:
-      obj = srv(tag, plotrvo='plotrvo' in sys.argv, cen=args.cen)
+      obj = srv(tag, cen=args.cen)
       obj.targ()
       obj.stat()
       if not True in args.__dict__.values():
