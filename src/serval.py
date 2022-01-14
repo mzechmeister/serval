@@ -166,11 +166,12 @@ class Tpl:
       ii = slice(None)
       if mask:
         ii = np.isfinite(fk)
-      self.wk = wk[ii]
-      self.fk = fk[ii]
+      self.wk = self.wk0 = wk[ii]
+      self.fk = self.fk0 = fk[ii]   # broadened and unbroadened flux
+      self.vsini = vsini
       if vsini and self.wk[1]-self.wk[0]:
          # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
-         self.wk, self.fk = rotbroad(self.wk, self.fk, vsini)
+         self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
       self.berv = berv
       self.initfunc = initfunc
       self.funcarg = self.initfunc(self.wk, self.fk)
@@ -190,7 +191,7 @@ class Tpl:
    def rotbroad(self, vsini=0):
       if vsini > 0:
          # broaden template
-         self.wk, self.fk = rotbroad(self.wk, self.fk, vsini)
+         self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
 
          # update funcarg for evaluation
          self.funcarg = self.initfunc(self.wk, self.fk)
@@ -1280,12 +1281,14 @@ def serval():
       elif isinstance(tpl, str):
          print("restoring template: ", tpl)
          try:
-            if 'phoe' in tpl:
-               #if 'PHOENIX-ACES-AGSS-COND' in tpl:
-               ww, ff = phoenix_as_RVmodel.readphoenix(servallib + 'lte03900-5.00-0.0_carm.fits', wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
+            if 'phoe' in tpl or 'PHOENIX-ACES-AGSS-COND' in tpl:
+               # PHOENIX template must be downloaded into servallib
+               ww, ff = phoenix_as_RVmodel.readphoenix(servallib + ('lte03900-5.00-0.0_carm.fits' if 'phoe' in tpl else tpl), wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
                ww = lam2wave(ww)
                is_ech_tpl = False
                TPL = [Tpl(ww, ff, spline_cv, spline_ev, vsini=tplvsini)] * nord
+               ww = [lam2wave(ww)] * nord   # @vsiniauto
+               ff = [ff] * nord
                TPLrv = 0.
             elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
                # last option
@@ -1765,41 +1768,44 @@ def serval():
                ind2 = (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
                yfit[ind2] = smod(ww[o][ind2])
                # pause()
-            ff[o] = yfit
-            TPL[o] = Tpl(ww[o], ff[o], spline_cv, spline_ev)
-            wk[o] = wko
-            fk[o] = fko
-            ek[o] = eko
-            bk[o] = bko
 
-         # apply fitted roational broadening
+            if not vsiniauto:
+                ff[o] = yfit
+                TPL[o] = Tpl(ww[o], ff[o], spline_cv, spline_ev)
+                wk[o] = wko
+                fk[o] = fko
+                ek[o] = eko
+                bk[o] = bko
+
          if vsiniauto:
+            # apply fitted rotational broadening
             for o in orders:
                # update template with median vsini
                TPL[o].rotbroad(np.nanmedian(VSINI[:,0]))
+            # do not store broadened phoenix template (is_ech_tpl=false)
+         else:
+            if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
+            spt.header['HIERARCH SERVAL COADD OMIN'] = (omin, 'minimum order for RV')
+            spt.header['HIERARCH SERVAL COADD OMAX'] = (omax, 'maximum order for RV')
+            spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
+            spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
+            spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
+            if targ.rv is not None and np.isfinite(targ.rv):
+               spt.header['HIERARCH SERVAL TARG RV CSV'] = (targ.rv, '[km/s] RV from targ.csv')
+            if np.isfinite(targrvs['drsspt']):
+               spt.header['HIERARCH SERVAL TARG RV DRSSPT'] = (targrvs['drsspt'], '[km/s] DRS RV of spt')
+            if np.isfinite(targrvs['drsmed']):
+               spt.header['HIERARCH SERVAL TARG RV DRSMED'] = (targrvs['drsmed'], '[km/s] median DRS RV')
+            spt.header['HIERARCH SERVAL TARG RV'] = (targrv, '[km/s] RV used')
+            spt.header['HIERARCH SERVAL TARG RV SRC'] = (targrv_src, 'Origin of TARG RV')
 
-         if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
-         spt.header['HIERARCH SERVAL COADD OMIN'] = (omin, 'minimum order for RV')
-         spt.header['HIERARCH SERVAL COADD OMAX'] = (omax, 'maximum order for RV')
-         spt.header['HIERARCH SERVAL COADD COMIN'] = (comin, 'minimum coadded order')
-         spt.header['HIERARCH SERVAL COADD COMAX'] = (comax, 'maximum coadded order')
-         spt.header['HIERARCH SERVAL COADD NUM'] = (nspecok, 'number of spectra used for coadd')
-         if targ.rv is not None and np.isfinite(targ.rv):
-            spt.header['HIERARCH SERVAL TARG RV CSV'] = (targ.rv, '[km/s] RV from targ.csv')
-         if np.isfinite(targrvs['drsspt']):
-            spt.header['HIERARCH SERVAL TARG RV DRSSPT'] = (targrvs['drsspt'], '[km/s] DRS RV of spt')
-         if np.isfinite(targrvs['drsmed']):
-            spt.header['HIERARCH SERVAL TARG RV DRSMED'] = (targrvs['drsmed'], '[km/s] median DRS RV')
-         spt.header['HIERARCH SERVAL TARG RV'] = (targrv, '[km/s] RV used')
-         spt.header['HIERARCH SERVAL TARG RV SRC'] = (targrv_src, 'Origin of TARG RV')
-
-         # Oversampled template
-         write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
-         # Knot sampled template
-         write_res(outdir+obj+'.fits', {'SPEC':fk, 'SIG':ek, 'WAVE':wk, 'NMAP':bk}, tfmt, spt.header, hdrref='', clobber=1)
-         os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
-         print('\ntemplate written to ', tpl)
-         if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
+            # Oversampled template
+            write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
+            # Knot sampled template
+            write_res(outdir+obj+'.fits', {'SPEC':fk, 'SIG':ek, 'WAVE':wk, 'NMAP':bk}, tfmt, spt.header, hdrref='', clobber=1)
+            os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
+            print('\ntemplate written to ', tpl)
+            if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
 
          # end of coadding
       print("time: %s\n" % minsec(time.time()-to))
