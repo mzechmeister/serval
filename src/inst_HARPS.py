@@ -40,6 +40,7 @@ def scan(self, s, pfits=True, verb=False):
       #k_tmmean = {'HARPS': HIERINST + 'INS DET1 TMMEAN', 'HARPN': HIERINST + 'EXP1 TMMEAN'}[inst]
       if drs:
          self.HIERDRS = HIERDRS = HIERINST + 'DRS '
+         self.HIERQC = HIERQC = HIERINST + 'QC '
          k_sn55 = HIERDRS + 'SPE EXT SN55'
          k_berv = HIERDRS + 'BERV'
          k_bjd = HIERDRS + 'BJD'
@@ -91,13 +92,12 @@ def scan(self, s, pfits=True, verb=False):
          warnings.warn('Warning: old HARPN data? Setting tmmean to 0.5!')
       self.tmmean = hdr.get(k_tmmean, 0.5)
 
-      self.drsbjd = hdr.get(k_bjd)
-      if self.drsbjd is None:
-         self.drsbjd = hdr.get('MJD-OBS')
-      #if self.drsbjd: # comment out because the sa cannot be calculated with str
-         #self.drsbjd = repr(self.drsbjd)
-      self.drsberv = hdr.get(k_berv, np.nan)
-      self.sn55 = hdr.get(k_sn55, np.nan)
+      self.DRS = hdr.get('HIERARCH ESO PRO REC1 PIPE ID')   #  'espdr/2.3.5', flag for the new ESPRESSO pipeline. Should be merged with the drs flag to a version string.
+
+      self.drsbjd = hdr.get(HIERQC + 'BJD' if self.DRS else k_bjd, hdr.get('MJD-OBS'))  # e.g. 'HIERARCH TNG QC BJD'
+      self.drsberv = hdr.get(HIERQC + 'BERV' if self.DRS else k_berv, np.nan)
+
+      self.sn55 = hdr.get(k_sn55, hdr.get(HIERQC+'ORDER55 SNR', np.nan))
       self.blaze = hdr.get(HIERDRS+'BLAZE FILE', 0)
       self.drift = hdr.get(HIERDRS+'DRIFT RV USED', np.nan)
       if abs(self.drift) > 1000:
@@ -153,18 +153,22 @@ def data(self, orders, pfits=True):
       else:
          if not hasattr(self, 'hdulist'):
             scan(self, self.filename)
-         f = self.hdulist[0 if drs else 'SPEC'].section[orders]
-         if not drs:
-            e = self.hdulist['WAVE'].section[orders]
-            w = self.hdulist['SIG'].section[orders]
 
+         f = self.hdulist['SCIDATA' if self.DRS else 0 if drs else 'SPEC'].section[orders]
+         if not drs or self.DRS:
+            e = self.hdulist['ERRDATA' if self.DRS else 'SIG'].section[orders]
+            w = self.hdulist['WAVEDATA_VAC_BARY' if self.DRS else 'WAVE'].section[orders]
+ 
       if not drs:
          f *= 100000
          e *= 100000
 
+
+      # bp = self.hdulist['QUALDATA'].section[orders]  QUALDATA not used yet, at least for HARPN.2015-08-17T11-03-36.560_S2D_A all are zero.
       bpmap = np.isnan(f).astype(int)   # flag 1 for nan
       if not drs: bpmap[e==0] |= flag.nan
-      if drs:
+
+      if drs and not self.DRS:
          # print " applying wavelength solution ", file
          # omax = self.hdu['SPEC'].NAXIS1
          omax = hdr.get(self.HIERDRS+'CAL LOC NBO', iomax) # 72 for A and 71 for B
@@ -190,5 +194,3 @@ def data(self, orders, pfits=True):
 
       w = airtovac(w)
       return w, f, e, bpmap
-
-
