@@ -158,7 +158,9 @@ def data(self, orders, pfits=True):
          if not drs or self.DRS:
             e = self.hdulist['ERRDATA' if self.DRS else 'SIG'].section[orders]
             w = self.hdulist['WAVEDATA_VAC_BARY' if self.DRS else 'WAVE'].section[orders]
- 
+         if self.DRS:
+            w = w / (1.0 + self.drsberv/299792.4580)   # undo BERV correction!
+
       if not drs:
          f *= 100000
          e *= 100000
@@ -184,6 +186,8 @@ def data(self, orders, pfits=True):
          #A = np.array([hdr[self.HIERDRS+'CAL TH COEFF LL'+str(i)] for i in range(omax*(d+1))],dtype='float64').reshape(omax,d+1) #slow 30 ms
             self.A = np.reshape([hdr[self.HIERDRS+'CAL TH COEFF LL'+str(i)] for i in range(omax*(d+1))], (omax,d+1)) #slow 30 ms
          w = np.dot(self.A[orders], x)  # wavelength lambda
+         w = airtovac(w)
+
          e = np.sqrt(np.where(bpmap, 0., 5**2 * 6 + np.abs(f, dtype=float)))
 
       with np.errstate(invalid='ignore'):
@@ -192,5 +196,4 @@ def data(self, orders, pfits=True):
                                        # HARPS.2004-10-03T01:30:44.506.fits:
                                        # last order: e2ds_B: 346930 (x=2158) raw: 62263 (y=1939)
 
-      w = airtovac(w)
       return w, f, e, bpmap
