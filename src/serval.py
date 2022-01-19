@@ -1124,7 +1124,7 @@ def serval():
       splist.append(sp)
       sp.sa = targ.sa / 365.25 * (sp.bjd-splist[0].bjd)
       sp.header = None   # saves memory(?), but needs re-read (?)
-      if inst.name == 'HARPS' and drs: sp.ccf = read_harps_ccf(filename)
+      if inst.name in ('HARPS', 'HARPN') and drs: sp.ccf = read_harps_ccf(filename)
       if any(x in filename for x in n_excl):
           sp.flag |= sflag.user
       if sp.sn55 < snmin or np.isnan(sp.sn55): sp.flag |= sflag.lowSN

@@ -317,15 +317,21 @@ def read_harps_ccf(s):
       if not extr: return ccf(0,0,0,0,0,0)
       s = tar.extractfile(extr)
    else:
-      s = glob.glob(s.replace("_e2ds","_bis_*").replace("_s1d","_bis_*")) + glob.glob(s.replace("_e2ds","_ccf_*").replace("_s1d","_ccf_*"))
+      s = glob.glob(s.replace("_e2ds","_bis_*").replace("_S2D_","_BIS_").replace("_s1d","_bis_*")) + glob.glob(s.replace("_e2ds","_ccf_*").replace("_S2D_","_CCF_").replace("_s1d","_ccf_*"))
       if s: s = s[0]   # prefer bis
       else: return ccf(*[np.nan]*6)
       #else: return ccf(0,0,0,0,0,0)
    # ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask header')
    HIERARCH = 'HIERARCH '
 
+   DRS = '_CCF_' in s   # new DRS uses capital letters?
+   if DRS:
+      k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis =  HIERARCH+'TNG QC CCF RV', HIERARCH+'TNG QC CCF CONTRAST', HIERARCH+'TNG QC CCF FWHM', HIERARCH+'TNG QC CCF MASK', HIERARCH+'TNG QC CCF RV ERROR', HIERARCH+'TNG QC BIS SPAN'
+   else:
+      k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis = HIERARCH+'ESO DRS CCF RVC', HIERARCH+'ESO DRS CCF CONTRAST', HIERARCH+'ESO DRS CCF FWHM', HIERARCH+'ESO DRS CCF MASK', HIERARCH+'ESO DRS DVRMS',HIERARCH+'ESO DRS BIS SPAN'
+
    if 1:
-      hdr = imhead(s, HIERARCH+'ESO DRS CCF RVC', HIERARCH+'ESO DRS CCF CONTRAST', HIERARCH+'ESO DRS CCF FWHM', HIERARCH+'ESO DRS CCF MASK', HIERARCH+'ESO DRS DVRMS',HIERARCH+'ESO DRS BIS SPAN')
+      hdr = imhead(s, k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis)
    elif 0:
       if ".tar" in s:
          s = tar.extractfile(extr)
@@ -336,18 +342,20 @@ def read_harps_ccf(s):
    else:
       tar.extract(extr, path='tarfits')
       os.system('mv tarfits/* tmp.fits ')
-      data,hdr = fitsio.read('tmp.fits',header=1)
+      data, hdr = fitsio.read('tmp.fits', header=1)
       HIERARCH = ''
 
    if tar:
       tar.close()
 
-   rvc = hdr[HIERARCH+'ESO DRS CCF RVC']   # [km/s]
-   contrast = hdr.get(HIERARCH+'ESO DRS CCF CONTRAST', np.nan)
-   fwhm = hdr[HIERARCH+'ESO DRS CCF FWHM']
-   mask = hdr[HIERARCH+'ESO DRS CCF MASK']
-   e_rvc = hdr.get(HIERARCH+'ESO DRS DVRMS', np.nan) / 1000.   # [km/s]
-   bis = hdr.get(HIERARCH+'ESO DRS BIS SPAN', np.nan)
+   rvc = hdr[k_rv]   # [km/s]
+   contrast = hdr.get(k_contrast, np.nan)
+   fwhm = hdr[k_fwhm]
+   mask = hdr[k_mask]
+   e_rvc = hdr.get(k_e_rv, np.nan)   # [km/s] new DRS (espdr/2.3.5) is in km/s, e.g. r.HARPN.2015-08-17T11-03-36.560_CCF_A.fits
+   if not DRS:
+      e_rvc /= 1000.   # [km/s] old DRS HARPS_3.5 is in m/s, e.g. HARPS.2008-03-01T00:14:37.409_ccf_G2_A.fits
+   bis = hdr.get(k_bis, np.nan)
    return ccf(rvc, e_rvc, bis, fwhm, contrast, mask)
 
 
