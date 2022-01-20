@@ -4,10 +4,11 @@ from read_spec import Inst
 
 inst = __name__[5:]   # HARPS, HARPSpre, HARPSpost, HARPN
 name = inst[:5]       # HARPS, HARPN  (passed to bary)
-obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name[:5]] # for barycorrpy
-iomax = {'HARPS': 72, 'HARPN': 69}[name[:5]]
-oset = {'HARPS':'10:71', 'HARPN':'10:'}[name[:5]]
+obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name] # for barycorrpy
+iomax = {'HARPS': 72, 'HARPN': 69}[name]
+oset = {'HARPS': '10:71', 'HARPN': '10:'}[name]
 
+pat = "*.tar *e2ds_%(fib)s.fits *e2ds_%(fib)s.fits.gz *_S2D_%(fib)s.fits"   # space separated suffices
 #maskfile = 'telluric_mask_carm_short.dat'
 
 def scan(self, s, pfits=True, verb=False):
@@ -197,3 +198,4 @@ def data(self, orders, pfits=True):
                                        # last order: e2ds_B: 346930 (x=2158) raw: 62263 (y=1939)
 
       return w, f, e, bpmap
+

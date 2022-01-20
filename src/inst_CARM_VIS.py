@@ -12,6 +12,9 @@ oset = '10:52'
 
 maskfile = 'telluric_mask_carm_short.dat'
 
+pat = '*-vis_%(fib)s.fits'   # => vis_A.fits, vis_B.fits
+
+
 def scan(self, s, pfits=True):
    """
    Returns

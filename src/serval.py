@@ -859,20 +859,13 @@ def serval():
    # instrument specific default values
    iomax = inst.iomax
 
-   if inst.name == 'CARM_VIS':
+   if inst.name in ['CARM_VIS', 'CARM_NIR', 'FEROS']:
       if fib == '': fib = 'A'
-      pat = '*-vis_' + fib + '.fits'
-   elif inst.name == 'CARM_NIR':
-      if fib == '': fib = 'A'
-      pat = '*-nir_' + fib + '.fits'
    elif 'HARP' in inst.name:
       if fib == '': fib = 'A'
-      #if fib == 'A': iomax = 72
       if fib == 'B': iomax = 71
-      if inst=='HARPN': iomax = 68
    elif inst.name == 'FEROS':
       iomax = 38
-      if fib == '': fib = 'A'
       if fib == 'B': maskfile = servallib + 'feros_mask_short.dat'
       ptomin = np.array([1800, 2000, 1800, 2000, 2000, 1600, 1500, 1400, 1100, 1000,
                          1000, 1000, 1000,  900,  800,  800,  800,  600,  500,  500,
@@ -891,6 +884,7 @@ def serval():
       pmin = 300
       pmax = 50000/5 - 500
 
+   pat = pat % {'fib': fib}
 
    ptmin = pmin - 100   # oversize the template
    ptmax = pmax + 100
@@ -952,12 +946,14 @@ def serval():
    print('tpl=%s pmin=%s nset=%s omin=%s omax=%s' % (tpl, pmin, nset, omin, omax))
 
    ''' SELECT FILES '''
-   files = sorted(glob.glob(dir_or_inputlist+os.sep+pat))
+   files = []
+   for patk in pat.split():   # search with multiple suffices
+       files += glob.glob(dir_or_inputlist + os.sep + patk)
+   files = sorted(files)
 
-   isfifo = os_stat.S_ISFIFO(os.stat(dir_or_inputlist).st_mode)
+   isfifo = not files and (os_stat.S_ISFIFO(os.stat(dir_or_inputlist).st_mode))
    if os.path.isfile(dir_or_inputlist) or isfifo:
       if dir_or_inputlist.endswith(('.txt', '.lis')) or isfifo:
-         files = []
          with open(dir_or_inputlist) as f:
             print('getting filenames from file (',dir_or_inputlist,'):')
             for line in f:
@@ -976,10 +972,6 @@ def serval():
          files = [dir_or_inputlist]
 
    # handle tar, e2ds, fox
-   if 'HARP' in inst.name and not files:
-      files = sorted(glob.glob(dir_or_inputlist+'/*e2ds_'+fib+'.fits'))
-      if not files:
-         files = sorted(glob.glob(dir_or_inputlist+'/*e2ds_'+fib+'.fits.gz'))
    drs = bool(len(files))
    if 'HARPS' in inst.name and not drs:  # fox
       files = sorted(glob.glob(dir_or_inputlist+'/*[0-9]_'+fib+'.fits'))
