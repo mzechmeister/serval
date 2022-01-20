@@ -695,7 +695,7 @@ class imhead(dict):
       elif s.endswith('.gz'):   # normal file
          fi = gzip.open(s)
       else:   # normal file
-         fi = open(s)
+         fi = open(s, 'rb')
 
       if not extpos and hasattr(s, 'offset_data'):
          extpos = s.offset_data
