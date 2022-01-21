@@ -1068,7 +1068,7 @@ def serval():
    msksky = [0] * iomax
    if 1 and inst.name=='CARM_VIS':
       import astropy.io.fits as pyfits
-      msksky = flag.atm * pyfits.getdata(servallib + 'carm_vis_tel_sky.fits')
+      msksky = flag.sky * pyfits.getdata(servallib + 'carm_vis_tel_sky.fits')
 
    if msklist: # convert line list to mask
       mask = masktools.list2mask(msklist, wd=mskwd)
@@ -1527,6 +1527,7 @@ def serval():
                   gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
                   pause(n)
               #(fmod<0) * flag.neg
+            bmod &= ~flag.badT   # take out badT flag from observation, needed only in normalisation
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
             tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
             #emod[tellind] *= 1000
