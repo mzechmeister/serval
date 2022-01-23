@@ -491,9 +491,8 @@ class srv:
 
    def postrv(self, postiter=1, fibsuf='', oidx=None, pdf=False):
       """
+      Analyse RV posteriori. Tries for reweighting.
       """
-      #pause()
-
       rv, e_rv = self.allrv[:,5+self.orders], self.allerr[:,5+self.orders]
       RV, e_RV = nanwsem(rv, e=e_rv, axis=1)
 
@@ -511,15 +510,6 @@ class srv:
       #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
 
-      gplot.palette('define (0 "blue", 1 "green", 2 "red")').key('tit "%s"'% self.keytitle)
-      gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]')
-      # not drift corrected
-      gplot(bjdmap.ravel()-2450000, rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd-2450000, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
-      # drift corrected
-      #gplot(bjdmap.ravel(), rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette,', bjd, RVc, e_RVc, 'us 1:2:3 w e pt 7 lt 7')
-
-      pause(self.tag)
-
       # minimise (rv_io - rv_i - m_o)^2 / (e_rv_io^2 + e_rv_i^2 + e_rv_o^2)
       e_n = 0
       e_o = 0
@@ -529,20 +519,22 @@ class srv:
          RV, e_RV = nanwsem(rv-m_o, e=e_r, axis=1)
          RV = RV[:,np.newaxis]
          #stop()
-         m_o = (wmean(rv-RV, 1/e_r**2, axis=0)*0) [np.newaxis,:]  # order offset
-         r = rv - RV - m_o # residuals
-         stop()
+         m_o = (wmean(rv-RV, 1/e_r**2, axis=0)) [np.newaxis,:]   # order offset
+         r = rv - RV - m_o   # residuals
+
          e_n = np.sqrt((np.nansum((r**2-e_rv**2-e_o**2)/e_r**2, axis=1)/np.nansum(1/e_r**2, axis=1)).clip(min=0))[:,np.newaxis] # keepdims not in v1.6.1
          e_o = np.sqrt((np.nansum((r**2-e_rv**2-e_n**2)/e_r**2, axis=0)/np.nansum(1/e_r**2, axis=0)).clip(min=0))[np.newaxis,:]
          L = - 0.5* np.nansum(r**2/e_r**2) - 0.5* np.nansum(np.log(2.*np.pi*e_r**2))
          print(L, e_n.ravel())
          gplot.unset(' multiplot')
          gplot.datafile('missing "nan"')
-         gplot.multiplot('layout 1,2;')
-         gplot.xlabel('"order"').ylabel('"rvo - RV [m/s]"')
-         gplot(rv - RV, ' matrix,', m_o.ravel(), 'us 0:1')
+         gplot.multiplot('layout 1,2')
+         gplot.mxtics().mytics()
          gplot.xlabel('"obs No."').ylabel('"rvo - RV [m/s]"')
-         gplot((rv - RV).T, ' matrix')
+         gplot(rv - RV, ' matrix lc 9  t "RV_{n,o} - RV_{n}"')
+         gplot.xlabel('"order"').ylabel('"rvo - RV [m/s]"')
+         gplot-((rv - RV).T, ' matrix lc 9 t "RV_{n,o} - RV_{n}",', m_o.ravel(), 'us 0:1 lc 7 pt 4 ps 1.3 t "m_o"')
+         gplot+(r.T, ' matrix lc 1 t "RV_{n,o} - RV_{n} - m_o"')
          gplot.unset('multiplot')
          pause()
 
@@ -587,34 +579,13 @@ class srv:
 
    def disp(self):
       orddisp = self.rv - self.RV[:,np.newaxis]
-      #ok &= np.abs(orddisp-d_ordmean) <= 3*ordstd  # clip and update mask
       ordstd, d_ordmean = wstd(orddisp, self.e_rv, axis=0)
-      #ordmean += d_ordmean                # update ordmean
-      #orddisp
       gplot.reset()
-      gplot.tit('"Order dispersion %s";'%self.keytitle)
+      gplot.tit('"Order dispersion %s" noenh' % self.keytitle)
+      gplot.mxtics().mytics()
       gplot.xlabel('"Order"').ylabel('"RV_{n,o} - RV_n [m/s]"')
-      gplot(orddisp.T, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(self.orders)]))
-      ogplot(self.orders, ordstd, ' w lp lt 3 t "", "" us 1:(-$2) w lp t ""')
+      gplot('for [n=1:%s]'%self.N, self.orders, orddisp, ' us 1:n+1 w lp t "n=".n')
       pause('disp')
-      ##gplot('"'+filename,'" matrix every ::%i::%i us ($1-5):3' % (omin+5,omax+5))
-      ##ogplot(allrv[:,5:71],' matrix every ::%i us 1:3' %omin)
-      ## create ord, rv,e_rv, bb
-      ##ore = [(o+omin,orddisp[n,o],e_rv[n,o],~ok[n,o]) for n,x in enumerate(orddisp[:,0]) for o,x in enumerate(orddisp[0,:])]
-      ##ore = [(o,)+x for row in zip(orddisp,e_rv,~ok) for o,x in enumerate(zip(*row),omin)]
-      #ore = [np.tile(orders,orddisp.shape).ravel(), orddisp.ravel(), e_rv.ravel(), ~ok.ravel()]
-      #gplot(*ore + ['us 1:2:($3/30) w xe'], flush='')
-      #if not ok.all(): ogplot('"" us 1:2:($3/30/$4) w xe', flush='') # mark 3-sigma outliners
-      ##gplot(orddisp,' matrix  us ($1+%i):3' % omin, flush='')
-      ##gplot('"'+filename,'" matrix every ::'+str(omin+5)+' us ($1-5):3')
-      ##ogplot(ordmean,' us ($0+%i):1 w lp lt 3 pt 3  t "ord mean"' %omin, flush='')
-      #ogplot(orders, ordstd,' w lp lt 3 pt 3  t "1 sigma"', flush='')
-      #ogplot('"" us 1:(-$2) w lp lt 3 pt 3  t ""', flush='')
-      #ogplot('"" us 1:($2*3) w lp lt 4 pt 3  t "3 sigma"', flush='')
-      #ogplot('"" us 1:(-$2*3) w lp lt 4 pt 3  t ""', flush='')
-      #ogplot('"" us ($1+0.25):(0):(sprintf("%.2f",$2)) w labels rotate t""', flush='')
-      #ogplot(*ore+[ 'us 1:2:($3)  w point pal pt 6'])
-      #if not safemode: pause('ord scatter')
 
    def ls(self, suf='_A_mod.fits'):
       '''Show last square fit form fits file.'''
