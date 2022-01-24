@@ -505,7 +505,6 @@ class srv:
       bjdmap = np.tile(bjd[:,np.newaxis], rv.shape[1])
       omap = np.tile(np.arange(len(rv.T)), rv.shape[0]).T
 
-
       #gplot(bjd, RV, e_RV, 'us 1:2:3 w e pt 7',)
       #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
@@ -789,6 +788,11 @@ def compare(tag1, tag2, **kwargs):
         gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
         gplot-(obj1.bjd-2450000, obj1.RVc, obj1.e_RVc, obj1.has_d, obj1.info, arg1)
         gplot+(obj2.bjd-2450000, obj2.RVc, obj2.e_RVc, obj2.has_d, obj2.info, arg2)
+        i1 = np.in1d(obj1.bjd, obj2.bjd)
+        i2 = np.in1d(obj2.bjd, obj1.bjd)
+        if any(i1):
+            diff =  obj2.RVc[i1] - obj1.RVc[i1]
+            gplot+(obj1.bjd[i1]-2450000, diff, "lc 9 ps 0.5 t 'RVc_{%s} - RVc_{%s}'"%(obj2.keytitle, obj1.keytitle))
     pause('cmp rv ', obj1.tag, 'vs.', obj2.tag)
 
 
