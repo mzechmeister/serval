@@ -2,7 +2,7 @@
 from __future__ import print_function
 
 __author__ = 'Mathias Zechmeister'
-__version__ = '2021-03-31'
+__version__ = '2022-01-26'
 
 description = '''
 SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
@@ -159,35 +159,63 @@ class interp:
 
 
 class Tpl:
-   def __init__(self, wk, fk, initfunc, evalfunc, mask=False, berv=None, vsini=None):
+   def __init__(self, wk, fk, initfunc, evalfunc, bk=None, mask=False, berv=None, vsini=None, vrange=None):
       '''
       wk : barycentric corrected wavelength
+      bk : bad pixel flag map
+      vrange : velocity range to broaden the bpmap bk
       '''
       ii = slice(None)
       if mask:
-        ii = np.isfinite(fk)
+          ii = np.isfinite(fk)
+      if bk is None:
+          bk = flag.nan * ~np.isfinite(fk)   # bad tpl regions
       self.wk = self.wk0 = wk[ii]
       self.fk = self.fk0 = fk[ii]   # broadened and unbroadened flux
+      self.bk = self.bk0 = bk[ii]
+
       self.vsini = vsini
       if vsini and self.wk[1]-self.wk[0]:
-         # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
-         self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
+          # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
+          self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
       self.berv = berv
       self.initfunc = initfunc
       self.funcarg = self.initfunc(self.wk, self.fk)
       self.evalfunc = evalfunc
+
+      BK = 0 * self.bk   # broadened flag map
+      dvmin = np.diff(self.wk).min() * c
+      if (bk is not None) and (vrange is not None) and (dvmin > 0):
+          istart = int(np.floor(vrange[0] / dvmin))
+          istop = int(np.ceil(vrange[1] / dvmin))
+          for i in range(istart, istop):
+              if i == 0:
+                  BK |= self.bk
+                  continue
+              elif i > 0:
+                 ia = np.s_[:-i]
+                 ib = np.s_[i:]
+              elif i < 0:
+                 ia = np.s_[-i:]
+                 ib = np.s_[:i]
+              dwi = self.wk[ib] - self.wk[ia]
+              inside = dwi >= (vrange[0]/c)
+              inside &= dwi <= (vrange[1]/c)
+              BK[ib] |= self.bk[ia] * inside
+
+          if 0:
+              gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
+              pause()
+
+      self.msk = interp(wk, 1.*(BK>0))
+
    def __call__(self, w, der=0):
       return self.evalfunc(w, self.funcarg, der=der)
-   def mskatm(self, w, msk):
-      # mask regions (atm, stellar) in template
-      # need target velocity and velocity range
-      if msk and self.berv:
- #         bb[o][tellmask(barshift(ww[o],-spt.berv))>0.01] |= flag.atm   # mask as before berv correction
-#         bb[o][skymsk(barshift(ww[o],-spt.berv))>0.01] |= flag.sky   # mask as before berv correction
-     # mask as before berv correction
-         return msk(barshift(w,-self.berv)) > 0.01
-      else:
-         return slice(0, 0) # empty
+
+   def mskbad(self, w):
+      # mask wavelengths in spectra where template is bad (atm, stellar)
+      return self.msk(w) > 0.01
+
    def rotbroad(self, vsini=0):
       if vsini > 0:
          # broaden template
@@ -1286,8 +1314,9 @@ def serval():
                # last option
                # read a spectrum stored order wise
                print("tplvsini", tplvsini)
-               ww, ff, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
-               TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini) for wo,fo in zip(ww,ff)]
+               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
+               bb =  [None]*len(ff) if qq is None else qq<0.4
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, bk=bo, vsini=tplvsini, vrange=[v_lo, v_hi]) for wo,fo,bo in zip(ww,ff, bb)]
                if 'HIERARCH SERVAL COADD NUM' in head:
                   print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
@@ -1299,8 +1328,8 @@ def serval():
                #ww, ff = barshift(spt.w,spt.berv), spt.f
                TPL = [Tpl(wo, fo, spline_cv, spline_ev, mask=True, berv=spt.berv) for wo,fo in zip(barshift(spt.w,spt.berv),spt.f)]
                TPLrv = spt.ccf.rvc
-         except:
-            print('ERROR: could not read template:', tpl)
+         except Exception as e:
+            print('ERROR: could not read template:', tpl, '\n', e)
             exit()
 
          if inst.name == 'FEROS':
@@ -1328,7 +1357,7 @@ def serval():
             #ind = spt.bpmap[o,idx] == 0  # let out zero errors, interpolate over
 
             # Smoothing with bspline
-            # the number of knots is halfed.
+            # the number of knots is halved.
             smod = spl.ucbspl_fit(barshift(spt.w[o,idx],spt.berv), spt.f[o,idx], K=int(idx.size*ofac/2), e_yk=True, lam=0.00001)
 
             # Conversion to cardinal spline and then to fast spline
@@ -1337,16 +1366,17 @@ def serval():
             xk, kko = smod_spl.xk, smod_spl.a
             yk = smod_spl()
             kko = xk, yk, kko[1]/(xk[1:]-xk[:-1]), np.append(2*kko[2]/(xk[1:]-xk[:-1])**2, 0), kko[3]/(xk[1:]-xk[:-1])**3
-            TPL[o] = Tpl(xk, yk, spline_cv, spline_ev, mask=True, berv=spt.berv)
+            bk = spt.bpmap[o,np.searchsorted(spt.w[o], xk, side='right')]
+            bk[tellmask(barshift(xk, -spt.berv))>0.01] |= flag.atm   # mask as before berv correction
+            bk[skymsk(barshift(xk, -spt.berv))>0.01] |= flag.sky   # mask as before berv correction
+
+            TPL[o] = Tpl(xk, yk, spline_cv, spline_ev, mask=True, bk=bk, berv=spt.berv, vrange=[v_lo, v_hi])
             TPL[o].funcarg = kko # replace with original spline
 
             if 0 or o==-50:
                #gplot(ww[o],ff[o], ',', barshift(spt.w[o,ptmin:ptmax],spt.berv), spt.f[o,ptmin:ptmax])
                gplot(barshift(spt.w[o,ptmin:ptmax],spt.berv), spt.f[o,ptmin:ptmax], spt.e[o,idx],'w e pt 7,', smod.osamp(10), 'w l lc 3')
                pause(o)
-
-            #bb[o][ww[o]<=spt.w[o,idx[0]]] |= flag.nan   # flag egdes where nan flux might occur
-            #bb[o][ww[o]>=spt.w[o,idx[-1]]] |= flag.nan
 
             #if inst .name== 'FEROS':
                # works with list so we do it here
@@ -1444,6 +1474,8 @@ def serval():
          fk = [[np.nan]] * nord
          ek = [[np.nan]] * nord
          bk = [[0]] * nord
+         qk = [[0]] * nord   # quality map for knots (ratio of good pixels to all pixels)
+         qq = [0] * nord     # quality map in oversampled template
 
          for o in corders:
             print("coadding o %02i: " % o, end='')     # continued below in iteration loop
@@ -1697,7 +1729,17 @@ def serval():
             # estimate the number of valid points for each knot
             edges = 0.5 * (wko[1:]+wko[:-1])
             edges = np.hstack((edges[0]+2*(wko[0]-edges[0]), edges, edges[-1]+2*(wko[-1]-edges[-1])))
-            bko,_ = np.histogram(wmod[ind], bins=edges, weights=(bmod[ind]==0)*1.0)
+            nko,_ = np.histogram(wmod[ind], bins=edges, weights=(bmod[ind]==0)*1.)
+            Nko,_ = np.histogram(wmod[ind], bins=edges, weights=bmod[ind]*0+1.)   # number of pixel per knot
+            rmin = 0.4   # minimum ratio (fraction) of good knot points
+            qko = nko / Nko
+            qqo = interp(wko, qko)(ww[o])
+            bko = flag.badT * (qko < rmin)
+            bbo = flag.badT * (qqo < rmin)
+
+            if 0:
+                gplot(nko, ',', Nko, ',', qko*Nko.max(), 'w l')
+                pause()
 
             '''estimate S/N for each spectrum and then combine all S/N'''
             sn = []
@@ -1734,15 +1776,15 @@ def serval():
                #linecolor = np.array([0,1,6,4,4,5])[np.argmax([0*bmod, (bmod&~flag.badT)==0] + hasflags(bmod, [flag.atm, flag.out, flag.nan, flag.clip]), axis=0)]
                #gplot2.bar(0)(wmod.ravel(), mod.ravel(), emod.ravel(), linecolor.ravel(), ' us 1:2:3:4  w e pt 7 ps 0.5 lc var t "data"')
                gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"')
-               gplot<(TPL[o].wk, TPL[o].fk, 'us 1:2 w lp lt 2 ps 0.5 t "spt"')
-               gplot<(ww[o], yfit,' us 1:2 w l lt 3 t "template"')
+               gplot<(TPL[o].wk, TPL[o].fk, 'us 1:2 w lp lt 2 ps 0.5 t "prev template"')
+               gplot<(ww[o], yfit, np.where(bbo, 5, 3),' us 1:2:3 w l lc var t "new template"')
                if (~ind).any():
                   gplot<(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"')
                if (ind<ind0).any():
                   gplot<(wmod[ind<ind0], mod[ind<ind0], emod[ind<ind0].clip(0,1000),' w e lt 5 pt 7 ps 0.5 t "clipped"')
                if tellind.any():
                   gplot<(wmod[tellind],mod[tellind],' us 1:2 lt 6 pt 7 ps 0.5 t "atm"')
-               gplot+(wko, fko, eko.clip(0,fko.max()), 'w e lt 3 pt 7 t "template knots"')
+               gplot+(wko, fko, eko.clip(0,fko.max()), np.where(bko, 5, 3), 'w e lc var pt 7 t "template knots"')
                if 0: # overplot normalised residuals
                   gplot_set('set y2tics; set ytics nomir; set y2range [-5*%f:35*%f]; set bar 0.5'%(sig,sig))
                   ogplot(wmod[ind], res,' w p pt 7 ps 0.5 lc rgb "black" axis x1y2')
@@ -1764,11 +1806,13 @@ def serval():
 
             if not vsiniauto:
                 ff[o] = yfit
-                TPL[o] = Tpl(ww[o], ff[o], spline_cv, spline_ev)
+                qq[o] = qqo    # ratio of good pixels in oversampled template
+                TPL[o] = Tpl(ww[o], ff[o], spline_cv, spline_ev, bk=bbo)
                 wk[o] = wko
                 fk[o] = fko
                 ek[o] = eko
-                bk[o] = bko
+                bk[o] = nko
+                qk[o] = qko
 
          if vsiniauto:
             # apply fitted rotational broadening
@@ -1793,9 +1837,9 @@ def serval():
             spt.header['HIERARCH SERVAL TARG RV SRC'] = (targrv_src, 'Origin of TARG RV')
 
             # Oversampled template
-            write_template(tpl, ff, ww, spt.header, hdrref='', clobber=1)
+            write_mfits(tpl, {'SPEC':ff, 'WAVE':ww, 'QMAP':qq}, ['SPEC', 'WAVE', 'QMAP'], spt.header, hdrref='', clobber=1)
             # Knot sampled template
-            write_res(outdir+obj+'.fits', {'SPEC':fk, 'SIG':ek, 'WAVE':wk, 'NMAP':bk}, tfmt, spt.header, hdrref='', clobber=1)
+            write_mfits(outdir+obj+'.fits', {'SPEC':fk, 'SIG':ek, 'WAVE':wk, 'NMAP': bk, 'QMAP': qk}, tfmt, spt.header, hdrref='', clobber=1)
             os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
             print('\ntemplate written to ', tpl)
             if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
@@ -1952,8 +1996,8 @@ def serval():
             b2[pmax:] |= flag.out
             b2[tellmask(w2)>0.01] |= flag.atm
             b2[skymsk(w2)>0.01] |= flag.sky
-            b2[(tellmask(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT   # flag for bad template
-            b2[(skymsk(barshift(w2, -spt.berv+sp.berv+(tplrv-targrv)))>0.01)!=0] |= flag.badT
+            b2[TPL[o].mskbad(barshift(w2, sp.berv+(tplrv-targrv)))] |= flag.badT
+
             #if inst.name == 'HARPS':
                #b2[lstarmask(barshift(w2,sp.berv))>0.01] |= flag.lowQ
                #pause()
@@ -2301,7 +2345,7 @@ def serval():
             sph['HIERARCH SERVAL E_RV'] = (e_RV[n], '[m/s] RV error estimate')
             sph['HIERARCH SERVAL RVC'] = (RVc[n], '[m/s] RV drift corrected')
             sph['HIERARCH SERVAL E_RVC'] = (e_RVc[n], '[m/s] RVC error estimate')
-            write_res(outdir+'res/'+outfile, data, outfmt, sph, clobber=1)
+            write_mfits(outdir+'res/'+outfile, data, outfmt, sph, clobber=1)
 
          if outchi and not np.isnan(RV[n]):   # write residuals
             gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
@@ -2508,7 +2552,7 @@ if __name__ == "__main__":
    argopt('-snmin', help='minimum S/N (considered as not bad and used in template building)'+default, default=10, type=float)
    argopt('-snmax', help='maximum S/N (considered as not bad and used in template building)'+default, default=snmax, type=float)
    argopt('-sunalt', help='Flag threshold for max. altitude of Sun above the horizon'+default, type=float, default=-12.)
-   argopt('-tfmt', help='output format of the template. NMAP is a an estimate for the number of good data points for each knot. DDSPEC is the second derivative for cubic spline reconstruction. (default: SPEC SIG WAVE)', nargs='*', choices=['SPEC', 'SIG', 'WAVE', 'NMAP', 'DDSPEC'], default=['SPEC', 'SIG', 'WAVE'])
+   argopt('-tfmt', help='output format of the template. NMAP is a an estimate for the number of good data points for each knot. DDSPEC is the second derivative for cubic spline reconstruction. (default: SPEC SIG WAVE QMAP)', nargs='*', choices=['SPEC', 'SIG', 'WAVE', 'NMAP', 'DDSPEC', 'QMAP'], default=['SPEC', 'SIG', 'WAVE', 'QMAP'])
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)

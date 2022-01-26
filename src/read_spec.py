@@ -267,10 +267,8 @@ def read_spec(self, s, inst, plot=False, **kwargs):
          pause(o)
    return sp
 
-def write_template(filename, flux, wave, *args, **kwargs):
-   write_res(filename, {'SPEC':flux, 'WAVE':wave}, ('SPEC', 'WAVE'), *args, **kwargs)
-
-def write_res(filename, datas, extnames, header='', hdrref=None, clobber=False):
+def write_mfits(filename, datas, extnames, header='', hdrref=None, clobber=False):
+   '''Write fits file with multiple extensions.'''
    if not header and hdrref: header = pyfits.getheader(hdrref)
    hdu = pyfits.PrimaryHDU(header=header)
    warnings.resetwarnings() # supress nasty overwrite warning http://pythonhosted.org/pyfits/users_guide/users_misc.html
@@ -302,7 +300,7 @@ def write_fits(filename, data, header='', hdrref=None, clobber=True):
 
 def read_template(filename):
     hdu = pyfits.open(filename)
-    return hdu['WAVE'].data, hdu['SPEC'].data, hdu[0].header
+    return hdu['WAVE'].data, hdu['SPEC'].data, (hdu['QMAP'].data if 'QMAP' in hdu else None), hdu[0].header
 
 def read_harps_ccf(s):
    ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask')
