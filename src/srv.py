@@ -586,6 +586,13 @@ class srv:
       gplot('for [n=1:%s]'%self.N, self.orders, orddisp, ' us 1:n+1 w lp t "n=".n')
       pause('disp')
 
+   def plot_brv(self):
+      gplot.xlabel('"Barycentric Julian date BJD - 2 450 000"')
+      gplot.ylabel('"Barycentric velocity"')
+      gplot.mxtics().mytics()
+      gplot('"%s/%s.brv.dat" us ($3-2450000):4 t "DRSBERV [km/s]", "" us ($1-2450000):2 lc 3 t "BERV [km/s]", "" us  ($1-2450000):(($4-$2)*1000) lc 8 pt 7 t "DRSBERV - BERV [m/s]", "" us  ($1-2450000):(($3-$1)*24*3600) lc 9 pt 12 t "DRSBJD - BJD [s]"' % (self.tag, self.tag))
+      pause('brv')
+
    def ls(self, suf='_A_mod.fits'):
       '''Show last square fit form fits file.'''
       #prebjd, preRV, pree_RVc = self.tpre.T[0:3]
@@ -780,7 +787,7 @@ def compare(tag1, tag2, **kwargs):
         if obj2.has_d.any():
            if arg2: arg2 += ', "" '
            arg2 += 'us 1:($2/$4):3 w e pt 7 lt 3 t "RVc"'
-  
+
         hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0'
         arg1 += hypertext + 'lc 1 t ""'
         arg2 += hypertext + 'lc 3 t ""'
@@ -791,7 +798,7 @@ def compare(tag1, tag2, **kwargs):
         i1 = np.in1d(obj1.bjd, obj2.bjd)
         i2 = np.in1d(obj2.bjd, obj1.bjd)
         if any(i1):
-            diff =  obj2.RVc[i1] - obj1.RVc[i1]
+            diff = obj2.RVc[i1] - obj1.RVc[i1]
             gplot+(obj1.bjd[i1]-2450000, diff, "lc 9 ps 0.5 t 'RVc_{%s} - RVc_{%s}'"%(obj2.keytitle, obj1.keytitle))
     pause('cmp rv ', obj1.tag, 'vs.', obj2.tag)
 
@@ -808,6 +815,7 @@ if __name__ == "__main__":
    parser = argparse.ArgumentParser(description=description, epilog=epilog, add_help=False)
    argopt = parser.add_argument   # function short cut
    argopt('tags', nargs='*', help='Tag, output directory and file prefix')
+   argopt('-brv', help='Compare BERVs with DRSBERVs', action='store_true')
    argopt('-cen', help='center RVs to zero median', action='store_true')
    argopt('-chi2map', help='plot the chi2map', action='store_true')
    argopt('-cmp', help='compare two data set', action='store_true')
@@ -894,5 +902,6 @@ if __name__ == "__main__":
             obj.plot_dlwno()
          if args.postrv:
             obj.postrv()
-
+         if args.brv:
+            obj.plot_brv()
 
