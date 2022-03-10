@@ -51,8 +51,9 @@ gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC cbspline.c; gcc -o cbspline.so -shared cbspline.o
 python -m numpy.f2py -c -m spl_int spl_int.f
 cd $SERVAL/src/BarCor
-gfortran bary.f -o bary.e
+gfortran bary.f -std=legacy -o bary.e
 ```
+Newer gfortran version may require an additional option `gfortran bary.f -fallow-argument-mismatch -std=legacy -o bary.e`.
 
 A first try to check whether there are any conflicts. It should list all available options:
 ```bash
