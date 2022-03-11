@@ -19,6 +19,8 @@ def scan(self, s, pfits=True):
    self.header = hdr = hdulist[0].header
  
    self.instname = hdr['INSTRUM']
+   if self.instname == 'NARVAL':
+       self.instname = 'NEONARVAL'   # fix unreliable keyword self.drsberv = hdr.get('BERV', np.nan)
    self.drsberv = hdr.get('BERV', np.nan)
    self.drsbjd = hdr.get('BTLA', np.nan)
    self.dateobs = hdr['DATE-FIT']
