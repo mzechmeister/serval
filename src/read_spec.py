@@ -162,6 +162,7 @@ class Spectrum:
          self.bjd, self.berv = self.drsbjd, 0.
       elif targ and targ.ra:   # unique coordinates
          obsloc = getattr(inst, 'obsloc', {})
+         obsname = getattr(inst, 'obsname')
          if self.brvref == 'MH':
             # fastest version
             #sys.path.append(os.environ['HOME']+'/programs/BarCor/')
@@ -177,7 +178,6 @@ class Spectrum:
             jd_utcs = [self.mjd + 2400000.5, jd_utc[0], self.mjd + 2400000.5 + self.exptime/24./3600]
             ra = (targ.ra[0] + targ.ra[1]/60. + targ.ra[2]/3600.) * 15  # [deg]
             de = (targ.de[0] + np.copysign(targ.de[1]/60. + targ.de[2]/3600., targ.de[0]))       # [deg]
-            obsname = inst.obsname
             if self.brvref == 'AP':
                 # only python 3/astropy v4
                 from astropy.time import Time
