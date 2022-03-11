@@ -4,7 +4,9 @@ from read_spec import Inst
 
 inst = __name__[5:]   # HARPS, HARPSpre, HARPSpost, HARPN
 name = inst[:5]       # HARPS, HARPN  (passed to bary)
-obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name] # for barycorrpy
+obsname = {'HARPS': 'eso', 'HARPN': 'lapalma'}[name]   # for barycorrpy     # obsname = 'lasilla'
+obsloc = {'HARPS': dict(lat=-29.2584, lon=-70.7345, elevation=2400.),       # from brv_we14.py,  for astropy bary
+          'HARPN': dict(lat=28.754000, lon=-17.88905555, elevation=2387.2)}[name]
 iomax = {'HARPS': 72, 'HARPN': 69}[name]
 oset = {'HARPS': '10:71', 'HARPN': '10:'}[name]
 
