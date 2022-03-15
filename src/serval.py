@@ -1015,7 +1015,7 @@ def serval():
    nspec = len(files)
    if not nspec:
       print("no spectra found in", dir_or_inputlist, 'or using ', pat, inst)
-      exit()
+      exit(1)
    # expand slices to index arrays
    if look: look = np.arange(iomax)[look]
    if lookt: lookt = np.arange(iomax)[lookt]
@@ -1330,7 +1330,7 @@ def serval():
                TPLrv = spt.ccf.rvc
          except Exception as e:
             print('ERROR: could not read template:', tpl, '\n', e)
-            exit()
+            exit(1)
 
          if inst.name == 'FEROS':
             www = [0] * len(ww)
@@ -1631,7 +1631,7 @@ def serval():
                   msg ='nan err_values in coadding. This may happen when data have gaps e.g. due masking or bad pixel flaging. Try the -pspline option'
                   if safemode:
                      print(msg)
-                     exit()
+                     exit(1)
                   pause(msg)
                   gplot(wmod[ind], mod[ind], we[ind])
                if 1:
