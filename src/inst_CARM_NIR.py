@@ -17,6 +17,7 @@ coset = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44
 
 maskfile = 'telluric_mask_carm_short.dat'
 maskfile = 'telluric_mask_nir4.dat'
+skyfile = 'sky_carm_nir'
 
 pat = '*-nir_%(fib)s.fits'   # => nir_A.fits, nir_B.fits
 

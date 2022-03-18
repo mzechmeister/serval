@@ -1087,8 +1087,8 @@ def serval():
          mask[:,1] = mask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means flagged and bad)
 
    if skyfile:
-      if skyfile=='auto' and inst.name=='CARM_NIR':
-         skyfile = servallib + 'sky_carm_nir'
+      if skyfile=='auto' and getattr(inst, 'skyfile', None):
+         skyfile = servallib + getattr(inst, 'skyfile', None)
          sky = np.genfromtxt(skyfile)
          skymsk = interp(lam2wave(sky[:,0]), sky[:,1])
 

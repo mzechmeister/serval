@@ -15,6 +15,7 @@ iomax = 28
 oset = "[4,5,6,14,15,16,17,18]"
 
 maskfile = 'telluric_mask_carm_short.dat'
+skyfile = 'sky_carm_nir'
 
 
 # Instrument read functions
