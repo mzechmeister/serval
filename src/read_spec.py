@@ -162,7 +162,7 @@ class Spectrum:
          self.bjd, self.berv = self.drsbjd, 0.
       elif targ and targ.ra:   # unique coordinates
          obsloc = getattr(inst, 'obsloc', {})
-         obsname = getattr(inst, 'obsname')
+         obsname = getattr(inst, 'obsname', None)
          if self.brvref == 'MH':
             # fastest version
             #sys.path.append(os.environ['HOME']+'/programs/BarCor/')
