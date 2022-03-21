@@ -1088,10 +1088,10 @@ def serval():
 
    if skyfile:
       if skyfile=='auto' and getattr(inst, 'skyfile', None):
-         skyfile = servallib + getattr(inst, 'skyfile', None)
-         sky = np.genfromtxt(skyfile)
-         skymsk = interp(lam2wave(sky[:,0]), sky[:,1])
-
+         skyfile = getattr(inst, 'skyfile', None)
+   if skyfile:
+      sky = np.genfromtxt(servallib + skyfile)
+      skymsk = interp(lam2wave(sky[:,0]), sky[:,1])
 
    msksky = [0] * iomax
    if 1 and inst.name=='CARM_VIS':
