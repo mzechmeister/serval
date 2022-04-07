@@ -323,10 +323,12 @@ def read_harps_ccf(s):
    HIERARCH = 'HIERARCH '
 
    DRS = '_CCF_' in s   # new DRS uses capital letters?
-   if DRS:
-      k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis =  HIERARCH+'TNG QC CCF RV', HIERARCH+'TNG QC CCF CONTRAST', HIERARCH+'TNG QC CCF FWHM', HIERARCH+'TNG QC CCF MASK', HIERARCH+'TNG QC CCF RV ERROR', HIERARCH+'TNG QC BIS SPAN'
+   if 'HARPN' in s:
+      HIERDRS = HIERARCH + 'TNG '
+      HIERDRS += 'QC ' if DRS else 'DRS '
+      k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis = HIERDRS+'CCF RV', HIERDRS+'CCF CONTRAST', HIERDRS+'CCF FWHM', HIERDRS+'CCF MASK', HIERDRS+'CCF RV ERROR', HIERDRS+'BIS SPAN'
    else:
-      k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis = HIERARCH+'ESO DRS CCF RVC', HIERARCH+'ESO DRS CCF CONTRAST', HIERARCH+'ESO DRS CCF FWHM', HIERARCH+'ESO DRS CCF MASK', HIERARCH+'ESO DRS DVRMS',HIERARCH+'ESO DRS BIS SPAN'
+      k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis = HIERARCH+'ESO DRS CCF RVC', HIERARCH+'ESO DRS CCF CONTRAST', HIERARCH+'ESO DRS CCF FWHM', HIERARCH+'ESO DRS CCF MASK', HIERARCH+'ESO DRS DVRMS', HIERARCH+'ESO DRS BIS SPAN'
 
    if 1:
       hdr = imhead(s, k_rv, k_contrast, k_fwhm, k_mask, k_e_rv, k_bis)
