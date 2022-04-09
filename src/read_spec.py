@@ -271,11 +271,7 @@ def write_mfits(filename, datas, extnames, header='', hdrref=None, clobber=False
    '''Write fits file with multiple extensions.'''
    if not header and hdrref: header = pyfits.getheader(hdrref)
    hdu = pyfits.PrimaryHDU(header=header)
-   warnings.resetwarnings() # supress nasty overwrite warning http://pythonhosted.org/pyfits/users_guide/users_misc.html
-   warnings.filterwarnings('ignore', category=UserWarning, append=True)
    hdu.writeto(filename, overwrite=clobber, output_verify='fix')
-   warnings.resetwarnings()
-   warnings.filterwarnings('always', category=UserWarning, append=True)
 
    for i,extname in enumerate(extnames):
        data = datas[extname]
@@ -288,15 +284,10 @@ def write_mfits(filename, datas, extnames, header='', hdrref=None, clobber=False
 
        pyfits.append(filename, data)
        pyfits.setval(filename, 'EXTNAME', value=extname, ext=i+1)
-   #fitsio.write(filename, flux)
 
 def write_fits(filename, data, header='', hdrref=None, clobber=True):
    if not header and hdrref: header = pyfits.getheader(hdrref)
-   warnings.resetwarnings() # supress nasty overwrite warning http://pythonhosted.org/pyfits/users_guide/users_misc.html
-   warnings.filterwarnings('ignore', category=UserWarning, append=True)
    pyfits.writeto(filename, data, header, overwrite=clobber, output_verify='fix')
-   warnings.resetwarnings()
-   warnings.filterwarnings('always', category=UserWarning, append=True)
 
 def read_template(filename):
     hdu = pyfits.open(filename)
