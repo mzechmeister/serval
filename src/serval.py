@@ -260,6 +260,7 @@ def rotbroad(x, f, v):
 
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
    """
+   safemode: 2 - only print, no plots
    """
    print(obj+'/'+obj+'.rvc'+fibsuf+'.dat')
    allrv = np.genfromtxt(obj+'/'+obj+'.rvo'+fibsuf+'.dat')
@@ -299,7 +300,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
          print('WARNING: nan in post RVs. Maybe to few measurements. Re-setting to originals.\n')
          RVp, e_RVp = RV, e_RV
          break
-      else:
+      elif safemode < 2:
          gplot(orddisp.T, ' matrix us (%s-1):3 t ""' % "".join(['$1==%s?%s:' % io for io in enumerate(orders)]))
          ogplot(orders, ordstd, ' w lp lt 3 t "", "" us 1:(-$2) w lp t ""')
       if 0: pause(i)
@@ -307,7 +308,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    pdf=0
    if pdf:
       gplot.term('pdfcairo; set out "%s.pdf"'% obj)
-   if 1: # chromatic slope
+   if safemode < 2: # chromatic slope
       gplot.xlabel('"BJD - 2 450 000"').ylabel('"chromatic index [m/s/Np]"')
       gplot('"'+obj+'/'+obj+'.srv'+fibsuf+'.dat" us ($1-2450000):4:5 w e pt 7')
       if not safemode: pause('chromatic index')
@@ -317,7 +318,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
 
    snro = snr[:,2+orders]
    print("total SNR:", np.sum(snro**2)**0.5)
-   if 1: # plot SNR
+   if safemode < 2: # plot SNR
       gplot.reset().xlabel('"Order"; set ylabel "SNR"; set ytics nomirr; set y2label "total SNR"; set y2tics; set yrange[0:]; set y2range[0:]')
       gplot(snro, 'matrix us ($2+%i):3' % np.min(orders), flush='')
       ogplot(np.sum(snro**2,axis=1)**0.5,' us (%i):1 axis x1y2 t "total SNR"'% (np.min(orders)+len(orders)))
@@ -339,6 +340,9 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
    print('RVpc: '+' %10.4f'*5 % (mlrms(RVpc,e_RVpc)[0], nanwstd(RVpc), nanwstd(RVpc,e=e_RVpc), naniqr(RVpc,sigma=True), iqr(RVpc, w=1/e_RVpc**2, sigma=True)))
    print('median internal precision', np.median(e_RV))
    print('Time span [d]: ', bjd.max()-bjd.min())
+
+   if safemode == 2:
+       return
 
    gplot.reset().xlabel('"BJD - 2 450 000"; set ylabel "RV [m/s]"')
    gplot('"'+obj+'/'+obj+'.rvc'+fibsuf+'.dat" us ($1-2450000):2:3 w e pt 7 t "rvc %s"'%obj)
