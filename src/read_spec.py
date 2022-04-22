@@ -291,7 +291,7 @@ def write_fits(filename, data, header='', hdrref=None, clobber=True):
 
 def read_template(filename):
     hdu = pyfits.open(filename)
-    return hdu['WAVE'].data, hdu['SPEC'].data, (hdu['QMAP'].data if 'QMAP' in hdu else None), hdu[0].header
+    return 1*hdu['WAVE'].data, hdu['SPEC'].data, (hdu['QMAP'].data if 'QMAP' in hdu else None), hdu[0].header
 
 def read_harps_ccf(s):
    ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask')
