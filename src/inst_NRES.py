@@ -2,7 +2,7 @@ from read_spec import *
 
 # Instrument parameters
 name = __name__[5:]
-obsloc = dict(lat=42.9333, lon= 0.1333, elevation=2869.4)
+obsloc = dict(lat=30.671666694444447, lon=255.97833330555557, elevation=2075)   # elp: McDonald http://www.astropy.org/astropy-data/coordinates/sites.json
 
 pat = '*.fits.fz'
 
@@ -17,7 +17,10 @@ maskfile = 'telluric_mask_carm_short.dat'
 def scan(self, filename, pfits=True):
     hdulist = self.hdulist = pyfits.open(filename)
     self.header = hdr = hdulist[0].header
-
+    self.site = hdr['SITEID']
+    if self.site == 'tlv':
+        global obsloc
+        obsloc = dict(lat=30.595833, lon=34.763333, elevation=875)   # https://de.wikipedia.org/wiki/Wise_Observatory
     self.instname = hdr['INSTRUME']
     if self.instname.startswith('fa'):
         self.instname = 'NRES'
