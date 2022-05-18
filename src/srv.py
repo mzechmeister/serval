@@ -305,7 +305,8 @@ class srv:
       self.mlrms = mlrms(self.RVc, e=self.e_RVc)
       print('N:     ', self.N)
       print('T [d]:     ', self.bjd.max() - self.bjd.min())
-      print('wrms_RVc [m/s]:   %.2f\njitter [m/s]: %.2f' % self.mlrms)
+      print('mlrms_RVc [m/s]:  %.2f\njitter [m/s]:     %.2f' % self.mlrms)
+      print('med(eRVc) [m/s]:  %.2f' % np.nanmedian(self.e_RVc))
       #pause()
 
    def plotrvno(self, rvobkg=False):
