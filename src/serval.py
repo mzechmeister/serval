@@ -1983,6 +1983,7 @@ def serval():
 
          if wfix: sp.w = spt.w
          fmod = sp.w * np.nan
+         mpmap = np.zeros(np.shape(sp.w))
          for o in orders:
             w2 = sp.w[o]
             x2 = np.arange(w2.size)
@@ -2172,6 +2173,7 @@ def serval():
                      pause(o, 'dLW', dlw[n,o])
 
             fmod[o] = f2mod
+            mpmap[o][keep] = 1
             if par.perror is None: par.perror = [0.,0.,0.,0.]
             results[sp.timeid][o] = par
             rv[n,o] = rvo = par.params[0] * 1000. # to [km/s] - sp.drift
@@ -2343,6 +2345,7 @@ def serval():
             outfile = os.path.splitext(outfile)[0] + outsuf
             if 'res' in outfmt: data['res'] = sp.f - fmod
             if 'ratio' in outfmt: data['ratio'] = sp.f / fmod
+            if 'mpmap' in outfmt: data['mpmap'] = mpmap
 
             sph = Spectrum(sp.filename, inst=inst, pfits=True, drs=drs, fib=fib, targ=targ).header
             sph['HIERARCH SERVAL RV'] = (RV[n], '[m/s] Radial velocity')
@@ -2541,7 +2544,7 @@ if __name__ == "__main__":
    argopt('-ofac', help='oversampling factor in coadding'+default, default=ofac, type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
-   argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'waverest', 'err', 'fmod', 'res', 'spec', 'bpmap', 'ratio'], default=None)
+   argopt('-outfmt', help='output format of the fits file (default: None; const: fmod err res wave)', nargs='*', choices=['wave', 'waverest', 'err', 'fmod', 'res', 'spec', 'bpmap', 'mpmap', 'ratio'], default=None)
    argopt('-outsuf', help='output suffix', default='_mod.fits')
    argopt('-pmin', help='Minimum pixel'+default, default=pmin, type=int)
    argopt('-pmax', help='Maximum pixel'+default, default=pmax, type=int)
