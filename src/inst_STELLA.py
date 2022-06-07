@@ -7,7 +7,8 @@ name = 'STELLA'
 obsname = 'teide'
 obsloc = dict(lat=28.3, lon= -16.5097, elevation=2390.)
 
-slicer = 'all'
+slicer = 'join'
+#slicer = 'all'
 # slicer = 'odd'  use "-oset ::2"
 # slicer = 'even' use "-oset 1::2"
 
@@ -15,7 +16,11 @@ if slicer == 'all':
     iomax = 164 # NAXIS2
 else:
     iomax = 82 # NAXIS2
-pmax =  2167 - 300
+pmax = 2167 - 300
+if slicer == 'join':
+    pmax = 2*2167 - 2*300
+    ofac = 0.5
+        
 
 snmax = 500
 oset = ':'
@@ -81,16 +86,26 @@ def scan(self, s, pfits=True):
 
 def data(self, orders, pfits=True):
     hdums = readmultispec(self.s)  #hdumultispec
+    r = None
     if slicer == 'all':
         m = np.s_[:]
-    if slicer == 'odd':
+    elif slicer == 'odd':
         m = np.s_[1::2]
-    if slicer == 'even':
+    elif slicer == 'even':
         m = np.s_[::2]
+    elif slicer == 'join':
+        m = np.s_[:]
+        r = (164//2, -1)
 
-    f = hdums['flux'][0][::-1][m][orders]
-    w = hdums['wavelen'][::-1][m][orders]
-    e = hdums['flux'][2][::-1][m][orders]
+    f = hdums['flux'][0][::-1][m].reshape(r)[orders]
+    w = hdums['wavelen'][::-1][m].reshape(r)[orders]
+    e = hdums['flux'][2][::-1][m].reshape(r)[orders]
+
+    if slicer == 'join':
+        sind = np.argsort(w)
+        f = np.take_along_axis(f, sind, -1)
+        w = np.take_along_axis(w, sind, -1)
+        e = np.take_along_axis(e, sind, -1)
 
     bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
