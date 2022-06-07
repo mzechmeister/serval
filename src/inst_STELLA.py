@@ -7,9 +7,9 @@ name = 'STELLA'
 obsname = 'teide'
 obsloc = dict(lat=28.3, lon= -16.5097, elevation=2390.)
 
-# slicer = 'all'
-# slicer = 'odd'
-slicer = 'even'
+slicer = 'all'
+# slicer = 'odd'  use "-oset ::2"
+# slicer = 'even' use "-oset 1::2"
 
 if slicer == 'all':
     iomax = 164 # NAXIS2
@@ -82,15 +82,15 @@ def scan(self, s, pfits=True):
 def data(self, orders, pfits=True):
     hdums = readmultispec(self.s)  #hdumultispec
     if slicer == 'all':
-        m = np.arange(0, hdums['wavelen'][::-1].shape[0], 1)
+        m = np.s_[:]
     if slicer == 'odd':
-        m = np.arange(0, hdums['wavelen'][::-1].shape[0], 2) + 1
+        m = np.s_[1::2]
     if slicer == 'even':
-        m = np.arange(0, hdums['wavelen'][::-1].shape[0], 2)
+        m = np.s_[::2]
 
-    f = hdums['flux'][0,:,:][::-1][m,:][orders,:]
-    w = hdums['wavelen'][::-1][m,:][orders,:]
-    e = hdums['flux'][2,:,:][::-1][m,:][orders,:]
+    f = hdums['flux'][0][::-1][m][orders]
+    w = hdums['wavelen'][::-1][m][orders]
+    e = hdums['flux'][2][::-1][m][orders]
 
     bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
