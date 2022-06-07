@@ -15,6 +15,8 @@ if slicer == 'all':
     iomax = 164 # NAXIS2
 else:
     iomax = 82 # NAXIS2
+pmax =  2167 - 300
+
 snmax = 500
 oset = ':'
 
