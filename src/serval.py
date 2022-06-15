@@ -1311,7 +1311,7 @@ def serval():
                ww = lam2wave(ww)
                is_ech_tpl = False
                TPL = [Tpl(ww, ff, spline_cv, spline_ev, vsini=tplvsini)] * nord
-               ww = [lam2wave(ww)] * nord   # @vsiniauto
+               ww = [ww] * nord   # @vsiniauto
                ff = [ff] * nord
                TPLrv = 0.
             elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
