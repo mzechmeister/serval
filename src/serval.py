@@ -1307,12 +1307,10 @@ def serval():
          try:
             if 'phoe' in tpl or 'PHOENIX-ACES-AGSS-COND' in tpl:
                # PHOENIX template must be downloaded into servallib
-               ww, ff = phoenix_as_RVmodel.readphoenix(servallib + ('lte03900-5.00-0.0_carm.fits' if 'phoe' in tpl else tpl), wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
-               ww = lam2wave(ww)
+               wk, fk = phoenix_as_RVmodel.readphoenix(servallib + ('lte03900-5.00-0.0_carm.fits' if 'phoe' in tpl else tpl), wmin=np.exp(np.nanmin(spt.w)), wmax=np.exp(np.nanmax(spt.w)))
+               wk = lam2wave(wk)
                is_ech_tpl = False
-               TPL = [Tpl(ww, ff, spline_cv, spline_ev, vsini=tplvsini)] * nord
-               ww = [ww] * nord   # @vsiniauto
-               ff = [ff] * nord
+               TPL = [Tpl(wk, fk, spline_cv, spline_ev, vsini=tplvsini)] * nord
                TPLrv = 0.
             elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
                # last option
