@@ -1981,12 +1981,14 @@ def serval():
 
          if wfix: sp.w = spt.w
          fmod = sp.w * np.nan
+         bpmap = 1 * sp.bpmap
          for o in orders:
             w2 = sp.w[o]
             x2 = np.arange(w2.size)
             f2 = sp.f[o]
             e2 = sp.e[o]
-            b2 = sp.bpmap[o] | msksky[o]
+            b2 = bpmap[o]    # bpmap is updated and maybe later written to res files.
+            b2 |= msksky[o]
 
             if inst.name == 'FEROS':
                pmin = pomin[o]
@@ -2336,7 +2338,7 @@ def serval():
 
          if outfmt and not np.isnan(RV[n]):   # write residuals
             data = {'fmod': fmod, 'wave': sp.w, 'spec': sp.f,
-                    'err': sp.e, 'bpmap': sp.bpmap, 'waverest': redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.)}
+                    'err': sp.e, 'bpmap': bpmap, 'waverest': redshift(sp.w, vo=sp.berv, ve=RV[n]/1000.)}
             outfile = os.path.basename(sp.filename)
             outfile = os.path.splitext(outfile)[0] + outsuf
             if 'res' in outfmt: data['res'] = sp.f - fmod
