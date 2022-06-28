@@ -837,8 +837,8 @@ def bary(obj,bjd, exptime):
    return berv
 
 def airtovac(wave_air):
-   """
-taken from idl astrolib
+    """
+    taken from idl astrolib (https://github.com/wlandsman/IDLAstro/blob/master/pro/airtovac.pro)
 ;+
 ; NAME:
 ;       AIRTOVAC
@@ -876,27 +876,18 @@ taken from idl astrolib
 ;           Added optional output vector, W Landsman Mar 2011
 ;       Iterate for better precision W.L./D. Schlegel  Mar 2011
 ;-
-   """
+    """
+    wave_air = np.asarray(wave_air)[None]   # increase dim to ensure at least 1D
+    wave_vac = 1. * wave_air
+    g = wave_air > 2000   # Only modify above 2000 A
+    for iter in [0, 1]:
+        sigma2 = (1e4/wave_vac[g])**2   # Convert to wavenumber squared
+        # Compute conversion factor
+        fact = 1 + 5.792105e-2 / (238.0185 - sigma2) + \
+                           1.67917e-3 / (57.362 - sigma2)
+        wave_vac[g] = wave_air[g] * fact   # Convert wavelength
 
-   wave_vac = wave_air * 1.0
-   g = wave_vac > 2000     #Only modify above 2000 A
-
-   if np.sum(g):
-      for iter in [0, 1]:
-         if isinstance(g, np.ndarray):
-            sigma2 = (1e4/wave_vac[g])**2.     #Convert to wavenumber squared
-            # Compute conversion factor
-            fact = 1. + 5.792105e-2 / (238.0185 - sigma2) + \
-                               1.67917e-3 / (57.362 - sigma2)
-            wave_vac[g] = wave_air[g] * fact              #Convert Wavelength
-         else: # scalar version
-            sigma2 = (1e4/wave_vac)**2.     #Convert to wavenumber squared
-            # Compute conversion factor
-            fact = 1. + 5.792105e-2 / (238.0185 - sigma2) + \
-                               1.67917e-3 / (57.362 - sigma2)
-            wave_vac = wave_air * fact              #Convert Wavelength
-
-   return wave_vac
+    return wave_vac[0]   # reduce dim to original shape
 
 
 if __name__ == "__main__":
