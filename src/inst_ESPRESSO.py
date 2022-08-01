@@ -52,7 +52,17 @@ def scan(self, s, pfits=True, verb=False):
       if self.instname[:8] != 'ESPRESSO':
          pause('\nWARNING: inst should be ESPRESSO, but got: '+self.inst+'\nSee option -inst for available inst.') 
 
-      self.airmass = hdr.get(HIERINST+'TEL3 AIRM START', np.nan)
+      # Get unit telescope used (1, 2, 3, or 4)
+      # TELESCOP= 'ESO-VLT-U1'         / ESO <TEL>
+      # HIERARCH ESO OCS TEL NO =    1 / Number of active telescopes (1 - 4).
+      # HIERARCH ESO OCS TEL1 ST =   T / Availability of the telescope.
+      # HIERARCH ESO OCS TEL2 ST =   F / Availability of the telescope.
+      # HIERARCH ESO OCS TEL3 ST =   F / Availability of the telescope.
+      # HIERARCH ESO OCS TEL4 ST =   F / Availability of the telescope.
+      utnum = hdr['TELESCOP'].replace('ESO-VLT-U', '')
+
+      # self.airmass = hdr.get(HIERINST+'TEL3 AIRM START', np.nan)
+      self.airmass = hdr.get(HIERINST+'TEL{} AIRM START'.format(utnum), np.nan)
       self.exptime = hdr['EXPTIME']
       self.mjd = hdr['MJD-OBS']
       self.dateobs = hdr['DATE-OBS']
@@ -63,12 +73,12 @@ def scan(self, s, pfits=True, verb=False):
 #HIERARCH ESO TEL3 GEOELEV = 2648. / [m] Elevation above sea level               
 #HIERARCH ESO TEL3 GEOLAT = -24.6268 / [deg] Tel geo latitute (+=North)          
 #HIERARCH ESO TEL3 GEOLON = -70.4045 / [deg] Tel geo longitude (+=East)          
-      self.obs.lon = hdr['HIERARCH ESO TEL3 GEOLON']
-      self.obs.lat = hdr['HIERARCH ESO TEL3 GEOLAT']
-      self.obs.elevation = hdr['HIERARCH ESO TEL3 GEOELEV']
+      self.obs.lon = hdr['HIERARCH ESO TEL{} GEOLON'.format(utnum)]
+      self.obs.lat = hdr['HIERARCH ESO TEL{} GEOLAT'.format(utnum)]
+      self.obs.elevation = hdr['HIERARCH ESO TEL{} GEOELEV'.format(utnum)]
 
       self.tmmean = hdr.get(k_tmmean, 0.5)
-      if not (0.25 < self.tmmean < 0.75): print 'WARNING:'
+      if not (0.25 < self.tmmean < 0.75): print('WARNING:')
 
       self.drsbjd = hdr.get(k_bjd)
       self.drsberv = hdr.get(k_berv, np.nan)
