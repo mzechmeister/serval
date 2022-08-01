@@ -68,7 +68,7 @@ def scan(self, s, pfits=True, verb=False):
       self.obs.elevation = hdr['HIERARCH ESO TEL3 GEOELEV']
 
       self.tmmean = hdr.get(k_tmmean, 0.5)
-      if not (0.25 < self.tmmean < 0.75): print 'WARNING:'
+      if not (0.25 < self.tmmean < 0.75): print('WARNING:')
 
       self.drsbjd = hdr.get(k_bjd)
       self.drsberv = hdr.get(k_berv, np.nan)
