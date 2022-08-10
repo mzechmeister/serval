@@ -245,6 +245,8 @@ def rotbroad(x, f, v):
 
     dv = (x[1]-x[0]) * c   # velocity step [km/s]
     k = int(v / dv)        # kernel sampling
+    if k == 0:
+        return x, 1*f
 
     # rotation broadening kernel
     A = np.sqrt(1 - (np.arange(-k,k+1.)/k)**2)
@@ -1689,7 +1691,7 @@ def serval():
             if vsiniauto:
                # vsini steps
                vs_hi = 150
-               vs_step = 1
+               vs_step = 0.1
 
                # set up data for fitting
                ### cut 200 km/s at the edges, buffer for rotbroadening
