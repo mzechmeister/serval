@@ -683,7 +683,7 @@ def SSRstat(vgrid, SSR, dk=1, plot=2):
    if -1 in SSR:
       print('opti warning: bad ccf.')
    elif a[2] <= 0:
-      print('opti warning: a[2]=%f<=0.' % a[2])
+      print('opti warning: a[2]=%f<=0 (extremum is not a minimum).' % a[2])
    elif not vgrid[0] <= v <= vgrid[-1]:
       print('opti warning: v not in [va,vb].')
    else:
@@ -728,12 +728,12 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=2):
    return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
 
 
-def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=2):
+def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=3):
    """
    performs a mini CCF; the grid stepping
    returns best vsini and errors from parabola curvature
    """
-   warnings.filterwarnings("ignore", category=DeprecationWarning) 
+   warnings.filterwarnings("ignore", category=DeprecationWarning)
    vgrid = np.arange(va, vb, v_step)
    nk = len(vgrid)
 
@@ -754,21 +754,20 @@ def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=2):
       p, SSR[k] = polyreg(x2, y2, e_y2, vtpl, len(p), retmod=False)
 
    # analyse the CCF peak fitting
-   v, e_v, a = SSRstat(vgrid, SSR, plot=plot)
+   v, e_v, a = SSRstat(vgrid, SSR, plot=plot&1)
 
    if np.isnan(e_v):
       v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
-      print(" Setting  v=" % v)
+      print(" Setting  vsini=%s km/s" % v)
    if p[0] < 0:
       e_v = np.nan
-      print("Negative scale value. Setting  e_v= %f" % e_v)
+      print("Negative scale value. Setting  e_vsini= %f" % e_v)
 
    if np.argmin(SSR) == 0:
-      # if the minimum is at zero, we cannot use parabola
-      # take vstep as uncertainty
-      v = 0
-      e_v = v_step
-
+      print('optivsini warning: the minimum is at zero, we cannot use parabola')
+      v = vgrid[0]
+      print(" Setting  vsini=%s km/s" % v)
+      e_v = np.nan   # or ~instrumention resolution (detection limit)
 
    # template with fitted vsini
    calcspec.tpl = copy.deepcopy(tpl)
@@ -779,10 +778,11 @@ def optivsini(va, vb, v_step, vtpl, x2, y2, e_y2, tpl, p=None, plot=2):
    # final call with v
    p, SSRmin, fmod = polyreg(x2, y2, e_y2, vtpl, len(p))
 
-   if plot&1 or (plot&2 and np.isnan(e_v)):
+   if plot&2 and np.isnan(e_v):
       gplot(x2, y2, fmod, ' w lp, "" us 1:3 w lp lt 3')
       pause(v)
-   return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR)}), fmod
+
+   return type('par', (), {'params': np.append(v,p), 'perror': np.array([e_v,1.0]), 'ssr': (vgrid,SSR), 'chisq_red': SSRmin / x2.size}), fmod
 
 
 def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None, indmod=np.s_[:], v_step=True, df=None, plot=2, deg=3, chi2map=False):
@@ -1714,8 +1714,8 @@ def serval():
                VSINI[o] = [vsini, e_vsini]
 
                # return best fitting vsini
-               if not np.isnan(e_vsini):
-                  print("\nvsini = %0.5f +/- %0.5f km/s (order %i)\n" % (vsini,e_vsini,o), end='')
+               #if not np.isnan(e_vsini):
+               print("\nvsini = %0.5f +/- %0.5f km/s (order %i, chisq_red=%.4g)\n" % (vsini, e_vsini, o, par.chisq_red), end='')
 
                # plotting gplot
                if o in lookvsini:
