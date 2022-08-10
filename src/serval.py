@@ -244,12 +244,13 @@ def rotbroad(x, f, v):
     # f(x)= x<-1 ? -pi/4 : x>1? pi/4 : (sqrt(1-x**2)*x+asin(x))/2; pl sqrt(1-x**2), dx=0.8, (f(x+dx/2)-f(x-dx/2))/dx, f(x)
 
     dv = (x[1]-x[0]) * c   # velocity step [km/s]
-    k = int(v / dv)        # kernel sampling
+    kmax = v / dv
+    k = int(kmax)        # kernel sampling
     if k == 0:
         return x, 1*f
 
     # rotation broadening kernel
-    A = np.sqrt(1 - (np.arange(-k,k+1.)/k)**2)
+    A = np.sqrt(1 - (np.arange(-k,k+1.) / kmax)**2)
     A /= sum(A)    # normalise kernel to unity area
 
     return x[k:-k], np.convolve(f, A, mode='valid')
@@ -1691,7 +1692,7 @@ def serval():
             if vsiniauto:
                # vsini steps
                vs_hi = 150
-               vs_step = 0.1
+               vs_step = 1
 
                # set up data for fitting
                ### cut 200 km/s at the edges, buffer for rotbroadening
