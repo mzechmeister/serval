@@ -879,7 +879,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -1327,6 +1327,52 @@ def serval():
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
                   if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
                TPLrv = head['HIERARCH SERVAL TARG RV']
+            elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
+               # read a spectrum stored order wise
+               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
+               bb =  [None]*len(ff) if qq is None else qq<0.4
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, bk=bo, vsini=tplvsini, vrange=[v_lo, v_hi]) for wo,fo,bo in zip(ww,ff, bb)]
+               if 'HIERARCH SERVAL COADD NUM' in head:
+                  print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
+                  if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
+                  if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
+               TPLrv = head['HIERARCH SERVAL TARG RV']
+               
+            elif tpl.endswith('.s1d.fits'):
+               # a user specified 1d template with other instrument
+
+               # import fits module
+               import astropy.io.fits as pyfits
+               
+               # read in 1d template
+               with pyfits.open(tpl) as hdu:
+                  ww, ff = hdu[1].data['lnwave'].astype(float), hdu[1].data['flux'].astype(float)
+               
+               # read spectrum as wavelength reference
+               spt = Spectrum(files[spi], inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
+
+               # find wavelength min max in each order
+               wmin, wmax = np.nanmin(spt.w,axis=1),np.nanmax(spt.w,axis=1)
+
+               # mask tpl wavelength range in each order
+               ff = [ff[np.logical_and(ww>wmino,
+                        ww<wmaxo)] for wmino, wmaxo in zip(wmin, wmax)]
+               ww = [ww[np.logical_and(ww>wmino,
+                        ww<wmaxo)] for wmino, wmaxo in zip(wmin, wmax)]
+               
+               # set to zero if order wavelength is empty
+               # serval interrupts if set to nan
+               # better remove orders from oset and coset?
+               for o in range(nord):
+                  if len(ww[o]) == 0 or np.all(np.isnan(ff[o])):
+                     ww[o] = 0*spt.w[o]
+                     ff[o] = 0*spt.f[o] # set to 0 if list is empty
+
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini, R=tplR, mask=True, vrange=[v_lo, v_hi]) for wo,fo in zip(ww,ff)]
+
+               # template rv
+               TPLrv = hdu[1].header['HIERARCH SERVAL TARG RV']
+               
             else:
                # a user specified other observation/star
                spt = Spectrum(tpl, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
@@ -2563,6 +2609,7 @@ if __name__ == "__main__":
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)
+   argopt('-tplR', help='Spectral resolving power to broaden template.', type=float)
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
