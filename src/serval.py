@@ -159,7 +159,7 @@ class interp:
 
 
 class Tpl:
-   def __init__(self, wk, fk, initfunc, evalfunc, bk=None, mask=False, berv=None, vsini=None, vrange=None):
+   def __init__(self, wk, fk, initfunc, evalfunc, bk=None, mask=False, berv=None, vsini=None, R=None, vrange=None):
       '''
       wk : barycentric corrected wavelength
       bk : bad pixel flag map
@@ -175,9 +175,21 @@ class Tpl:
       self.bk = self.bk0 = bk[ii]
 
       self.vsini = vsini
+      self.R = R
+
+      if R and self.wk[1]-self.wk[0]:
+          # boadening with Gaussian kernel 
+          fwhm = np.log(1+1/R) # del log lambda = log (1+ del v / c) = log (1+ 1/R)
+          sig = fwhm/(2*np.sqrt(2*np.log(2)))
+          
+          # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
+          self.wk0, self.fk0, self.bk0 = ipbroad(self.wk0, self.fk0, self.bk0, sig)
+          self.wk, self.fk, self.bk = self.wk0, self.fk0, self.bk0
+          
       if vsini and self.wk[1]-self.wk[0]:
           # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
           self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
+          
       self.berv = berv
       self.initfunc = initfunc
       self.funcarg = self.initfunc(self.wk, self.fk)
@@ -260,6 +272,34 @@ def rotbroad(x, f, v):
         frot += A[v+i] * f[v-i:-v-i-1]  # -0 does not work
     return frot
 
+def ipbroad(x, f, b, s):
+    '''
+    Broaden a spectrum by gaussian instrumental profile.
+
+    Parameters
+    ----------
+    x : Uniform ln(lambda) grid.
+    f : Spectrum (sampled uniformly in log(lambda), i.e. velocity).
+    s : gaussian sigma del log(lambda)
+
+    Returns
+    -------
+    x : ln(lambda) truncated to valid range.
+    f : Broadened spectrum.
+
+    '''
+
+    dx = (x[1]-x[0]) # wavelength step
+    kw = 3 # kernel width in sigma
+    k = int(kw * s / dx)        # kernel sampling
+    # gaussian broadening kernel
+    A = np.exp(-0.5*(np.arange(-k,k+1.)/k*kw)**2)
+    A /= sum(A)    # normalise kernel to unity area
+    if 0:
+        print(len(x), dx, s, k)
+        gplot(A)
+        pause()
+    return x[k:-k], np.convolve(f, A, mode='valid'), b[k:-k]
 
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
    """
