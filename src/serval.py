@@ -1367,23 +1367,13 @@ def serval():
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
                   if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
                TPLrv = head['HIERARCH SERVAL TARG RV']
-            elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
-               # read a spectrum stored order wise
-               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
-               bb =  [None]*len(ff) if qq is None else qq<0.4
-               TPL = [Tpl(wo, fo, spline_cv, spline_ev, bk=bo, vsini=tplvsini, vrange=[v_lo, v_hi]) for wo,fo,bo in zip(ww,ff, bb)]
-               if 'HIERARCH SERVAL COADD NUM' in head:
-                  print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
-                  if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
-                  if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
-               TPLrv = head['HIERARCH SERVAL TARG RV']
                
             elif tpl.endswith('.s1d.fits'):
-               # a user specified 1d template with other instrument
+               # a user specified 1d template with another instrument
 
                # import fits module
                import astropy.io.fits as pyfits
-               
+
                # read in 1d template
                with pyfits.open(tpl) as hdu:
                   ww, ff = hdu[1].data['lnwave'].astype(float), hdu[1].data['flux'].astype(float)
@@ -1395,10 +1385,8 @@ def serval():
                wmin, wmax = np.nanmin(spt.w,axis=1),np.nanmax(spt.w,axis=1)
 
                # mask tpl wavelength range in each order
-               ff = [ff[np.logical_and(ww>wmino,
-                        ww<wmaxo)] for wmino, wmaxo in zip(wmin, wmax)]
-               ww = [ww[np.logical_and(ww>wmino,
-                        ww<wmaxo)] for wmino, wmaxo in zip(wmin, wmax)]
+               ff = [ff[slice(*np.searchsorted(ww,[wmino,wmaxo]))] for wmino, wmaxo in zip(wmin, wmax)]
+               ww = [ww[slice(*np.searchsorted(ww,[wmino,wmaxo]))] for wmino, wmaxo in zip(wmin, wmax)]
                
                # set to zero if order wavelength is empty
                # serval interrupts if set to nan
@@ -1407,8 +1395,12 @@ def serval():
                   if len(ww[o]) == 0 or np.all(np.isnan(ff[o])):
                      ww[o] = 0*spt.w[o]
                      ff[o] = 0*spt.f[o] # set to 0 if list is empty
+               
+               # compute resolving power for broadening
+               R = 1/(1/R_inst-1/R_tpl) if tplR else None
+               if tplR: print('Resolving power R_inst = %i, R_tpl = %i.'%(R_inst, R_tpl))
 
-               TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini, R=tplR, mask=True, vrange=[v_lo, v_hi]) for wo,fo in zip(ww,ff)]
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini, R=R, mask=True, vrange=[v_lo, v_hi]) for wo,fo in zip(ww,ff)]
 
                # template rv
                TPLrv = hdu[1].header['HIERARCH SERVAL TARG RV']
@@ -2572,6 +2564,7 @@ if __name__ == "__main__":
    coset = getattr(inst, 'coset', None)
    ofac = getattr(inst, 'ofac', 1.)
    snmax = getattr(inst, 'snmax', 400.)
+   R_inst = getattr(inst, 'R', None)
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2649,7 +2642,7 @@ if __name__ == "__main__":
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)
-   argopt('-tplR', help='Spectral resolving power to broaden template.', type=float)
+   argopt('-tplR', help='Broaden template to instrumental resolution with (R_inst or R_inst R_tpl).', default= None, nargs='*', type=float)
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
@@ -2703,6 +2696,24 @@ if __name__ == "__main__":
       v_lo, v_hi, v_step = vrange
    elif len(vrange) > 3:
       pause('too many args for -vrange')
+
+   # set default R_tpl 
+   try:     
+       # default R_tpl from template header
+       import astropy.io.fits as pyfits
+       with pyfits.open(tpl) as hdu:
+          R_tpl = hdu[1].header['R']
+   except:
+      R_tpl = np.inf     
+   
+   # if tplR set R_inst (R_tpl) value
+   if tplR:
+       if len(tplR) == 1:
+          R_inst = tplR[0]
+       elif len(tplR) == 2:
+          R_inst, R_tpl = tplR[0], tplR[1]
+       elif len(tplR) > 3:
+          pause('too many args for -tplR')
 
    if len(ckappa) == 1:
       ckappa = ckappa * 2 # list with two entries ;)
