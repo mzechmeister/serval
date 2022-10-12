@@ -159,7 +159,7 @@ class interp:
 
 
 class Tpl:
-   def __init__(self, wk, fk, initfunc, evalfunc, bk=None, mask=False, berv=None, vsini=None, vrange=None):
+   def __init__(self, wk, fk, initfunc, evalfunc, bk=None, mask=False, berv=None, vsini=None, R=None, vrange=None):
       '''
       wk : barycentric corrected wavelength
       bk : bad pixel flag map
@@ -175,9 +175,21 @@ class Tpl:
       self.bk = self.bk0 = bk[ii]
 
       self.vsini = vsini
+      self.R = R
+
+      if R and self.wk[1]-self.wk[0]:
+          # boadening with Gaussian kernel
+          fwhm = 1/R   # [ln(A)]  1/R = dlam/lam = d(ln(lam)); v_fwhm = c/R
+          sig = fwhm / (2*np.sqrt(2*np.log(2)))
+
+          # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
+          self.wk0, self.fk0, self.bk0 = ipbroad(self.wk0, self.fk0, self.bk0, sig)
+          self.wk, self.fk, self.bk = self.wk0, self.fk0, self.bk0
+
       if vsini and self.wk[1]-self.wk[0]:
           # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
           self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
+
       self.berv = berv
       self.initfunc = initfunc
       self.funcarg = self.initfunc(self.wk, self.fk)
@@ -260,6 +272,34 @@ def rotbroad(x, f, v):
         frot += A[v+i] * f[v-i:-v-i-1]  # -0 does not work
     return frot
 
+def ipbroad(x, f, b, s):
+    '''
+    Broaden a spectrum by Gaussian instrumental profile.
+
+    Parameters
+    ----------
+    x : Uniform ln(lambda) grid.
+    f : Spectrum (sampled uniformly in log(lambda), i.e. velocity).
+    s : Gaussian sigma del log(lambda)
+
+    Returns
+    -------
+    x : ln(lambda) truncated to valid range.
+    f : Broadened spectrum.
+
+    '''
+
+    dx = x[1] - x[0]   # [ln(A)] wavelength step
+    kw = 3   # kernel half-width in sigma
+    k = int(kw * s / dx)        # kernel sampling
+    # Gaussian broadening kernel
+    A = np.exp(-0.5*(np.arange(-k,k+1.)/k*kw)**2)
+    A /= sum(A)    # normalise kernel to unity area
+    if 0:
+        print(len(x), dx, s, k)
+        gplot(A)
+        pause()
+    return x[k:-k], np.convolve(f, A, mode='valid'), b[k:-k]
 
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
    """
@@ -879,7 +919,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -1327,6 +1367,47 @@ def serval():
                   if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
                   if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
                TPLrv = head['HIERARCH SERVAL TARG RV']
+            elif tpl.endswith('.s1d.fits'):
+               # a user specified 1d template with another instrument
+
+               # import fits module
+               import astropy.io.fits as pyfits
+
+               # read in 1d template
+               with pyfits.open(tpl) as hdu:
+                  ww = hdu[1].data['lnwave'].astype(float)
+                  ff = hdu[1].data['flux'].astype(float)
+                  R_tpl = hdu[0].header.get('HIERARCH SERVAL INST R', np.inf)   # Get intrinsic resolution of the tpl
+
+               # find wavelength min max in each order
+               wmin, wmax = np.nanmin(spt.w, axis=1), np.nanmax(spt.w, axis=1)
+
+               # shape 1D tpl into echelle format
+               klimits = np.searchsorted(ww, [wmin, wmax])
+               ff = [ff[slice(*klimo)] for klimo in klimits.T]
+               ww = [ww[slice(*klimo)] for klimo in klimits.T]
+
+               # set to zero if order wavelength is empty
+               # serval interrupts if set to nan
+               # better remove orders from oset and coset?
+               for o in range(nord):
+                  if len(ww[o]) == 0 or np.all(np.isnan(ff[o])):
+                     ww[o] = 0*spt.w[o]
+                     ff[o] = 0*spt.f[o] # set to 0 if list is empty
+
+               # compute resolving power for broadening
+               R = None
+               if tplR is not None:
+                   R_inst, = tplR[0:1] or [R_inst]    # falls back to inst file value
+                   R_tpl, = tplR[1:2] or [R_tpl]      # falls back to tpl header value
+                   R = (R_inst**-2 - R_tpl**-2)**-0.5   # effective resolution
+                   print('Resolving power R_inst = %i, R_tpl = %.0f, R = %i.' % (R_inst, R_tpl, R))
+
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, vsini=tplvsini, R=R, mask=True, vrange=[v_lo, v_hi]) for wo,fo in zip(ww,ff)]
+
+               # template rv
+               TPLrv = hdu[1].header['HIERARCH SERVAL TARG RV']
+
             else:
                # a user specified other observation/star
                spt = Spectrum(tpl, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
@@ -1474,6 +1555,8 @@ def serval():
          spt.header['HIERARCH SERVAL OFAC'] = (ofac, 'oversampling factor per raw pixel')
          spt.header['HIERARCH SERVAL PSPLLAM'] = (pspllam, 'smoothing value of the psline')
          spt.header['HIERARCH SERVAL UTC'] = (datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), 'time of coadding')
+         if R_inst:
+            spt.header['HIERARCH SERVAL INST R'] = (R_inst, 'instrument resolving power')
 
          wk = [[np.nan]] * nord
          fk = [[np.nan]] * nord
@@ -2486,6 +2569,7 @@ if __name__ == "__main__":
    coset = getattr(inst, 'coset', None)
    ofac = getattr(inst, 'ofac', 1.)
    snmax = getattr(inst, 'snmax', 400.)
+   R_inst = getattr(inst, 'R', None)
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2563,6 +2647,7 @@ if __name__ == "__main__":
    argopt('-tpl',  help="template filename or directory, if None or integer a template is created by coadding, where highest S/N spectrum or the filenr is used as start tpl for the pre-RVs", nargs='?')
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)
+   argopt('-tplR', help='Broaden template to instrumental resolution with R = (R_inst^-2 - R_tpl^-2)^-0.5. R_inst can be specified in the inst file (default: None; const: [R_inst=%s, R_tpl=inf]).'%R_inst, nargs='*' if R_inst else '+', type=float, metavar=('R_inst', 'R_tpl'))
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
@@ -2616,6 +2701,9 @@ if __name__ == "__main__":
       v_lo, v_hi, v_step = vrange
    elif len(vrange) > 3:
       pause('too many args for -vrange')
+
+   if tplR and len(tplR) > 2:
+      sys.exit('Error: Too many args for -tplR.')
 
    if len(ckappa) == 1:
       ckappa = ckappa * 2 # list with two entries ;)
