@@ -1377,7 +1377,7 @@ def serval():
                with pyfits.open(tpl) as hdu:
                   ww = hdu[1].data['lnwave'].astype(float)
                   ff = hdu[1].data['flux'].astype(float)
-                  R_tpl = hdu[0].header.get('R', np.inf)
+                  R_tpl = hdu[0].header.get('HIERARCH SERVAL INST R', np.inf)   # Get intrinsic resolution of the tpl
 
                # find wavelength min max in each order
                wmin, wmax = np.nanmin(spt.w, axis=1), np.nanmax(spt.w, axis=1)
@@ -1555,6 +1555,8 @@ def serval():
          spt.header['HIERARCH SERVAL OFAC'] = (ofac, 'oversampling factor per raw pixel')
          spt.header['HIERARCH SERVAL PSPLLAM'] = (pspllam, 'smoothing value of the psline')
          spt.header['HIERARCH SERVAL UTC'] = (datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), 'time of coadding')
+         if R_inst:
+            spt.header['HIERARCH SERVAL INST R'] = (R_inst, 'instrument resolving power')
 
          wk = [[np.nan]] * nord
          fk = [[np.nan]] * nord
