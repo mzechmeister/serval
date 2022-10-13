@@ -694,8 +694,7 @@ class imhead(dict):
       #with open(s) as fi:
       if 1:
          fi.seek(extpos)
-         for card in iter(lambda:fi.read(80), b''):   # read in 80 byte blocks
-            card = card.decode()
+         for card in iter(lambda: fi.read(80).decode(), ''):   # read in 80 byte blocks
             NR += 1
             if card.startswith('END '): break
             if card.startswith(args):
@@ -758,7 +757,6 @@ class getext(dict):
       if hasattr(s, 'offset_data'):
          filepos = s.offset_data
          fileend = s.offset_data + s.size
-      #pause()
 
       while True:
          exthdr = imhead(self.fileobj, 'EXTNAME', extpos=filepos)
