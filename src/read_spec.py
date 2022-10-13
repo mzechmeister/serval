@@ -694,7 +694,7 @@ class imhead(dict):
       #with open(s) as fi:
       if 1:
          fi.seek(extpos)
-         for card in iter(lambda:fi.read(80), ''):   # read in 80 byte blocks
+         for card in iter(lambda:fi.read(80), b''):   # read in 80 byte blocks
             card = card.decode()
             NR += 1
             if card.startswith('END '): break
