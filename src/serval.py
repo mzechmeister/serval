@@ -2583,14 +2583,14 @@ if __name__ == "__main__":
    argopt = parser.add_argument   # function short cut
    argopt('obj', help='Tag, output directory and file prefix (e.g. Object name).')
    argopt('dir_or_inputlist', help='Directory name with reduced data fits/tar or a file listing the spectra (only suffixes .txt or .lis accepted).', nargs='?')
-   argopt('-targ', help='Target name requested in simbad for coordinates, proper motion, parallax and absolute RV.')
-   argopt('-targrade', help='Target coordinates: [ra|hh:mm:ss.sss de|de:mm:ss.sss].', nargs=2, default=[None,None])
-   argopt('-targpm', help='Target proper motion: pmra [mas/yr] pmde [mas/yr].', nargs=2, type=float, default=[0.0,0.0])
-   argopt('-targplx', help='Target parallax', type=float, default='nan')
-   argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad))', default={'CARM_NIR':None, 'else':'auto'})
+   argopt('-targ', help='Target name requested in simbad for coordinates, proper motion, parallax and absolute RV.', metavar='Simbad_name')
+   argopt('-targrade', help='[hh:mm:ss.sss de:mm:ss.sss] Target coordinates.', nargs=2, default=[None, None], metavar=('RA', 'DE'))
+   argopt('-targpm', help='[mas/yr mas/yr] Target proper motion.', nargs=2, type=float, default=[0.0, 0.0], metavar=('PMRA', 'PMDE'))
+   argopt('-targplx', help='[mas] Target parallax.', type=float, default='nan', metavar='PLX')
+   argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad)).', default={'CARM_NIR': None, 'else': 'auto'}, metavar='RV')
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
-   argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division.'+default, type=str, default=None)
+   argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division'+default, type=str, default=None)
    argopt('-brvref', help='Barycentric RV code reference', choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist.', type=float, default=4.)
@@ -2700,7 +2700,7 @@ if __name__ == "__main__":
    elif len(vrange) == 3:
       v_lo, v_hi, v_step = vrange
    elif len(vrange) > 3:
-      pause('too many args for -vrange')
+      sys.exit('Error: Too many args for -vrange.')
 
    if tplR and len(tplR) > 2:
       sys.exit('Error: Too many args for -tplR.')
