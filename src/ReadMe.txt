@@ -194,7 +194,7 @@ Column Format Units     Label     Explanations
      7 D      ---     E_HALEFT    HALEFT error
      8 D      ---       HARIGH    Halpha reference region (100,300) km/s
      9 D      ---     E_HARIGH    HARIGH error
-    10 D      ---       CAI       Calcium I index
+    10 D      ---       CAI       Calcium I index (6572.795) (-15.5, 15.5) km/s
     11 D      ---     E_CAI       CAI error
 --------------------------------------------------------------------------------
 
