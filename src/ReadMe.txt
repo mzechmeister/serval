@@ -28,6 +28,7 @@ obj.rvo.dat    Radial velocity (orderwise, not drift corrected)
 obj.snr.dat    Signal-to-noise (orderwise)
 obj.srv.dat    Serval products time series compilation
 obj.targ.csv   Target properties from catalog request
+obj.tpl.fits   Template
 lastcmd.txt    Used SERVAL options
 log.obj        Plain text logfile of SERVAL stdout
 --------------------------------------------------------------------------------
@@ -164,6 +165,20 @@ Column Format Units     Label     Explanations
      6 D      ---     E_dLWO_02   Error for differential line width in order 2
 etc...
 --------------------------------------------------------------------------------
+
+
+Description of file: obj.fits
+----------------------------------------------------------------------------
+Extension Format Units     Label     Explanations
+----------------------------------------------------------------------------
+      [0] A       ---                Primary header (keywords for coadd method, used
+                                     spectra and RVs, template SNR for each order)
+      [1] D      ---       SPEC      Flux values of template at B-spline knots
+      [2] D      ---       SIG       Uncertainty estimate for knot flux values
+      [3] D      ln(A)     WAVE      Knot positions of uniform B-spline
+                                     (natural logarithm of vacuum wavelength)
+      [4] D      ---       QMAP      Quality map for knots (ratio of good pixels to all pixels)
+----------------------------------------------------------------------------
 
 
 Description of file: obj.halpha.dat
@@ -327,15 +342,15 @@ Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------
 
 
-Description of file: obj.fits
+Description of file: obj.tpl.fits
 --------------------------------------------------------------------------------
 Extension Format Units     Label     Explanations
 --------------------------------------------------------------------------------
-      [0] A       ---                primary header (keywords for coadd method, used
+      [0] A       ---                Primary header (keywords for coadd method, used
                                      spectra and RVs, template SNR for each order)
-      [1] D       ---      SPEC      flux
-      [2] D       A        WAVE      wavelength
+      [1] D       ---      SPEC      Oversampled (~4x) template flux
+      [2] D       ln(A)    WAVE      Natural logarithm of vacuum wavelengths
 
 
-template_post3.fits	template from coadd method post3	same as for template.fits
+template.fits is the same as obj.tpl.fits (soft link).
 
