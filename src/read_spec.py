@@ -601,7 +601,7 @@ tarmode = 5
 # 5  - use tar.extractfile, works with pyfits, doesn't work with myfits (np.fromfile accepts only real files and files object, not tar)
 # 6  - open as normal file, does not work
 
-def file_from_tar(s, inst='HARPS', fib=None, **kwargs):
+def file_from_tar(s, inst='HARPS', fib=None, pat=None, **kwargs):
    """
    Returns a file-like object.
    Reading header and data should use the same fits reader
@@ -611,8 +611,9 @@ def file_from_tar(s, inst='HARPS', fib=None, **kwargs):
    >>> extr = tar.getmember('data/reduced/2014-12-06/HARPS.2014-12-07T00:35:29.894_e2ds_A.fits')
 
    """
-   pat = {'HARPS': {'A': '_e2ds_A.fits', 'B': '_e2ds_B.fits'}[fib],
-          'FEROS': {'A': '.1061.fits', 'B': '.1062.fits'}[fib]} [inst]
+   if not pat:
+       pat = {'HARPS': {'A': '_e2ds_A.fits', 'B': '_e2ds_B.fits'}[fib],
+              'FEROS': {'A': '.1061.fits', 'B': '.1062.fits'}[fib]} [inst]
    tar = tarfile.open(s)
    for member in tar.getmembers():
        if pat in member.name: extr = member

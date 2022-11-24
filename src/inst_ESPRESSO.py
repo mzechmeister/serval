@@ -10,7 +10,7 @@ drs = 2 if name.endswith('ESPRESSO') else 1   # DRS version (old <2.0.0)
 # DRS v2.0.0: Both slices are already merged into one order
 
 # Instrument parameters
-pat = "*_0003.fits"
+pat = "*_0003.fits *.tar"   # splitted by white space
 
 obsname = 'paranal'   # for barycorrpy
 obsloc = dict(lat=-24.6268, lon=-70.4045, elevation=2648.)   # HIERARCH ESO TEL3 GEO*
@@ -35,6 +35,11 @@ if join_slice:
    pmax *= 2
 
 def scan(self, s, pfits=True, verb=False):
+   if '.tar' in s:
+      # ES_S2BA has blaze
+      # ES_S2DA is deblazed
+      # ES_PFBA is blaze function
+      s = file_from_tar(s, inst=inst, fib=self.fib, pat="ES_S2DA", pfits=pfits)
    if 1:
       self.HIERARCH = HIERARCH = 'HIERARCH '
       HIERINST = HIERARCH + 'ESO '
