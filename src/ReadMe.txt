@@ -207,17 +207,18 @@ Column Format Units     Label     Explanations
 --------------------------------------------------------------------------------
      1 A      ---       TIMEID    Identifier for file (time stamp)
      2 D      ---       BJD       Barycentric Julian date [1]
-     3 D      ---       SNREF     Signal-to-ratio in reference order (CARM_VIS: 36, CARM_NIR: 16, HARPS: 55)
-     4 A      ---       OBJ       Fits keyword OBJECT
-     5 D      s         EXPTIME   Exposure time
-     6 A      ---       SPT       Spectral type SpT ccf.mask
-     7 I256   ---       FLAG      Flag bad spectra/instrument mode (0: ok)
-     8 D      ---       AIRMASS   Air mass from fits header
-     9 D      deg       RA        Telescope Ascension (degrees)
-    10 D      deg       DE        Telescope declination (degrees)
-    11 D      deg       SUNALT    Sun altitude (degrees)
-    12 D      deg       MOONSEP   Moon separation (degrees)
-    13 D      deg       MOONPHASE Moon phase (degrees)
+     3 D      km/s      BERV      Barycentric earth radial velocity [1]
+     4 D      ---       SNREF     Signal-to-ratio in reference order (CARM_VIS: 36, CARM_NIR: 16, HARPS: 55)
+     5 A      ---       OBJ       Fits keyword OBJECT
+     6 D      s         EXPTIME   Exposure time
+     7 A      ---       SPT       Spectral type SpT ccf.mask
+     8 I256   ---       FLAG      Flag bad spectra/instrument mode (0: ok)
+     9 D      ---       AIRMASS   Air mass from fits header
+    10 D      deg       RA        Telescope Ascension (degrees)
+    11 D      deg       DE        Telescope declination (degrees)
+    12 D      deg       SUNALT    Sun altitude (degrees)
+    13 D      deg       MOONSEP   Moon separation (degrees)
+    14 D      deg       MOONPHASE Moon phase (degrees)
 --------------------------------------------------------------------------------
 
 
