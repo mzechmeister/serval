@@ -69,6 +69,8 @@ Column Format Units     Label     Explanations
      6 A      ---       TIMEID    Identifier for file (time stamp)
      7 D      ---       TMMEAN    Flux weighted mean point
      8 D      s         EXPTIME   Exposure time
+     9 D      km/s      BERVSTART BERV at start of exposure
+    10 D      km/s      BERVEND   BERV at end of exposure
 --------------------------------------------------------------------------------
 
 
