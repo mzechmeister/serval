@@ -954,10 +954,6 @@ def serval():
       pomax = ptomax - 300
       pmin = pomin.min()
       pmax = pomin.max()
-   elif inst.name == 'FTS':
-      iomax = 70
-      pmin = 300
-      pmax = 50000/5 - 500
 
    pat = pat % {'fib': fib}
 
@@ -1054,9 +1050,6 @@ def serval():
       files = sorted(glob.glob(dir_or_inputlist+'/*pho*_'+fib+'.fits'))
    if 'FEROS' in inst.name:
       files += sorted(glob.glob(dir_or_inputlist+'/f*'+('1' if fib=='A' else '2')+'0001.mt'))
-   if 'FTS' in inst.name:
-      files = sorted(glob.glob(dir_or_inputlist+'/*ap08.*_ScSm.txt'))
-      files = [s for s in files if '20_ap08.1_ScSm.txt' not in s and '20_ap08.2_ScSm.txt' not in s and '001_08_ap08.193_ScSm.txt' not in s ]
 
    files = np.array(files)[nset]
    nspec = len(files)
@@ -2624,7 +2617,6 @@ if __name__ == "__main__":
    argopt('-niter', help='number of RV iterations'+default, type=int, default=2)
    argopt('-oset', help='index for order subset (e.g. 1:10, ::5)'+default, default=oset, type=arg2slice)
    argopt('-o_excl', help='Orders to exclude (e.g. 1,10,3)'+default, default=[], type=arg2slice)
-   #argopt('-outmod', help='output the modelling results for each spectrum into a fits file',  choices=['ratio', 'HARPN', 'CARM_VIS', 'CARM_NIR', 'FEROS', 'FTS'])
    argopt('-ofac', help='oversampling factor in coadding'+default, default=ofac, type=float)
    argopt('-ofacauto', help='automatic knot spacing with BIC.', action='store_true')
    argopt('-outchi', help='output of the chi2 map', nargs='?', const='_chi2map.fits')
