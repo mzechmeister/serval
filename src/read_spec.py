@@ -235,7 +235,7 @@ class Spectrum:
          w, f, e, b = self.w[o], self.f[o], self.e[o], self.bpmap[o]
       else:
          w, f, e, b = self.data(self, orders=orders, **kwargs)
-         w = np.log(w) if wlog else w.astype(np.float)
+         w = np.log(w) if wlog else w.astype(float)
          f = f.astype(float)
          e = e.astype(float)
          self.bflag |= np.bitwise_or.reduce(b.ravel())

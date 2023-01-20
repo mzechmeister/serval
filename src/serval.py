@@ -65,22 +65,22 @@ ptr = np.ctypeslib.ndpointer
 _pKolynomial = np.ctypeslib.load_library('polyregression.so', servalsrc)
 _pKolynomial.polyfit.restype = c_double
 _pKolynomial.polyfit.argtypes = [
-   ptr(dtype=np.float),  # x2
-   ptr(dtype=np.float),  # y2
-   ptr(dtype=np.float),  # e_y2
-   ptr(dtype=np.float),  # fmod
+   ptr(dtype=float),   # x2
+   ptr(dtype=float),   # y2
+   ptr(dtype=float),   # e_y2
+   ptr(dtype=float),   # fmod
    #ptr(dtype=np.bool),  # ind
    c_double,             # ind
    c_int, c_double, c_int,  # n, wcen, deg
-   ptr(dtype=np.float),  # p
-   ptr(dtype=np.float),  # lhs
-   ptr(dtype=np.float)   # pstat
+   ptr(dtype=float),   # p
+   ptr(dtype=float),   # lhs
+   ptr(dtype=float)    # pstat
 ]
 _pKolynomial.interpol1D.argtypes = [
-   ptr(dtype=np.float),  # xn
-   ptr(dtype=np.float),  # yn
-   ptr(dtype=np.float),  # x
-   ptr(dtype=np.float),  # y
+   ptr(dtype=float),   # xn
+   ptr(dtype=float),   # yn
+   ptr(dtype=float),   # x
+   ptr(dtype=float),   # y
    c_int, c_int          # nn, n
 ]
 
@@ -585,7 +585,7 @@ def CCF(wt, ft, x2, y2, va, vb, e_y2=None, keep=None, plot=False, ccfmode='trape
    vgrid = np.arange(va, vb, v_step)
 
    # CCF is a data compression/smoothing/binning
-   SSR = np.arange(vgrid.size, dtype=np.float64)
+   SSR = np.arange(vgrid.size, dtype=float)
 
    def model_box(x, v):
        idx = np.searchsorted(wt+v/c, x)
@@ -1107,7 +1107,7 @@ def serval():
       import astropy.io.fits as pyfits
       #hdu = pyfits.open('/home/astro115/carmenes/tellurics/stdatmos_vis/stdatmos_vis30a090rh0780p000t.fits')
       hdu = pyfits.open(atmspec)
-      wt, ft = lam2wave(hdu[1].data.field(0).astype(np.float64)), hdu[1].data.field(1).astype(np.float64)
+      wt, ft = lam2wave(hdu[1].data.field(0).astype(float)), hdu[1].data.field(1).astype(float)
       atmmod = spl.ucbspl_fit(wt, ft, K=int(ft.size/2))
       tidx = slice(None, -5)
 

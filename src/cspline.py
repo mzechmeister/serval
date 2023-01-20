@@ -16,8 +16,8 @@ except:
 
 from ctypes import c_int, c_long, c_double
 
-ptr_double = np.ctypeslib.ndpointer(dtype=np.float)
-ptr_int = np.ctypeslib.ndpointer(dtype=np.int)
+ptr_double = np.ctypeslib.ndpointer(dtype=float)
+ptr_int = np.ctypeslib.ndpointer(dtype=int)
  
 _cbspline = np.ctypeslib.load_library('cbspline.so', os.path.dirname(__file__))
 
@@ -247,7 +247,7 @@ class spl:
       else:
          x = (self.K-1)/(self.xmax-self.xmin) * (x-self.xmin)
          k, p = divmod(x, 1)
-         k = k.astype(np.int)
+         k = k.astype(int)
          # handling of locations outside
          if border == 'extrapolate':
             # further options could be natural
