@@ -2,8 +2,7 @@ from read_spec import *
 
 # Instrument parameters
 name = __name__[5:]
-obsloc = dict(lat=30.671666694444447, lon=255.97833330555557, elevation=2075)   # elp: McDonald http://www.astropy.org/astropy-data/coordinates/sites.json
-
+#obsloc = dict(lat=30.671666694444447, lon=255.97833330555557, elevation=2075)   # elp: McDonald http://www.astropy.org/astropy-data/coordinates/sites.json
 pat = '*.fits.fz'
 
 iomax = 68
@@ -18,10 +17,16 @@ def scan(self, filename, pfits=True):
     hdulist = self.hdulist = pyfits.open(filename)
     self.header = hdr = hdulist[0].header
     self.site = hdr['SITEID']
+    global obsloc
     if self.site == 'tlv':
-        global obsloc
-        obsloc = dict(lat=30.595833, lon=34.763333, elevation=875)   # https://de.wikipedia.org/wiki/Wise_Observatory
+        obsloc = dict(lat=30.595833, lon=34.763333, elevation=875)# https://de.wikipedia.org/wiki/Wise_Observatory
+    elif self.site == 'elp':
+        obsloc = dict(lat=30.669497322, lon=-104.020166586, elevation=2077)
+    elif self.site == "lsc":
+        obsloc = dict(lat=30.2379, lon=70.7337, elevation=2738)
+
     self.instname = hdr['INSTRUME']
+    print("instrument", self.instname )
     if self.instname.startswith('fa'):
         self.instname = 'NRES'
     self.drsberv = hdr.get('BARYCORR', np.nan) / 1000   # [km/s]
