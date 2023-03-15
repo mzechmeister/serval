@@ -18,7 +18,10 @@ try:
 except:
     print('Cannot import astropy.io.fits')
 
-import chi2map
+try:
+    import chi2map
+except:
+    print('Cannot import chi2map')
 
 __author__ = 'Mathias Zechmeister'
 __version__ = '2021-03-31'
