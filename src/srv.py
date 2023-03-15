@@ -778,21 +778,21 @@ def compare(obj1, obj2, **kwargs):
         arg1 = ''
         arg2 = ''
         if not obj1.has_d.all():
-           arg1 += 'us 1:2:3 w e pt 6 lt 1 t "%s no drift (rms = %.3g m/s)" noenh' % (obj1.keytitle, obj1.mlrms[0])
+           arg1 += 'us 1:2:3 w e pt 6 lt 1 t "RVc no drift"'
         if obj1.has_d.any():
            if arg1: arg1 += ', "" '
-           arg1 += 'us 1:($2/$4):3 w e pt 7 lt 1 t "RVc"'
+           arg1 += 'us 1:($2/$4):3 w e pt 7 lt 1 t "%s (rms = %.3g m/s)" noenh' % (obj1.keytitle, obj1.mlrms[0])
         if not obj2.has_d.all():
-           arg2 += 'us 1:2:3 w e pt 6 lt 3 t "%s no drift (rms = %.3g m/s)" noenh' % (obj2.keytitle, obj2.mlrms[0])
+           arg2 += 'us 1:2:3 w e pt 6 lt 3 t "RVc no drift"'
         if obj2.has_d.any():
            if arg2: arg2 += ', "" '
-           arg2 += 'us 1:($2/$4):3 w e pt 7 lt 3 t "RVc"'
+           arg2 += 'us 1:($2/$4):3 w e pt 7 lt 3 t "%s (rms = %.3g m/s)" noenh' % (obj2.keytitle, obj2.mlrms[0])
 
         hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0'
         arg1 += hypertext + 'lc 1 t ""'
         arg2 += hypertext + 'lc 3 t ""'
-        gplot.key('tit "RVCs"')
         gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
+        gplot.mxtics().mytics()
         gplot-(obj1.bjd-2450000, obj1.RVc, obj1.e_RVc, obj1.has_d, obj1.info, arg1)
         gplot+(obj2.bjd-2450000, obj2.RVc, obj2.e_RVc, obj2.has_d, obj2.info, arg2)
         i1 = np.in1d(obj1.bjd, obj2.bjd)
