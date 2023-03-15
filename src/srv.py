@@ -32,6 +32,7 @@ SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
 # fix of keepdim capability of genfromtxt
 genfromtxt2d = lambda *x,**y: np.atleast_2d(np.genfromtxt(*x,**y))
 
+gplot.bar(0.5)
 
 class srv:
    '''
@@ -768,12 +769,7 @@ class srv:
 
       pause(obj)
 
-def compare(tag1, tag2, **kwargs):
-
-    obj1 = srv(tag1, **kwargs)
-    obj1.stat()
-    obj2 = srv(tag2, **kwargs)
-    obj2.stat()
+def compare(obj1, obj2, **kwargs):
 
     if 1:
         arg1 = ''
@@ -819,7 +815,7 @@ if __name__ == "__main__":
    argopt('-brv', help='Compare BERVs with DRSBERVs', action='store_true')
    argopt('-cen', help='center RVs to zero median', action='store_true')
    argopt('-chi2map', help='plot the chi2map', action='store_true')
-   argopt('-cmp', help='compare two data set', action='store_true')
+   argopt('-cmp', help='Tag of comparison run.', type=str)
    argopt('-disp', help='plot order dispersion', action='store_true')
    argopt('-dlw', help='plot dLW', action='store_true')
    argopt('-dlwo', help='plot dLW_o colorcoded', action='store_true')
@@ -845,14 +841,17 @@ if __name__ == "__main__":
    args = parser.parse_args()
 
    if args.cmp:
-      compare(*args.tags, cen=args.cen)
-      exit()
+      objcmp = srv(args.cmp, cen=args.cen)
+      objcmp.stat()
+      print()
 
    for tag in args.tags:
       obj = srv(tag, cen=args.cen)
       obj.targ()
       obj.stat()
-      if not True in args.__dict__.values():
+      if args.cmp:
+          compare(obj, objcmp, cen=args.cen)
+      elif not True in args.__dict__.values():
          obj.plotrv()
       elif args.i:
          while True:
