@@ -9,7 +9,7 @@ Currently, SERVAL can process data from CARM_VIS, CARM_NIR, ELODIE, ESPRESSO, HA
 
 Requirements:
 - python (2.7 or 3.6+) + numpy, scipy, astropy
-- gnuplot
+- gnuplot (for Mac OS hints are given in the [wiki](https://github.com/mzechmeister/serval/wiki/Installation-hints-for-Mac-OS))
 
 Setup the path:
 ```bash
@@ -44,7 +44,7 @@ pip install --user barycorrpy
 ```
 See also https://github.com/shbhuk/barycorrpy/wiki/1.-Installation for other possibilities.
 
-A few c programs come precompiled. But probably it is necessary to compile (e.g. Mac OS) ...
+Some C and Fortran programs must be compiled:
 ```bash
 cd $SERVAL/src/
 gcc -c  -Wall -O2 -ansi -pedantic -fPIC polyregression.c; gcc -o polyregression.so -shared polyregression.o
@@ -54,11 +54,13 @@ cd $SERVAL/src/BarCor
 gfortran bary.f -std=legacy -o bary.e
 ```
 Newer gfortran version may require an additional option `gfortran bary.f -fallow-argument-mismatch -std=legacy -o bary.e`.
+(For problems with Mac OS see [wiki](https://github.com/mzechmeister/serval/wiki/Installation-hints-for-Mac-OS#spl_intf).)
 
 A first try to check whether there are any conflicts. It should list all available options:
 ```bash
 $SERVAL/src/serval.py --help
 ```
+(For problems with Mac OS see [wiki](https://github.com/mzechmeister/serval/wiki/Installation-hints-for-Mac-OS#gnuplot-died).)
 
 If you have a `~/bin` folder, a useful shortcut is:
 ```bash
