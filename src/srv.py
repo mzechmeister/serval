@@ -853,7 +853,7 @@ if __name__ == "__main__":
       obj.targ()
       obj.stat()
       if args.cmp:
-          compare(obj, objcmp, cen=args.cen)
+          compare(objcmp, obj, cen=args.cen)
       elif not True in args.__dict__.values():
          obj.plotrv()
       elif args.i:
