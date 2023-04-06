@@ -276,7 +276,7 @@ class Chi2Map:
 
 
 def fromfile(name, *args):
-   chi2map =  np.array(pyfits.getdata(name), np.float)
+   chi2map =  np.array(pyfits.getdata(name), float)
    hdr = pyfits.getheader(name)
    vrange = hdr['CRVAL1'], hdr['CDELT1'] # -15, 0.1
    return Chi2Map(chi2map, vrange, *args, name=name)
