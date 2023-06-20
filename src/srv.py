@@ -794,7 +794,8 @@ def compare(obj1, obj2, **kwargs):
         i1 = np.in1d(obj1.bjd, obj2.bjd)
         i2 = np.in1d(obj2.bjd, obj1.bjd)
         if any(i1):
-            diff = obj2.RVc[i1] - obj1.RVc[i1]
+            diff = obj2.RVc[i2] - obj1.RVc[i1]
+            print("\nstd(diff) = %.4g m/s" % np.std(diff))
             gplot+(obj1.bjd[i1]-2450000, diff, "lc 9 ps 0.5 t 'RVc_{%s} - RVc_{%s}'"%(obj2.keytitle, obj1.keytitle))
     pause('cmp rv ', obj1.tag, 'vs.', obj2.tag)
 
