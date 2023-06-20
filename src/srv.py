@@ -376,35 +376,31 @@ class srv:
       bjd, RVc, e_RVc, RVd, e_RVd, RV, e_RV, BRV, RVsa = self.trvc
       allrv = self.allrv
       bjd, RV, e_RV, rv, e_rv = allrv[:,0], allrv[:,1], allrv[:,2], allrv[:,5:], self.allerr[:,5:]
-      bjdmap = np.tile(bjd[:,np.newaxis], rv.shape[1])
-      omap = np.tile(np.arange(len(rv.T)), rv.shape[0]).T
+      omax = rv.shape[1]
+      bjdmap = np.tile(bjd, omax)
+      omap = np.tile(np.arange(omax), rv.shape[0])
 
       # Drift and sa yet no applied to rvo
-      # gplot(bjd, RV, e_RV, 'us 1:2:3 w e pt 7',)
-      # gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette, "'+obj+'/'+obj+'.rvo.dat'+'" us 1:2:3 w e pt 7 lt 7')
       rvc = rv - (np.nan_to_num(RVd) + np.nan_to_num(RVsa))[:,np.newaxis]
       gplot.palette('define (0 "blue", 1 "green", 2 "red")').key('tit "%s"'% self.keytitle)
-      gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]')
-      # not drift corrected
-      #gplot(bjdmap.ravel(), rv.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 palette,', bjd, RV, e_RV, 'us 1:2:3 w e pt 7 lt 7')
-      # drift corrected
+      gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"').cblabel("'order'")
       arg = ''
       hypertext = ''
       if not self.has_d.all():
-         arg += 'us 1:2:3 w e pt 6 lt 7 t "RV no drift"'
+         arg += 'us i:2:3 w e pt 6 lt 7 t "RV no drift"'
       if self.has_d.any():
          if arg: arg += ', "" '
-         arg += 'us 1:2:($3/$4) w e pt 7 lt 7 t "RVc"'
+         arg += 'us i:2:($3/$4) w e pt 7 lt 7 t "RVc"'
       if 1:
-         hypertext = ' "" us 1:2:(sprintf("o: %d\\nBJD: %f\\nRV: %f", $4, $1, $2)) w labels hypertext point pt 0 lt 1 t "",'
-         arg += ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
+         hypertext = ' "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("o: %d\\nBJD: %f\\nRV: %f", $4, $1, $2)) w labels hypertext point pt 0 lt 1 t "",'
+         arg += ', "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
 
-      omax = rv.shape[1]
-      o = omap.ravel()[np.isfinite(rvc.ravel())].min()
+      o = omap[np.isfinite(rvc.ravel())].min()
+      gplot.bind('''"$" "i=!i; set xlabel i?'BJD - 2 450 000':'observation number'; repl"; i=1''')   # toggle observation BJD - number
       while 0 <= o < omax:
-         gplot-(bjdmap.ravel()-2450000, rvc.ravel(), e_rv.ravel(), omap.ravel(), 'us 1:2:4 w p pt 7 ps 0.5 palette t "RV_o",'+hypertext, bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
-         gplot+(bjdmap[:,o]-2450000, rvc[:,o], e_rv[:,o], 'us 1:2:3 w e pt 12 lc 9 t "%s"'%o)
-         oo = pause('%i/%i'% (o, omax))
+         gplot-(bjdmap-2450000, rvc.ravel(), e_rv.ravel(), omap, 'us (i?$1:int($0/'+str(omax)+')):2:4 w p pt 7 ps 0.5 palette t "RV_o",'+hypertext, bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
+         gplot+(bjd-2450000, rvc[:,o], e_rv[:,o], 'us i:2:3 w e pt 12 lc 9 t "o = %s"'%o)
+         oo = pause('o = %i/%i'% (o, omax))
          try:
             o += int(oo)
          except:
