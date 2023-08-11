@@ -24,7 +24,7 @@ import time
 import importlib
 
 import numpy as np
-from numpy import std,arange,zeros,where, polynomial,setdiff1d,polyfit,array, newaxis,average
+from numpy import std, arange, zeros, where, polynomial, array, newaxis
 from scipy import interpolate, optimize
 from scipy.optimize import curve_fit
 
@@ -331,7 +331,7 @@ def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False)
 
    # post RVs (re-weightening)
    ok = e_rv > 0
-   ordmean = average(rv*0, axis=0)
+   ordmean = np.average(rv*0, axis=0)
    gplot.key('tit "'+obj+'"')
    for i in range(1+postiter): # centering, first loop to init, other to clip
       RVp, e_RVp = nanwsem(rv-ordmean, e=e_rv*ok, axis=1)
@@ -1064,14 +1064,15 @@ def serval():
    if lookvsini: lookvsini = np.arange(iomax)[lookvsini]
 
    if outfmt or outchi: os.system('mkdir -p '+obj+'/res')
+   w_or_a = 'a' if append else 'w'
    with open(outdir+'lastcmd.txt', 'w') as f:
       print(' '.join(sys.argv), file=f)
    with open('cmdhistory.txt', 'a') as f:
       print(' '.join(sys.argv), file=f)
 
-   badfile = open(outdir + obj + '.flagdrs' + fibsuf + '.dat', 'w')
-   infofile = open(outdir + obj + '.info' + fibsuf + '.csv', 'w')
-   bervfile = open(outdir + obj + '.brv' + fibsuf + '.dat', 'w')
+   badfile = open(outdir + obj + '.flagdrs' + fibsuf + '.dat', w_or_a)
+   infofile = open(outdir + obj + '.info' + fibsuf + '.csv', w_or_a)
+   bervfile = open(outdir + obj + '.brv' + fibsuf + '.dat', w_or_a)
    prefile = outdir + obj + '.pre' + fibsuf + '.dat'
    rvofile = outdir + obj + '.rvo' + fibsuf + '.dat'
    e_rvofile = outdir + obj + '.e_rvo' + fibsuf + '.dat'
@@ -1263,7 +1264,7 @@ def serval():
       if not safemode: pause()   # ???
 
    snrmedian = np.median([sp.sn55 for sp in spoklist])
-   with open(outdir+obj+'.drs.dat', 'w') as myunit:
+   with open(outdir+obj+'.drs.dat', w_or_a) as myunit:
       for sp in spoklist:
           print(sp.bjd, sp.ccf.rvc*1000., sp.ccf.err_rvc*1000., sp.ccf.fwhm, sp.ccf.bis, sp.ccf.contrast, sp.timeid, file=myunit)  #, sp.hdr['HIERARCH ESO OBS PROG ID'], sp.hdr['HIERARCH ESO OBS PI-COI NAME']
 
@@ -2302,7 +2303,6 @@ def serval():
 
          # end loop over orders
 
-         # ind = setdiff1d(where(e_rv[n]>0.)[0],[71]) # do not use the failed and last order
          ind, = where(np.isfinite(e_rv[n])) # do not use the failed and last order
          rvm[n], rvmerr[n] = np.median(rv[n,ind]), std(rv[n,ind])
          if len(ind) > 1: rvmerr[n] /= (len(ind)-1)**0.5
@@ -2468,27 +2468,27 @@ def serval():
       mlcfile = outdir+obj+'.mlc'+fibsuf+'.dat' # maximum likehood estimated RVCs and CRX
       srvfile = outdir+obj+'.srv'+fibsuf+'.dat' # serval top-level file
       vsinifile = outdir+obj+'.vsini'+fibsuf+'.dat'
-      rvunit = [open(rvfile, 'w'), open(outdir+obj+'.badrv'+fibsuf+'.dat', 'w')]
-      rvounit = [open(rvofile, 'w'), open(rvofile+'bad', 'w')]
-      rvcunit = [open(rvcfile, 'w'), open(rvcfile+'bad', 'w')]
-      crxunit = [open(crxfile, 'w'), open(crxfile+'bad', 'w')]
-      mlcunit = [open(mlcfile, 'w'), open(mlcfile+'bad', 'w')]
-      srvunit = [open(srvfile, 'w'), open(srvfile+'bad', 'w')]
-      mypfile = [open(e_rvofile, 'w'), open(e_rvofile+'bad', 'w')]
-      snrunit = [open(snrfile, 'w'), open(snrfile+'bad', 'w')]
-      chiunit = [open(chifile, 'w'), open(chifile+'bad', 'w')]
-      dlwunit = [open(dlwfile, 'w'), open(dlwfile+'bad', 'w')]
-      e_dlwunit = [open(e_dlwfile, 'w'), open(e_dlwfile+'bad', 'w')]
+      rvunit = [open(rvfile, w_or_a), open(outdir+obj+'.badrv'+fibsuf+'.dat', w_or_a)]
+      rvounit = [open(rvofile, w_or_a), open(rvofile+'bad', w_or_a)]
+      rvcunit = [open(rvcfile, w_or_a), open(rvcfile+'bad', w_or_a)]
+      crxunit = [open(crxfile, w_or_a), open(crxfile+'bad', w_or_a)]
+      mlcunit = [open(mlcfile, w_or_a), open(mlcfile+'bad', w_or_a)]
+      srvunit = [open(srvfile, w_or_a), open(srvfile+'bad', w_or_a)]
+      mypfile = [open(e_rvofile, w_or_a), open(e_rvofile+'bad', w_or_a)]
+      snrunit = [open(snrfile, w_or_a), open(snrfile+'bad', w_or_a)]
+      chiunit = [open(chifile, w_or_a), open(chifile+'bad', w_or_a)]
+      dlwunit = [open(dlwfile, w_or_a), open(dlwfile+'bad', w_or_a)]
+      e_dlwunit = [open(e_dlwfile, w_or_a), open(e_dlwfile+'bad', w_or_a)]
       halunit = irtunit = nadunit = []
       if meas_index:
-         halunit = [open(halfile, 'w'), open(halfile+'bad', 'w')]
+         halunit = [open(halfile, w_or_a), open(halfile+'bad', w_or_a)]
       if meas_CaIRT:
-         irtunit = [open(irtfile, 'w'), open(irtfile+'bad', 'w')]
+         irtunit = [open(irtfile, w_or_a), open(irtfile+'bad', w_or_a)]
       if meas_NaD:
-         nadunit = [open(nadfile, 'w'), open(nadfile+'bad', 'w')]
+         nadunit = [open(nadfile, w_or_a), open(nadfile+'bad', w_or_a)]
 
       if vsiniauto:
-         with open(vsinifile, 'w') as vsiniunit:
+         with open(vsinifile, w_or_a) as vsiniunit:
             print('#Median vsini [km/s]:', file=vsiniunit)
             print(np.nanmedian(VSINI[:,0]),np.sqrt(2/np.pi)*np.nanstd(VSINI[:,0]), file=vsiniunit)
             print('\n#order', 'vsini[km/s]','error[km/s]', file=vsiniunit)
@@ -2581,6 +2581,7 @@ if __name__ == "__main__":
    argopt('-targpm', help='[mas/yr mas/yr] Target proper motion.', nargs=2, type=float, default=[0.0, 0.0], metavar=('PMRA', 'PMDE'))
    argopt('-targplx', help='[mas] Target parallax.', type=float, default='nan', metavar='PLX')
    argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad)).', default={'CARM_NIR': None, 'else': 'auto'}, metavar='RV')
+   argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division'+default, type=str, default=None)
