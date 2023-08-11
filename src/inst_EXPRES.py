@@ -20,9 +20,9 @@ def scan(self, s, pfits=True):
     self.drsbjd = hdu[1].header.get('BARYMJD', np.nan) + 2_450_000.5  # 0.5 right?
     self.drsberv = 0 # wavelength are aready in barycentric
     self.dateobs = hdu[0].header['DATE-OBS']
-    
+
     self.fileid = hdu[0].header['OBS_ID']
-    
+
     self.calmode = hdu[1].header['WAVE-CAL']
     self.ra = hdu[0].header['RA']
     self.de = hdu[0].header['DEC']
@@ -30,10 +30,13 @@ def scan(self, s, pfits=True):
     self.exptime = hdu[0].header['AEXPTIME']
     self.timeid = self.dateobs.replace(" ", "T")
     self.sn55 = 55
- 
+
+    if 'tellurics' not in hdulist[1].data.names:
+        self.flag |= sflag.lowSN
+
 def data(self, orders=None, pfits=True):
     hdulist = self.hdulist
- 
+
     w_air = hdulist[1].data['bary_excalibur'][orders] # This is the barycentric excalibur corrected wavelengths.
     s = hdulist[1].data['spectrum'][orders]
     continuum_model = hdulist[1].data['continuum'][orders]
