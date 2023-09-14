@@ -1,6 +1,7 @@
 from astropy.io import fits 
 from read_spec import *
 from astropy.coordinates import EarthLocation
+from astropy.time import Time
 
 name = inst = __name__[5:]
 
@@ -17,17 +18,17 @@ def scan(self, s, pfits=True):
     hdu = hdulist = self.hdulist = fits.open(s)
     self.instname = hdu[0].header['INSTRMNT']
     self.header = self.hdr = hdu[0].header
-    self.drsbjd = hdu[1].header.get('BARYMJD', np.nan) + 2_450_000.5  # 0.5 right?
+    self.drsbjd = hdu[1].header.get('BARYMJD', np.nan) + 2_400_000.5
     self.drsberv = 0 # wavelength are aready in barycentric
-    self.dateobs = hdu[0].header['DATE-OBS']
+    self.dateobs = hdu[0].header['DATE-SHT']   # Time shutter opened
+    self.mjd = Time(self.dateobs, format='isot', scale='utc').mjd
 
     self.fileid = hdu[0].header['OBS_ID']
-
     self.calmode = hdu[1].header['WAVE-CAL']
     self.ra = hdu[0].header['RA']
     self.de = hdu[0].header['DEC']
     self.airmass = hdu[0].header['AIRMASS']
-    self.exptime = hdu[0].header['AEXPTIME']
+    self.exptime = float(hdu[0].header['AEXPTIME'])   # floats are strings in header?
     self.timeid = self.dateobs.replace(" ", "T")
     self.sn55 = 55
 
@@ -38,6 +39,9 @@ def data(self, orders=None, pfits=True):
     hdulist = self.hdulist
 
     w_air = hdulist[1].data['bary_excalibur'][orders] # This is the barycentric excalibur corrected wavelengths.
+    if np.isnan(hdulist[1].data['bary_excalibur'][37,2000]):
+        w_air = hdulist[1].data['bary_wavelength'][orders]
+        #print("bary_excalibur is NaN. Using bary_wavelength.")
     s = hdulist[1].data['spectrum'][orders]
     continuum_model = hdulist[1].data['continuum'][orders]
     e = uncertainty = hdulist[1].data['uncertainty'][orders]
