@@ -17,20 +17,25 @@ pmax = 7920 - 500
 def scan(self, s, pfits=True):
     hdu = hdulist = self.hdulist = fits.open(s)
     self.header = self.hdr = hdr0 = hdu[0].header
+    hdr1 = hdu[1].header
+
     self.instname = hdr0['INSTRMNT']
-    self.drsbjd = hdu[1].header.get('BARYMJD', np.nan) + 2_400_000.5
+    self.drsbjd = hdr1.get('BARYMJD', np.nan) + 2_400_000.5
     self.drsberv = 0 # wavelength are aready in barycentric
     self.dateobs = hdr0['DATE-SHT']   # Time shutter opened
     self.mjd = Time(self.dateobs, format='isot', scale='utc').mjd
 
     self.fileid = hdr0['OBS_ID']
-    self.calmode = hdu[1].header['WAVE-CAL']
+    self.calmode = hdr1['WAVE-CAL']
     self.ra = hdr0['RA']
     self.de = hdr0['DEC']
     self.airmass = hdr0['AIRMASS']
     self.exptime = float(hdr0['AEXPTIME'])   # floats are strings in header?
     self.timeid = self.dateobs.replace(" ", "T")
     self.sn55 = 55
+
+    self.ccf.fwhm = hdr1.get('CCFFWHM', np.nan) / 1000   # [km/s]
+    self.ccf.bis = hdr1.get('BIS', np.nan) / 1000
 
     if 'tellurics' not in hdulist[1].data.names:
         self.flag |= sflag.lowSN
