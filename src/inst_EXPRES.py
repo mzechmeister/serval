@@ -16,19 +16,19 @@ pmax = 7920 - 500
 
 def scan(self, s, pfits=True):
     hdu = hdulist = self.hdulist = fits.open(s)
-    self.instname = hdu[0].header['INSTRMNT']
-    self.header = self.hdr = hdu[0].header
+    self.header = self.hdr = hdr0 = hdu[0].header
+    self.instname = hdr0['INSTRMNT']
     self.drsbjd = hdu[1].header.get('BARYMJD', np.nan) + 2_400_000.5
     self.drsberv = 0 # wavelength are aready in barycentric
-    self.dateobs = hdu[0].header['DATE-SHT']   # Time shutter opened
+    self.dateobs = hdr0['DATE-SHT']   # Time shutter opened
     self.mjd = Time(self.dateobs, format='isot', scale='utc').mjd
 
-    self.fileid = hdu[0].header['OBS_ID']
+    self.fileid = hdr0['OBS_ID']
     self.calmode = hdu[1].header['WAVE-CAL']
-    self.ra = hdu[0].header['RA']
-    self.de = hdu[0].header['DEC']
-    self.airmass = hdu[0].header['AIRMASS']
-    self.exptime = float(hdu[0].header['AEXPTIME'])   # floats are strings in header?
+    self.ra = hdr0['RA']
+    self.de = hdr0['DEC']
+    self.airmass = hdr0['AIRMASS']
+    self.exptime = float(hdr0['AEXPTIME'])   # floats are strings in header?
     self.timeid = self.dateobs.replace(" ", "T")
     self.sn55 = 55
 
@@ -36,20 +36,20 @@ def scan(self, s, pfits=True):
         self.flag |= sflag.lowSN
 
 def data(self, orders=None, pfits=True):
-    hdulist = self.hdulist
+    datatbl = self.hdulist[1].data
 
-    w_air = hdulist[1].data['bary_excalibur'][orders] # This is the barycentric excalibur corrected wavelengths.
-    if np.isnan(hdulist[1].data['bary_excalibur'][37,2000]):
-        w_air = hdulist[1].data['bary_wavelength'][orders]
+    w_air = datatbl['bary_excalibur'][orders] # This is the barycentric excalibur corrected wavelengths.
+    if np.isnan(datatbl['bary_excalibur'][37,2000]):
+        w_air = datatbl['bary_wavelength'][orders]
         #print("bary_excalibur is NaN. Using bary_wavelength.")
-    s = hdulist[1].data['spectrum'][orders]
-    continuum_model = hdulist[1].data['continuum'][orders]
-    e = uncertainty = hdulist[1].data['uncertainty'][orders]
-    tellurics = hdulist[1].data['tellurics'][orders]
+    s = datatbl['spectrum'][orders]
+    continuum_model = datatbl['continuum'][orders]
+    e = uncertainty = datatbl['uncertainty'][orders]
+    tellurics = datatbl['tellurics'][orders]
 
     f = s / continuum_model / tellurics
     #e = e / continuum_model / tellurics  <= right?
-#    w_air = hdulist[1].data['wavelength_'+beam].reshape(37,-1).astype('float64')[::-1][orders]
+#    w_air = datatbl['wavelength_'+beam].reshape(37,-1).astype('float64')[::-1][orders]
     w = airtovac(w_air)
     bpmap = np.isnan(f).astype(int)      # flag 1 for nan
     bpmap |= np.isnan(w)                 # flag 1 for nan
