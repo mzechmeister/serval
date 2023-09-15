@@ -377,7 +377,7 @@ class srv:
       allrv = self.allrv
       bjd, RV, e_RV, rv, e_rv = allrv[:,0], allrv[:,1], allrv[:,2], allrv[:,5:], self.allerr[:,5:]
       omax = rv.shape[1]
-      bjdmap = np.tile(bjd, omax)
+      bjdmap = np.tile(bjd[:,np.newaxis], omax).ravel()
       omap = np.tile(np.arange(omax), rv.shape[0])
 
       # Drift and sa yet no applied to rvo
