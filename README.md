@@ -92,6 +92,8 @@ After serval has finished, you can inspect the results with `srv.py`, for instan
 srv gj699 -rv -x
 ```
 
+The serval file output is described in [src/ReadMe.txt](src/ReadMe.txt).
+
 ### Tip
 
 You may want to include the following lines in your `~/.gnuplot`:

@@ -173,8 +173,8 @@ Description of file: obj.fits
 ----------------------------------------------------------------------------
 Extension Format Units     Label     Explanations
 ----------------------------------------------------------------------------
-      [0] A       ---                Primary header (keywords for coadd method, used
-                                     spectra and RVs, template SNR for each order)
+      [0] A      ---                 Primary header (used spectra and RVs,
+                                     template SNR for each order)
       [1] D      ---       SPEC      Flux values of template at B-spline knots
       [2] D      ---       SIG       Uncertainty estimate for knot flux values
       [3] D      ln(A)     WAVE      Knot positions of uniform B-spline
