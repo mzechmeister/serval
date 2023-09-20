@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title id="title">tpl plot</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<script src='https://cdn.plot.ly/plotly-2.14.0.min.js'></script>
+<script src='http://raw.githack.com/mzechmeister/csvplotter/master/zoom_pan.js'></script>
+<script src='http://raw.githack.com/mzechmeister/fits/master/fits.js'></script>
+<style>
+#head {
+  text-align: center;
+}
+ol {
+  width: 80ch;
+  font-family: monospace;
+  font-size: 12px;
+  background: #f9f9f9;
+  white-space: pre;
+  margin-top: 0px;
+  border: 1px solid;
+}
+
+li::marker {
+  color: grey;
+  font-size: 10px;
+}
+
+li > span {
+ color: #00c;
+}
+
+/* remove dot/full stop/period */
+ol {
+  counter-reset: item;
+  padding: 2px;
+  margin-left: 40px;
+}
+
+li {
+  counter-increment: item;
+}
+
+li::marker {
+   content: counter(item)"  ";
+}
+
+.fa-github, .fa-share-alt {
+  float: right;
+}
+
+.loading::after {
+  animation: dotty 1s steps(1) infinite;
+  content: ' ...';
+  position: absolute;
+}
+
+@keyframes dotty {
+  0%   { content: ''; }
+  25%  { content: ' .'; }
+  50%  { content: ' ..'; }
+  75%  { content: ' ...'; }
+}
+</style>
+
+<h2 id="head" class="loading">Loading</h2>
+
+<div id="spectrum" style="height: 400px;"></div>
+
+<br>
+<a href="https://github.com/mzechmeister/fits"><i class="fab fa-github"></i></a>
+For zoom/pan keyboard short cuts see <a href="https://github.com/mzechmeister/csvplotter">here</a>.
+
+<details id="header">
+<summary>fits header</summary>
+<div id="headercontent" style="height: 400px; clear: both;">
+</div>
+</details>
+
+
+<script>
+url_kwargs = (new URL(window.location)).searchParams
+file = url_kwargs.get('file')
+title.innerHTML = url_kwargs.get('title') || file
+head.innerHTML = "Loading "+ file
+
+async function load() {
+    hdulist = await fitsopen(file)
+    lnwave = await fitsdata(hdulist, 'WAVE')
+    wave = lnwave.map(x => x ? Math.exp(x): NaN)
+    flux = await fitsdata(hdulist, 'SPEC');
+
+    [nx, no] = hdulist[1].dim
+
+    colors = ['#1f77b4',  // muted blue
+        '#ff7f0e',  // safety orange
+        '#2ca02c',  // cooked asparagus green
+        '#d62728',  // brick red
+        '#9467bd',  // muted purple
+        '#8c564b',  // chestnut brown
+        '#e377c2',  // raspberry yogurt pink
+        '#7f7f7f',  // middle gray
+        '#bcbd22',  // curry yellow-green
+        '#17becf']
+    traces = []
+    var n = 0
+    for (o=0; o<no; o++) {
+        sl = [o*nx, (o+1)*nx]
+        if (wave.slice(...sl).some(x => !isNaN(x)))
+            traces.push({x: wave.slice(...sl), y: flux.slice(...sl), type: "scattergl",
+                line: {width: 1}, name: '<span style="color:'+colors[n++%10]+'">'+o+'</span>'})
+    }
+
+    axisfmt = {showline: true, mirror: 'ticks', ticklen: 8, ticks: 'inside',
+           minor: {ticks: 'inside', ticklen: 4}
+    }
+
+    Plotly.newPlot('spectrum', traces, {
+        autosize: true,
+        height: 394,
+        margin: {t: 10, b: 40, r: 5},
+        hovermode: 'none',
+        xaxis: {title:  {text: 'vacuum wavelength <i>λ</i> [Å]', standoff: 0}, ...axisfmt},
+        yaxis: {title: 'normalised flux', ...axisfmt},
+        separators: '.',   // no comma as thousand separator
+        legend: {title: {text: 'order'}, orientation: 'h', y: -0.25},
+    }, {responsive: true});
+
+    head.innerHTML = title.innerHTML + ' <a href="'+file+'" style="font-size: small"><i class="fas fa-download"></i></a> '
+    head.className = ""
+
+    headercontent.innerHTML = ' <ol><li>'+hdulist[0].cards.join("\n<li>")+'</ol>'
+
+    document.querySelectorAll("li").forEach(x => (x.innerHTML = '<span>'+x.innerText.slice(0,8)+'</span>'+x.innerText.slice(8)))
+
+    zoompan()
+}
+
+load()
+
+</script>
+
+</html>

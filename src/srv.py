@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 from __future__ import division, print_function
 
 import sys
@@ -674,6 +674,11 @@ class srv:
             o = np.clip(o, 0, resmap.shape[0] - 1)
 
 
+   def tpl(self):
+       import tpl_plot
+       tpl_plot.plot(self.tag)
+
+
    def xcorr(self, block=True):
       '''Correlation plots.'''
       import matplotlib
@@ -834,6 +839,7 @@ if __name__ == "__main__":
    argopt('-rvnno', help='plot rv and the rvo for spectrum n in a lower panel with all rvo as background', action='store_true')
    argopt('-rvo', help='plot rvo colorcoded', action='store_true')
    argopt('-spaghetti', help='plot o-rvno colorcoded', action='store_true')
+   argopt('-tpl', help='plot the template in the browser', action='store_true')
    argopt('-vsini', help='plot measured vsini for each order (see serval option -vsiniauto)', action='store_true')
    argopt('-x', help='cross plot'+default, action='store_true')
    argopt('-?', '-h', '-help', '--help',  help='show this help message and exit', action='help')
@@ -904,4 +910,5 @@ if __name__ == "__main__":
             obj.postrv()
          if args.brv:
             obj.plot_brv()
-
+         if args.tpl:
+            obj.tpl()
