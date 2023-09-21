@@ -16,22 +16,24 @@ from _thread import start_new_thread
 from urllib.parse import quote_plus
 
 
-class CORSRequestHandler(SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        SimpleHTTPRequestHandler.end_headers(self)
+class RequestHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith('/?'):
+            self.send_response(200)
+            self.end_headers()
+            with open(os.path.dirname(os.path.realpath(__file__))+'/tpl_plot.html', 'rb') as file:
+                self.wfile.write(file.read()) # Read the file and send the contents
+        else:
+            SimpleHTTPRequestHandler.do_GET(self)
 
 def plot(tag, args=None):
     browser = 'xdg-open'   # or e.g. firefox
     qtag = quote_plus(tag)
-    pwd = os.getcwd()
-    filename = 'http://localhost:8000' + pwd +'/'+qtag+'/'+qtag+'.fits'
-    url = 'http://localhost:8000' + os.path.dirname(os.path.realpath(__file__)) + '/tpl_plot.html'
+    filename = qtag+'/'+qtag+'.fits'
+    url = 'http://localhost:8000'
     args = args if args else 'title='+qtag+'.fits'
-    os.chdir("/")   # start the serve in root directory
-    start_new_thread(HTTPServer(('', 8000), CORSRequestHandler).serve_forever, (1,))
-    os.system(f"{browser} '{url}?file={filename}&{args}' && sleep 6")   # waits a bit to sent the file
-    os.chdir(pwd)
+    start_new_thread(HTTPServer(('', 8000), RequestHandler).serve_forever, (1,))   # run in background
+    os.system(f"{browser} '{url}?file={filename}&{args}' && sleep 10")   # waits a bit to sent the file
 
 if __name__ == '__main__':
     plot(sys.argv[1], sys.argv[2:])
