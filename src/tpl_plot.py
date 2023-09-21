@@ -9,12 +9,14 @@ from __future__ import division, print_function
 # The server closes finally; thus the browser cannot reload the url/file.
 
 # Example
-# SERVALPATH/src/tpl_plot.py <filename>
+# SERVALPATH/src/tpl_plot.py <tag>
+# srv -tpl <tag>
 
 from http.server import HTTPServer, SimpleHTTPRequestHandler, os, sys
 from _thread import start_new_thread
 from urllib.parse import quote_plus
-
+import webbrowser
+import time
 
 class RequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -27,13 +29,13 @@ class RequestHandler(SimpleHTTPRequestHandler):
             SimpleHTTPRequestHandler.do_GET(self)
 
 def plot(tag, args=None):
-    browser = 'xdg-open'   # or e.g. firefox
     qtag = quote_plus(tag)
     filename = qtag+'/'+qtag+'.fits'
     url = 'http://localhost:8000'
     args = args if args else 'title='+qtag+'.fits'
     start_new_thread(HTTPServer(('', 8000), RequestHandler).serve_forever, (1,))   # run in background
-    os.system(f"{browser} '{url}?file={filename}&{args}' && sleep 10")   # waits a bit to sent the file
+    webbrowser.open(f"{url}?file={filename}&{args}")
+    time.sleep(3)   # waits a bit to sent the file
 
 if __name__ == '__main__':
     plot(sys.argv[1], sys.argv[2:])
