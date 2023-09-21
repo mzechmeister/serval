@@ -142,23 +142,10 @@ async function load() {
     zoompan()
 }
 
-// 123313 sp._scene.markerOptions[0].size
-// fullLayout._plots['xy']._scene.markerOptions[0].size
-// spectrum._fullLayout._plots['xy']._scene.markerOptions[0].size
-// https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plots/cartesian/dragbox.js#L851
-// https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/components/updatemenus/draw.js#L17
-// sceneUpdate > subplot._scene > scene.draw > scatter2d.draw https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/traces/scattergl/scene_update.js#L94
-// redrawReglTraces https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plot_api/subroutines.js#L728
-// updateSubplot > redrawReglTraces https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plots/cartesian/dragbox.js#L872
-// dragTail > updateSubplots https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plots/cartesian/dragbox.js#L851
-// makeDragBox > zoomDone > dragTail https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plots/cartesian/dragbox.js#L448
-// onDone options.doneFn https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/components/dragelement/index.js#L222
-// plotDone https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plot_api/plot_api.js#L1822
-// https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plot_api/subroutines.js#L761
 
 function adaptive_markersize() {
     // monkey patch a plot function to make marker size zoom depedenent (~ fixed size in wavelength)
-    // It would cleaner to do this with spectrum.on("plotly_relayout")  Plotly.restyle
+    // It would cleaner to do this with spectrum.on("plotly_relayout") or Plotly.restyle
     // But this is slow (drawing twice), because it is triggered too late.
 
     // for with v1.5.2 (plot function already available before first plot => legend style)
