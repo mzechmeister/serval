@@ -22,6 +22,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/?'):
             self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             with open(os.path.dirname(os.path.realpath(__file__))+'/tpl_plot.html', 'rb') as file:
                 self.wfile.write(file.read()) # Read the file and send the contents
