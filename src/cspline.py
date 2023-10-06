@@ -610,7 +610,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
          #print _cbspline.cholsol(BTB, tt, BTy.size)
          flag = _cbspline.cholbnd(BTBbnd, BTy, BTy.size, 3)
          if flag:
-            print('LinAlgError: The data may contain too large gaps. Try regularisation options.')
+            print('LinAlgError: The data may contain too large gaps or poorly sampled edge. Try regularisation options.')
          #_cbspline.cholbnd_upper(gg, uu,  BTy.size, 3)
       elif 1: # python version
          try:
