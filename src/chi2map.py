@@ -84,6 +84,7 @@ class Chi2Map:
       chi2map = self.chi2map[orders]
 
       # Plot all maps normalised
+      gplot.yrange('[-0.1:1.1]')
       gplot.key('Left center rev top title "%s"' % keytitle)
       gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
       gplot.xlabel('"v [km/s]"; set ylabel "chi^2 / max(chi^2)"; set cblabel "order"')
