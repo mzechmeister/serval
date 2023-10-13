@@ -126,7 +126,7 @@ async function load() {
         height: 394,
         margin: {t: 10, b: 40, r: 5},
         hovermode: 'none',
-        xaxis: {title:  {text: 'vacuum wavelength <i>λ</i> [Å]', standoff: 0}, ...axisfmt},
+        xaxis: {title:  {text: 'vacuum wavelength <i>λ</i> [Å]', standoff: 0}, type: 'log', ...axisfmt},
         yaxis: {title: 'normalised flux', ...axisfmt},
         separators: '.',   // no comma as thousand separator
         legend: {title: {text: 'order'}, orientation: 'h', y: -0.25},
@@ -154,7 +154,8 @@ function adaptive_markersize() {
     org_plot = spectrum._fullLayout._modules[0].plot
     spectrum._fullLayout._modules[0].plot = function(gd, subplot, cdata) {
         dp = gd._fullLayout.width
-        dx = gd._fullLayout.xaxis.range[1] - gd._fullLayout.xaxis.range[0]
+        xrange = gd._fullLayout.xaxis.range.map(spectrum._fullLayout.xaxis.r2d)  // to handle log-axis, range to data (?) https://github.com/plotly/plotly.js/blob/8b76d46c058dedea34bd693daf962e4b8f1135eb/src/plots/cartesian/set_convert.js#L46
+        dx = xrange[1] - xrange[0]
         for (markopt of gd._fullLayout._plots['xy']._scene.markerOptions)
              markopt.size = Math.min(.025*dp / dx, 8)
         for (lineopt of gd._fullLayout._plots['xy']._scene.lineOptions)
