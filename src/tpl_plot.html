@@ -4,8 +4,8 @@
 <title id="title">tpl plot</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <script src='https://cdn.plot.ly/plotly-2.14.0.min.js'></script>
-<script src='http://raw.githack.com/mzechmeister/csvplotter/master/zoom_pan.js'></script>
-<script src='http://raw.githack.com/mzechmeister/fits/master/fits.js'></script>
+<script src='https://raw.githack.com/mzechmeister/csvplotter/master/zoom_pan.js'></script>
+<script src='https://raw.githack.com/mzechmeister/fits/master/fits.js'></script>
 <style>
 #head {
   text-align: center;
@@ -137,7 +137,7 @@ async function load() {
 
     headercontent.innerHTML = ' <ol><li>'+hdulist[0].cards.join("\n<li>")+'</ol>'
 
-    document.querySelectorAll("li").forEach(x => (x.innerHTML = '<span>'+x.innerText.slice(0,8)+'</span>'+x.innerText.slice(8)))
+    document.querySelectorAll("li").forEach(x => (x.innerHTML = '<span>'+x.textContent.slice(0,8)+'</span>'+x.textContent.slice(8)))
 
     zoompan()
 }
