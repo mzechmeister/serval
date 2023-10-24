@@ -6,8 +6,11 @@ from calcspec import redshift
 # ftp://ftp.eso.org/pub/dfs/pipelines/instruments/espresso/espdr-reflex-tutorial-1.3.2.pdf
 
 name = inst = __name__[5:]
-drs = 2 if name.endswith('ESPRESSO') else 1   # DRS version (old <2.0.0)
-# DRS v2.0.0: Both slices are already merged into one order
+drs = name[9:]   # strip EXPRESSO
+
+# ESPRESSO    2.0 and 2.5. Version 3.1 untested. Cf. ['ESO PRO REC1 PIPE ID']
+# EXPRESSOvMR 4UT medium resolution; both slices are already merged into one order [85x4545]
+# EXPRESSOv1  (espdr/1.3.0) [170x9111] oversampled?
 
 # Instrument parameters
 pat = "*_0003.fits *.tar"   # splitted by white space
@@ -16,15 +19,17 @@ obsname = 'paranal'   # for barycorrpy
 obsloc = dict(lat=-24.6268, lon=-70.4045, elevation=2648.)   # HIERARCH ESO TEL3 GEO*
 
 oset = np.s_[6:] #if not join_slice else np.s_[6/2:]
-iomax = 85
+
+user_mode = 'MULTIMR' if 'vMR' == drs else 'SINGLEHR'   # medium (85 slices) or high (170 slices) resolution
+
+iomax = 85 if user_mode == 'MULTIMR' else 170
 pmin = 800
 pmax = 3700
-if drs < 2:
-   iomax = 170
+if drs == 'v1':
    pmin = 1600
    pmax = 7500
 
-join_slice = (drs < 2) and False   # experimental and only drs<2.0.0
+join_slice = (user_mode != 'MULTIMR') and False   # experimental and only drs<2.0.0
 # The idea is to create one high S/N template per order, instead of two noisy templates.
 # Runs slower, because wavelengths needs to be re-sorted.
 
@@ -46,7 +51,7 @@ def scan(self, s, pfits=True, verb=False):
       HIERQC = HIERINST + 'QC '
       k_tmmean = HIERINST + 'OCS EM OBJ3 TMMEAN'
       self.HIERDRS = HIERDRS = HIERINST + 'DRS '
-      k_sn55 = HIERQC + ('ORDER55 SNR' if drs>1 else 'ORDER110 SNR') # @ 573 nm
+      k_sn55 = HIERQC + ('ORDER55 SNR' if user_mode == 'MR' else 'ORDER110 SNR') # @ 573 nm
       k_berv = HIERQC + 'BERV'
       k_bjd = HIERQC + 'BJD'
 
@@ -109,7 +114,7 @@ def scan(self, s, pfits=True, verb=False):
       self.timeid = ffileid = hdr['ARCFILE'][6:29]
       self.calmode = hdr.get(HIERINST+'INS3 CALSEL NAME','NOTFOUND')
 
-      if 'UHR' in hdr['HIERARCH ESO TPL ID']:
+      if hdr['ESO INS MODE'] != user_mode:    # SINGLEHR, MULTIMR, UHR
          self.flag |= sflag.config
 
       hdr['OBJECT'] = hdr.get('OBJECT', 'FOX')
