@@ -45,7 +45,7 @@ def scan(self, s, pfits=True):
     self.e_drift = np.nan
     self.sn55 = hdr.get('SPEMSNR', np.nan) # Estimated, where? how?
 
-    self.fileid = hdr.get(self.dateobs, 0)
+    self.fileid = self.dateobs
     self.timeid = self.fileid
     self.calmode = hdr.get('DPRTYPE', '')
 
@@ -69,13 +69,13 @@ def data(self, orders, pfits=True):
     hdulist = self.hdulist
 
     f = hdulist['FluxAB'].section[orders]
-    w = hdulist['WaveAB'].section[orders]
+    w = 10*hdulist['WaveAB'].section[orders]   # nm => Angstrom
     e = np.ones_like(w)
     blaze = hdulist['BlazeAB'].section[orders]
     f = f / blaze
-    e = 0*f + np.median(f, axis=f.ndim-1, keepdims=True) / 50  # arbitrary choice
+    e = 0*f + np.nanmedian(f, axis=f.ndim-1, keepdims=True) / 50  # arbitrary choice
 
-    bpmap = np.isnan(f).astype(np.uint64)            # flag 1 for nan
+    bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
     with np.errstate(invalid='ignore'):
         bpmap[f < -3*e] |= flag.neg
