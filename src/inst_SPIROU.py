@@ -14,6 +14,8 @@ maskfile = 'telluric_mask_carm_short.dat'
 
 pat = '*t.fits'   # Corrected from tellurics
 
+oset = [0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 40, 42, 43, 44, 45, 46, 47]
+
 
 def scan(self, s, pfits=True):
     """
@@ -41,16 +43,24 @@ def scan(self, s, pfits=True):
     self.drsbjd = hdr1.get('BJD', np.nan)
     self.dateobs = hdr['DATE-OBS'] + 'T' + hdr['UTC-OBS'][:7]
     self.mjd = hdr['MJD-OBS']
-    self.drift = hdr1.get('RV_DRIFT', np.nan)
-    self.e_drift = np.nan
-    self.sn55 = hdr.get('SPEMSNR', np.nan) # Estimated, where? how?
+    self.sn55 = hdr1.get('EXTSN033', 'SPEMSNR')  # Order 33 ~1674nm
+    # self.sn55 = hdr.get('SPEMSNR', np.nan) # Estimated, where? how?
 
     self.fileid = self.dateobs
     self.timeid = self.fileid
     self.calmode = hdr.get('DPRTYPE', '')
 
-    self.ccf.rvc = hdr.get('CCFMNRV', np.nan)
-    self.ccf.err_rvc = hdr.get('DVRMS_CC', np.nan)*1e-3
+    # to extract the RV and the drift value it is necessary to open the ccf file
+    try:
+        hdr2 = pyfits.open(s[:-6] + 'v.fits')[1].header # if the file has the same name
+        self.drift = hdr2.get('RV_DRIFT', np.nan)
+        self.ccf.rvc = hdr2.get('RV_OBJ', np.nan)
+        self.ccf.err_rvc = hdr2.get('DVRMS_CC', np.nan)*1e-3
+    except:
+        self.drift = np.nan
+        self.ccf.rvc = np.nan
+        self.ccf.err_rvc = np.nan
+    self.e_drift = np.nan
 
     self.ra = hdr['RA_DEG']
     self.de = hdr['DEC_DEG']
@@ -73,7 +83,7 @@ def data(self, orders, pfits=True):
     e = np.ones_like(w)
     blaze = hdulist['BlazeAB'].section[orders]
     f = f / blaze
-    e = 0*f + np.nanmedian(f, axis=f.ndim-1, keepdims=True) / 50  # arbitrary choice
+    e = 0*f + np.nanmedian(f, axis=f.ndim-1, keepdims=True) / self.sn55  # divided by the S/N
 
     bpmap = np.isnan(f).astype(int)            # flag 1 for nan
 
