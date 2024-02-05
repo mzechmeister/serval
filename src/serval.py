@@ -1276,7 +1276,7 @@ def serval():
       spi = 0
 
    if last:
-      tpl =  outdir + obj + '.tpl%s.fits' % fibsuf
+      tpl =  outdir + obj + '%s.fits' % fibsuf
    elif tpl is None:
       tpl = spi   # choose highest S/N spectrum
 
@@ -1349,11 +1349,11 @@ def serval():
                is_ech_tpl = False
                TPL = [Tpl(wk, fk, spline_cv, spline_ev, vsini=tplvsini)] * nord
                TPLrv = 0.
-            elif tpl.endswith('.tpl%s.fits'%fibsuf) or os.path.isdir(tpl):
+            elif tpl.endswith('%s.fits'%fibsuf) or os.path.isdir(tpl):
                # last option
                # read a spectrum stored order wise
                print("tplvsini", tplvsini)
-               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.tpl.fits' if os.path.isdir(tpl) else ''))
+               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.fits' if os.path.isdir(tpl) else ''))
                bb =  [None]*len(ff) if qq is None else qq<0.4
                TPL = [Tpl(wo, fo, spline_cv, spline_ev, bk=bo, vsini=tplvsini, vrange=[v_lo, v_hi]) for wo,fo,bo in zip(ww,ff, bb)]
                if 'HIERARCH SERVAL COADD NUM' in head:
@@ -1918,13 +1918,9 @@ def serval():
             spt.header['HIERARCH SERVAL TARG RV'] = (targrv, '[km/s] RV used')
             spt.header['HIERARCH SERVAL TARG RV SRC'] = (targrv_src, 'Origin of TARG RV')
 
-            # Oversampled template
-            write_mfits(tpl, {'SPEC':ff, 'WAVE':ww, 'QMAP':qq}, ['SPEC', 'WAVE', 'QMAP'], spt.header, hdrref='', clobber=1)
             # Knot sampled template
             write_mfits(outdir+obj+'.fits', {'SPEC':fk, 'SIG':ek, 'WAVE':wk, 'NMAP': bk, 'QMAP': qk}, tfmt, spt.header, hdrref='', clobber=1)
-            os.system("ln -sf " + os.path.basename(tpl) + " " + outdir + "template.fits")
-            print('\ntemplate written to ', tpl)
-            if 0: os.system("ds9 -mode pan '"+tpl+"[1]' -zoom to 0.08 8 "+tpl+"  -single &")
+            print('\ntemplate written to ', outdir+obj+'.fits')
 
          # end of coadding
       print("time: %s\n" % minsec(time.time()-to))
@@ -2604,7 +2600,7 @@ if __name__ == "__main__":
    argopt('-nset', '-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
    argopt('-n_excl',  help='pattern for files to exclude', nargs='+', default=[])
    argopt('-kapsig', help='kappa sigma clip value'+default, type=float, default=3.0)
-   argopt('-last', help='use last template (-tpl <obj>/template.fits)', action='store_true')
+   argopt('-last', help='use last template (-tpl <obj>/<obj>.fits)', action='store_true')
    argopt('-look', help='slice of orders to view the fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-looki', help='list of indices to watch', nargs='*', choices=sorted(lines.keys()), default=[]) #, const=['Halpha'])
    argopt('-lookt', help='slice of orders to view the coadd fit [:]', nargs='?', default=[], const=':', type=arg2slice)
