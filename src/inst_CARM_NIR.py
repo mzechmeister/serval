@@ -19,7 +19,7 @@ maskfile = 'telluric_mask_carm_short.dat'
 maskfile = 'telluric_mask_nir4.dat'
 skyfile = 'sky_carm_nir'
 
-pat = '*-nir_%(fib)s.fits'   # => nir_A.fits, nir_B.fits
+pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits
 
 
 def scan(self, s, pfits=True):
