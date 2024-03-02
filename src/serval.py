@@ -188,7 +188,7 @@ class Tpl:
 
       if vsini and self.wk[1]-self.wk[0]:
           # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
-          self.wk, self.fk = rotbroad(self.wk0, self.fk0, vsini)
+          self.wk, self.fk, self.bk = rotbroad(self.wk0, self.fk0, vsini, b=self.bk0)
 
       self.berv = berv
       self.initfunc = initfunc
@@ -237,7 +237,7 @@ class Tpl:
          self.funcarg = self.initfunc(self.wk, self.fk)
 
 
-def rotbroad(x, f, v):
+def rotbroad(x, f, v, b=None):
     '''
     Broaden a spectrum by rotation.
 
@@ -265,7 +265,7 @@ def rotbroad(x, f, v):
     A = np.sqrt(1 - (np.arange(-k,k+1.) / kmax)**2)
     A /= sum(A)    # normalise kernel to unity area
 
-    return x[k:-k], np.convolve(f, A, mode='valid')
+    return (x[k:-k], np.convolve(f, A, mode='valid')) + (() if b is None else (b[k:-k],))
 
     frot = 0
     for i in range(-k, k+1):
