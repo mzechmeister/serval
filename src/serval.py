@@ -1691,7 +1691,6 @@ def serval():
                #yfit = ww[o]* 0 # np.nan
                #ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
                #yfit[ind2] = smod(ww[o][ind2])
-               ww[o], yfit = smod.osamp(1.000000001*(4*osize+1)/smod.K)  # store with (+1) for compatibility
                wko = smod.xk     # the knot positions
                fko = smod()      # the knot values
                eko = smod.e_yk   # the error estimates for knot values
@@ -1815,9 +1814,7 @@ def serval():
             Nko,_ = np.histogram(wmod[ind], bins=edges, weights=bmod[ind]*0+1.)   # number of pixel per knot
             rmin = 0.4   # minimum ratio (fraction) of good knot points
             qko = nko / Nko
-            qqo = interp(wko, qko)(ww[o])
             bko = flag.badT * (qko < rmin)
-            bbo = flag.badT * (qqo < rmin)
 
             if 0:
                 gplot(nko, ',', Nko, ',', qko*Nko.max(), 'w l')
@@ -1859,7 +1856,10 @@ def serval():
                #gplot2.bar(0)(wmod.ravel(), mod.ravel(), emod.ravel(), linecolor.ravel(), ' us 1:2:3:4  w e pt 7 ps 0.5 lc var t "data"')
                gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"')
                gplot<(TPL[o].wk, TPL[o].fk, 'us 1:2 w lp lt 2 ps 0.5 t "prev template"')
-               gplot<(ww[o], yfit, np.where(bbo, 5, 3),' us 1:2:3 w l lc var t "new template"')
+               www, fff = smod.osamp(4)
+               qqq = interp(wko, qko)(www)
+               bbb = flag.badT * (qqq < rmin)
+               gplot<(www, fff, np.where(bbb, 5, 3),' us 1:2:3 w l lc var t "new template"')
                if (~ind).any():
                   gplot<(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"')
                if (ind<ind0).any():
@@ -1887,9 +1887,7 @@ def serval():
                # pause()
 
             if not vsiniauto:
-                ff[o] = yfit
-                qq[o] = qqo    # ratio of good pixels in oversampled template
-                TPL[o] = Tpl(ww[o], ff[o], spline_cv, spline_ev, bk=bbo)
+                TPL[o] = Tpl(wko, fko, spline_cv, spline_ev, bk=bko)
                 wk[o] = wko
                 fk[o] = fko
                 ek[o] = eko
