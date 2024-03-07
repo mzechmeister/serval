@@ -218,13 +218,13 @@ class Tpl:
           if 0:
               gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
               pause()
-               
-          self.msk = interp(wk, 1.*(BK>0))
            
       else:
           # if vrange is None
           # interpolate unbroadened mask
-          self.msk = interp(wk, 1.*(self.bk>0))
+          BK |= self.bk
+
+     self.msk = interp(wk, 1.*(BK>0))
 
    def __call__(self, w, der=0):
       return self.evalfunc(w, self.funcarg, der=der)
