@@ -1901,9 +1901,15 @@ def serval():
 
          if vsiniauto:
             # apply fitted rotational broadening
+            ok = np.logical_and.reduce(np.isfinite(VSINI.T))
+            med_vsini, p25, p75 = np.percentile(VSINI[ok,0], [50, 25, 75])
+            # error estimate: sqrt(2)*inverf(2*0.75-1) = 0.674490 => CDF(0.674490*sigma) = 0.75
+            sd_vsini = (p75-p25) / 2 / 0.674490    # estimate standard deviation from IQR
+            e_med_vsini = 1.2533 * sd_vsini / np.sqrt(ok.sum())   # error of median [p213, Kendall 1948, Advanced Theory Of Statistics Vol 1, https://archive.org/details/in.ernet.dli.2015.57860/page/n223/mode/2up]
+            print(f"\n   med(vsini) = {med_vsini:.5f} +/- {e_med_vsini:.5f} km/s")
             for o in orders:
                # update template with median vsini
-               TPL[o].rotbroad(np.nanmedian(VSINI[:,0]))
+               TPL[o].rotbroad(med_vsini)
             # do not store broadened phoenix template (is_ech_tpl=false)
          else:
             if isinstance(ff, np.ndarray) and np.isnan(ff.sum()): stop('nan in template')
@@ -2489,7 +2495,7 @@ def serval():
       if vsiniauto:
          with open(vsinifile, w_or_a) as vsiniunit:
             print('#Median vsini [km/s]:', file=vsiniunit)
-            print(np.nanmedian(VSINI[:,0]),np.sqrt(2/np.pi)*np.nanstd(VSINI[:,0]), file=vsiniunit)
+            print(med_vsini, e_med_vsini, file=vsiniunit)
             print('\n#order', 'vsini[km/s]','error[km/s]', file=vsiniunit)
             for o in range(nord):
                print(o, VSINI[o,0], VSINI[o,1], file=vsiniunit)
