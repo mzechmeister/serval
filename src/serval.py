@@ -221,7 +221,7 @@ class Tpl:
               gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
               pause()
 
-      self.msk = interp(wk, 1.*(BK>0))
+      self.msk = interp(self.wk, 1.*(BK>0))
 
    def __call__(self, w, der=0):
       return self.evalfunc(w, self.funcarg, der=der)
