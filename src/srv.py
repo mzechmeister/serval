@@ -571,9 +571,9 @@ class srv:
          pause('spaghetti %s' % self.keytitle)
 
    def plot_vsini(self):
-         gplot.ylabel('"rotation velocity vsini [km/s]"')
+         gplot.ylabel('"rotational velocity vsini [km/s]"')
          gplot.xlabel('"order index o"')
-         gplot('"%s" us (0.5):(med=$1):(e_vsini=$2) every :::0::0' % (self.pre+'.vsini.dat') )
+         gplot('"%s" us (0.5):(med=$1):(e_vsini=$2) every :::0::0' % (self.pre+'.vsini.dat'))   # only to read median from first block
          gplot('med+e_vsini w filledcurves y=med-e_vsini fc rgb "#e3f3ff" t "", med lc 3 t sprintf("median = %.2f +/- %.2f km/s", med, e_vsini)', ', "" us 1:2:3 every :::1::1  w e lc 1 pt 6 t "%s"' % self.tag)
          pause('vsini %s' % self.keytitle)
 
