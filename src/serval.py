@@ -1774,7 +1774,10 @@ def serval():
 
                # set up data for fitting
                ### cut 200 km/s at the edges, buffer for rotbroadening
-               okmap = np.where((bmod==0) & (wmod > TPL0[o].wk[0]+200/c) & (wmod < TPL0[o].wk[-1]-200/c))
+               okTmap = ~TPL0[o].bk.take(np.searchsorted(TPL0[o].wk, wmod), mode='clip')
+               okTmap &= ~TPL0[o].bk.take(np.searchsorted(TPL0[o].wk, wmod, side='right'), mode='clip')
+               okmap = np.where(okTmap & (bmod==0) & (wmod > TPL0[o].wk[0]+200/c) & (wmod < TPL0[o].wk[-1]-200/c))
+
                ### sort by wavelength (for spl_evf in calcspec)
                sind = np.argsort(wmod[okmap])
 
