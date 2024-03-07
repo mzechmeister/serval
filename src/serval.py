@@ -195,9 +195,11 @@ class Tpl:
       self.funcarg = self.initfunc(self.wk, self.fk)
       self.evalfunc = evalfunc
 
-      BK = 0 * self.bk   # broadened flag map
+      BK = 1 * self.bk   # flag map for interpolation
       dvmin = np.diff(self.wk).min() * c
       if (bk is not None) and (vrange is not None) and (dvmin > 0):
+          # broaden flag map
+          BK = 0 * self.bk
           istart = int(np.floor(vrange[0] / dvmin))
           istop = int(np.ceil(vrange[1] / dvmin))
           for i in range(istart, istop):
@@ -219,11 +221,6 @@ class Tpl:
               gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
               pause()
            
-      else:
-          # if vrange is None
-          # interpolate unbroadened mask
-          BK |= self.bk
-
       self.msk = interp(wk, 1.*(BK>0))
 
    def __call__(self, w, der=0):
