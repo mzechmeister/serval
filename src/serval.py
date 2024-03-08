@@ -196,30 +196,9 @@ class Tpl:
       self.evalfunc = evalfunc
 
       BK = 1 * self.bk   # flag map for interpolation
-      dvmin = np.diff(self.wk).min() * c
-      if (bk is not None) and (vrange is not None) and (dvmin > 0):
+      if (bk is not None) and (vrange is not None) and (self.wk[1]-self.wk[0]):
           # broaden flag map
-          BK = 0 * self.bk
-          istart = int(np.floor(vrange[0] / dvmin))
-          istop = int(np.ceil(vrange[1] / dvmin))
-          for i in range(istart, istop):
-              if i == 0:
-                  BK |= self.bk
-                  continue
-              elif i > 0:
-                 ia = np.s_[:-i]
-                 ib = np.s_[i:]
-              elif i < 0:
-                 ia = np.s_[-i:]
-                 ib = np.s_[:i]
-              dwi = self.wk[ib] - self.wk[ia]
-              inside = dwi >= (vrange[0]/c)
-              inside &= dwi <= (vrange[1]/c)
-              BK[ib] |= self.bk[ia] * inside
-
-          if 0:
-              gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
-              pause()
+          BK = flagbroad(self.wk, self.bk, *vrange)
 
       self.msk_fast = interp(self.wk, 1.*(BK>0))
       self.msk = interpolate.interp1d(self.wk, 1.*(BK>0), fill_value=1., bounds_error=False)
@@ -303,6 +282,35 @@ def ipbroad(x, f, b, s):
         gplot(A)
         pause()
     return x[k:-k], np.convolve(f, A, mode='valid'), b[k:-k]
+
+def flagbroad(wk, bk, vmin, vmax):
+    '''
+    Broadens the flagmap. Corresponds to a convolution with a box and accumulation with logical_or instead of addition
+    '''
+    BK = 0 * bk
+    dvmin = np.diff(wk).min() * c
+    istart = int(np.floor(vmin / dvmin))
+    istop = int(np.ceil(vmax / dvmin))
+    for i in range(istart, istop):
+        if i == 0:
+            BK |= bk
+            continue
+        elif i > 0:
+           ia = np.s_[:-i]
+           ib = np.s_[i:]
+        elif i < 0:
+           ia = np.s_[-i:]
+           ib = np.s_[:i]
+        dwi = wk[ib] - wk[ia]
+        inside = dwi >= (vmin/c)
+        inside &= dwi <= (vmax/c)
+        BK[ib] |= bk[ia] * inside
+
+    if 0:
+        gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
+        pause()
+
+    return BK
 
 def analyse_rv(obj, postiter=1, fibsuf='', oidx=None, safemode=False, pdf=False):
    """
