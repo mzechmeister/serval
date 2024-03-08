@@ -165,6 +165,10 @@ class Tpl:
       bk : bad pixel flag map
       vrange : velocity range to broaden the bpmap bk
       '''
+      self.berv = berv
+      self.initfunc = initfunc
+      self.evalfunc = evalfunc
+
       ii = slice(None)
       if mask:
           ii = np.isfinite(fk)
@@ -177,7 +181,10 @@ class Tpl:
       self.vsini = vsini
       self.R = R
 
-      if R and self.wk[1]-self.wk[0]:
+      if not self.wk[1]-self.wk[0]:
+          return
+
+      if R:
           # boadening with Gaussian kernel
           fwhm = 1/R   # [ln(A)]  1/R = dlam/lam = d(ln(lam)); v_fwhm = c/R
           sig = fwhm / (2*np.sqrt(2*np.log(2)))
@@ -186,17 +193,14 @@ class Tpl:
           self.wk0, self.fk0, self.bk0 = ipbroad(self.wk0, self.fk0, self.bk0, sig)
           self.wk, self.fk, self.bk = self.wk0, self.fk0, self.bk0
 
-      if vsini and self.wk[1]-self.wk[0]:
+      if vsini:
           # does not handle gaps! Only for serval templates. Phoenix is not log-uniform sampled.
           self.wk, self.fk, self.bk = rotbroad(self.wk0, self.fk0, vsini, b=self.bk0)
 
-      self.berv = berv
-      self.initfunc = initfunc
       self.funcarg = self.initfunc(self.wk, self.fk)
-      self.evalfunc = evalfunc
 
       BK = 1 * self.bk   # flag map for interpolation
-      if (bk is not None) and (vrange is not None) and (self.wk[1]-self.wk[0]):
+      if (bk is not None) and (vrange is not None):
           # broaden flag map
           BK = flagbroad(self.wk, self.bk, *vrange)
 
