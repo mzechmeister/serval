@@ -221,14 +221,15 @@ class Tpl:
               gplot(np.exp(wk), bk, ',', np.exp(wk), BK)
               pause()
 
-      self.msk = interp(self.wk, 1.*(BK>0))
+      self.msk_fast = interp(self.wk, 1.*(BK>0))
+      self.msk = interpolate.interp1d(self.wk, 1.*(BK>0), fill_value=1., bounds_error=False)
 
    def __call__(self, w, der=0):
       return self.evalfunc(w, self.funcarg, der=der)
 
    def mskbad(self, w):
       # mask wavelengths in spectra where template is bad (atm, stellar)
-      return self.msk(w) > 0.01
+      return self.msk_fast(w) > 0.01
 
    def rotbroad(self, vsini=0):
       if vsini > 0:
@@ -1774,9 +1775,7 @@ def serval():
 
                # set up data for fitting
                ### cut 200 km/s at the edges, buffer for rotbroadening
-               okTmap = ~TPL0[o].bk.take(np.searchsorted(TPL0[o].wk, wmod), mode='clip')
-               okTmap &= ~TPL0[o].bk.take(np.searchsorted(TPL0[o].wk, wmod, side='right'), mode='clip')
-               okmap = np.where(okTmap & (bmod==0) & (wmod > TPL0[o].wk[0]+200/c) & (wmod < TPL0[o].wk[-1]-200/c))
+               okmap = np.where((bmod==0) & (TPL0[o].msk(wmod)==0) & (wmod > TPL0[o].wk[0]+200/c) & (wmod < TPL0[o].wk[-1]-200/c))
 
                ### sort by wavelength (for spl_evf in calcspec)
                sind = np.argsort(wmod[okmap])
