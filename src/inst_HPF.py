@@ -17,6 +17,7 @@ oset = "[4,5,6,14,15,16,17,18]"
 maskfile = 'telluric_mask_carm_short.dat'
 skyfile = 'sky_carm_nir'
 
+R = 53000.
 
 # Instrument read functions
 def scan(self, s, orders=None, pfits=True, verb=True):

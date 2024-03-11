@@ -274,17 +274,12 @@ def ipbroad(x, f, b, s):
     f : Broadened spectrum.
 
     '''
-
-    dx = x[1] - x[0]   # [ln(A)] wavelength step
-    kw = 3   # kernel half-width in sigma
-    k = int(kw * s / dx)        # kernel sampling
-    # Gaussian broadening kernel
-    A = np.exp(-0.5*(np.arange(-k,k+1.)/k*kw)**2)
+    dx = (x[1] - x[0]) / s   # [sigma] kernel sampling step width
+    # Gaussian broadening kernel (up to 3 sigma)
+    A = np.exp(-0.5*np.arange(0, 3, dx)**2)
+    k = A.size - 1
+    A = np.r_[A[:0:-1], A]   # pad symmetric part
     A /= sum(A)    # normalise kernel to unity area
-    if 0:
-        print(len(x), dx, s, k)
-        gplot(A)
-        pause()
     return x[k:-k], np.convolve(f, A, mode='valid'), b[k:-k]
 
 def flagbroad(wk, bk, vmin, vmax):
@@ -1364,18 +1359,6 @@ def serval():
                is_ech_tpl = False
                TPL = [Tpl(wk, fk, spline_cv, spline_ev, vsini=tplvsini)] * nord
                TPLrv = 0.
-            elif tpl.endswith('%s.fits'%fibsuf) or os.path.isdir(tpl):
-               # last option
-               # read a spectrum stored order wise
-               print("tplvsini", tplvsini)
-               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.fits' if os.path.isdir(tpl) else ''))
-               bb =  [None]*len(ff) if qq is None else qq<0.4
-               TPL = [Tpl(wo, fo, spline_cv, spline_ev, bk=bo, vsini=tplvsini, vrange=[v_lo, v_hi]) for wo,fo,bo in zip(ww,ff, bb)]
-               if 'HIERARCH SERVAL COADD NUM' in head:
-                  print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
-                  if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
-                  if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
-               TPLrv = head['HIERARCH SERVAL TARG RV']
             elif tpl.endswith('.s1d.fits'):
                # a user specified 1d template with another instrument
 
@@ -1416,6 +1399,18 @@ def serval():
 
                # template rv
                TPLrv = hdu[1].header['HIERARCH SERVAL TARG RV']
+            elif tpl.endswith('%s.fits'%fibsuf) or os.path.isdir(tpl):
+               # last option
+               # read a spectrum stored order wise
+               print("tplvsini", tplvsini)
+               ww, ff, qq, head = read_template(tpl+(os.sep+os.path.basename(tpl.rstrip(os.sep))+'.fits' if os.path.isdir(tpl) else ''))
+               bb =  [None]*len(ff) if qq is None else qq<0.4
+               TPL = [Tpl(wo, fo, spline_cv, spline_ev, bk=bo, vsini=tplvsini, vrange=[v_lo, v_hi]) for wo,fo,bo in zip(ww,ff, bb)]
+               if 'HIERARCH SERVAL COADD NUM' in head:
+                  print('HIERARCH SERVAL COADD NUM:', head['HIERARCH SERVAL COADD NUM'])
+                  if omin<head['HIERARCH SERVAL COADD COMIN']: pause('omin to small')
+                  if omax>head['HIERARCH SERVAL COADD COMAX']: pause('omax to large')
+               TPLrv = head['HIERARCH SERVAL TARG RV']
 
             else:
                # a user specified other observation/star
