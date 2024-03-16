@@ -1823,9 +1823,8 @@ def serval():
             edges = np.hstack((edges[0]+2*(wko[0]-edges[0]), edges, edges[-1]+2*(wko[-1]-edges[-1])))
             nko,_ = np.histogram(wmod[ind], bins=edges, weights=(bmod[ind]==0)*1.)
             Nko,_ = np.histogram(wmod[ind], bins=edges, weights=bmod[ind]*0+1.)   # number of pixel per knot
-            rmin = 0.4   # minimum ratio (fraction) of good knot points
             qko = nko / Nko
-            bko = flag.badT * (qko < rmin)
+            bko = flag.badT * (qko < tplqmin)
 
             if 0:
                 gplot(nko, ',', Nko, ',', qko*Nko.max(), 'w l')
@@ -1869,7 +1868,7 @@ def serval():
                gplot<(TPL[o].wk, TPL[o].fk, 'us 1:2 w lp lt 2 ps 0.5 t "prev template"')
                www, fff = smod.osamp(4)
                qqq = interp(wko, qko)(www)
-               bbb = flag.badT * (qqq < rmin)
+               bbb = flag.badT * (qqq < tplqmin)
                gplot<(www, fff, np.where(bbb, 5, 3),' us 1:2:3 w l lc var t "new template"')
                if (~ind).any():
                   gplot<(wmod[~ind], mod[~ind], emod[~ind].clip(0,mod[ind].max()/20),'us 1:2:3 w e lt 4 pt 7 ps 0.5 t "flagged"')
@@ -2652,6 +2651,7 @@ if __name__ == "__main__":
    argopt('-tplrv', help='[km/s] template RV. By default taken from the template header and set to 0 km/s for phoe tpl. [float, "tpl", "drsspt", "drsmed", "targ", None, "auto"]', default='auto')
    argopt('-tplvsini', help='[km/s] Rotational velocity to broaden template.', type=float)
    argopt('-tplR', help='Broaden template to instrumental resolution with R = (R_inst^-2 - R_tpl^-2)^-0.5. R_inst can be specified in the inst file (default: None; const: [R_inst=%s, R_tpl=inf]).'%R_inst, nargs='*' if R_inst else '+', type=float, metavar=('R_inst', 'R_tpl'))
+   argopt('-tplqmin', help='minimum quality factor (ratio of good pixels to all pixels) for template knots to be used'+default, default=0.4, type=float)
    argopt('-tset',  help="slice for file subset in template creation", default=':', type=arg2slice)
    argopt('-verb', help='verbose', action='store_true')
    v_lo, v_hi, v_step = -5.5, 5.6, 0.1
