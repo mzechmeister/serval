@@ -1706,9 +1706,6 @@ def serval():
 
                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
 
-               #yfit = ww[o]* 0 # np.nan
-               #ind2 &= (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
-               #yfit[ind2] = smod(ww[o][ind2])
                wko = smod.xk     # the knot positions
                fko = smod()      # the knot values
                eko = smod.e_yk   # the error estimates for knot values
@@ -1777,6 +1774,11 @@ def serval():
                Ko = K[np.argmin(BIC)]
                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=Ko, lam=pspllam, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
                print("K=%d " % Ko, end='')
+
+               wko = smod.xk     # the knot positions
+               fko = smod()      # the knot values
+               eko = smod.e_yk   # the error estimates for knot values
+               dko = smod.dk()   # ~second derivative at knots
 
                if 0:
                   gplot2(K, BIC, 'w lp,', Ko, min(BIC), 'lc 3 pt 7')
@@ -1896,14 +1898,6 @@ def serval():
                   pause('lookt ',o)
 
             # apply the fit
-            #ff[o][ind2] = yfit
-            if ofacauto:
-               # replace template.fits with optimal knot spacing (smoothing) for RVs
-               yfit = ww[o] * 0 # np.nan
-               ind2 = (ww[o]> smod.xmin) & (ww[o]< smod.xmax)
-               yfit[ind2] = smod(ww[o][ind2])
-               # pause()
-
             if not vsiniauto:
                 TPL[o] = Tpl(wko, fko, spline_cv, spline_ev, bk=bko)
                 wk[o] = wko
