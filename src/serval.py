@@ -1831,8 +1831,8 @@ def serval():
             # estimate the number of valid points for each knot
             edges = 0.5 * (wko[1:]+wko[:-1])
             edges = np.hstack((edges[0]+2*(wko[0]-edges[0]), edges, edges[-1]+2*(wko[-1]-edges[-1])))
-            nko,_ = np.histogram(wmod[ind], bins=edges, weights=(bmod[ind]==0)*1.)
-            Nko,_ = np.histogram(wmod[ind], bins=edges, weights=bmod[ind]*0+1.)   # number of pixel per knot
+            nko,_ = np.histogram(wmod, bins=edges, weights=(bmod==0)*1.)
+            Nko,_ = np.histogram(wmod, bins=edges, weights=bmod*0+1.)   # number of pixel per knot
             qko = nko / Nko
             bko = flag.badT * (qko < tplqmin)
 
