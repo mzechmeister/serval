@@ -1399,7 +1399,7 @@ def serval():
 
                # template rv
                TPLrv = hdu[1].header['HIERARCH SERVAL TARG RV']
-            elif tpl.endswith('%s.fits'%fibsuf) or os.path.isdir(tpl):
+            elif is_serval_tpl(tpl):
                # last option
                # read a spectrum stored order wise
                print("tplvsini", tplvsini)

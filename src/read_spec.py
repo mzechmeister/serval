@@ -293,6 +293,18 @@ def read_template(filename):
     hdu = pyfits.open(filename)
     return 1*hdu['WAVE'].data, hdu['SPEC'].data, (hdu['QMAP'].data if 'QMAP' in hdu else None), hdu[0].header
 
+def is_serval_tpl(tpl):
+    if os.path.isdir(tpl):
+        # assuming this is a serval output directory
+        return true
+    elif not tpl.endswith('.fits'):
+        # serval templates must end with suffix fits
+        return false
+    else:
+        # finally, we need to pre-check the format
+        hdu = pyfits.open(tpl)
+        return 'HIERARCH SERVAL TARG RV' in hdu[0].header
+
 def read_harps_ccf(s):
    ccf = namedtuple('ccf', 'rvc err_rvc bis fwhm contrast mask')
    tar = None
