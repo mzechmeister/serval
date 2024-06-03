@@ -1229,7 +1229,7 @@ def serval():
        try:
            from astropy.time import Time
            from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-           from astropy.coordinates import solar_system_ephemeris, get_moon, get_sun
+           from astropy.coordinates import solar_system_ephemeris, get_body, get_sun
            import astropy.units as u
            from astropy.utils.iers import conf as iers_conf
            iers_conf.iers_auto_url = 'https://datacenter.iers.org/data/9/finals2000A.all'
@@ -1240,12 +1240,13 @@ def serval():
            sc = SkyCoord("%i:%i:%s" %targ.ra, "%i:%i:%s" %targ.de, unit=(u.hourangle, u.deg), obstime=dateobs)
            with solar_system_ephemeris.set('builtin'):
                sun = get_sun(dateobs)
-               moon = get_moon(dateobs, loc)
+               moon = get_body("moon", dateobs, loc)
 
            splist.sunalt = sun.transform_to(aa).alt.deg
            splist.secz = sc.transform_to(aa).secz    # airmass estimate
-           splist.moonsep = moon.separation(sc).deg
-           splist.moonphase = moon.separation(sun).deg   # https://astroplan.readthedocs.io/en/latest/_modules/astroplan/moon.html
+           kwargs = {'origin_mismatch': "ignore"} if 'origin_mismatch' in moon.separation.__doc__ else {}   # annoying warning since https://github.com/astropy/astropy/commit/d834a332b7d846b551cfc4948b175cba1080fbe6
+           splist.moonsep = moon.separation(sc, **kwargs).deg   # https://docs.astropy.org/en/stable/coordinates/common_errors.html
+           splist.moonphase = moon.separation(sun, **kwargs).deg   # https://astroplan.readthedocs.io/en/latest/_modules/astroplan/moon.html
            #splist.moonillumination = splist.moonphase
            splist.flag |= sflag.daytime * (splist.sunalt > sunalt)
            splist.flag |= sflag.moon * (splist.moonsep < moonsep)
