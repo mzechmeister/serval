@@ -5,7 +5,7 @@ name = __name__[5:]
 # obsloc = dict(lat=30.671666694444447, lon=255.97833330555557, elevation=2075)   # elp: McDonald http://www.astropy.org/astropy-data/coordinates/sites.json
 pat = '*.fits.fz'
 
-iomax = 68
+iomax = 68 - 1   # -1 due to format mismatch
 pmax =  3800
 oset = ':52'
 
@@ -53,9 +53,17 @@ def data(self, orders=None, pfits=True):
     hdulist = self.hdulist
     # read order data
     fib = np.s_[::-2]   # assuming two fibres, but there could be three?
-    f = hdulist['SPECTRUM'].data['flux'][fib][orders]
-    w = hdulist['SPECTRUM'].data['wavelength'][fib][orders]
-    e = hdulist['SPECTRUM'].data['uncertainty'][fib][orders]
+    f = hdulist['SPECTRUM'].data['flux'][fib]
+    w = hdulist['SPECTRUM'].data['wavelength'][fib]
+    e = hdulist['SPECTRUM'].data['uncertainty'][fib]
+
+    # identify format mismatch (additional bluest/reddest order)
+    o_common = slice(1, None) if w[-1, 2000] < 8900 else slice(0, -1)
+
+    f = f[o_common][orders]
+    w = w[o_common][orders]
+    e = e[o_common][orders]
+
     w[w==0] = np.nan
 
     bpmap = np.isnan(f).astype(int)   # flag 1 for nan
