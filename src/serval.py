@@ -287,7 +287,7 @@ def flagbroad(wk, bk, vmin, vmax):
     Broadens the flagmap. Corresponds to a convolution with a box and accumulation with logical_or instead of addition
     '''
     BK = 0 * bk
-    dvmin = np.diff(wk).min() * c
+    dvmin = np.nanmin(np.diff(wk)) * c
     istart = int(np.floor(vmin / dvmin))
     istop = int(np.ceil(vmax / dvmin))
     for i in range(istart, istop):
