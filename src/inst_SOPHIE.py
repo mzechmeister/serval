@@ -101,7 +101,7 @@ def scan(self, s, pfits=True, verb=False):
 
       self.hdulist[0].verify('silentfix')
       if 'rounded' in hdr.comments[HIERINST+'OBS DATE START']:
-          print 'WARNING: proprietary data, dates are rounded.'
+          print('WARNING: proprietary data, dates are rounded.')
           self.dateobs = hdr[HIERINST+'OBS DATE START'] + 'T00:00:00.000'
       else:
           self.dateobs = hdr[HIERINST+'OBS DATE START']
