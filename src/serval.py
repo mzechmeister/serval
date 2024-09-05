@@ -1786,6 +1786,52 @@ def serval():
                   gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p')
                   #pause()
 
+
+            elif psplineauto:          
+               # automatic selection of penalty lambda for smoothing pspline
+               
+               print("\npspline auto")
+               IC = []  # array for information criterion
+               
+               # penalty lambda grid
+               Lam = np.logspace(-3,15,10)
+               
+               for li in Lam:
+                  # iterate through penalties
+                  
+                  # fit spline with penalty
+                  smod, ymod, ic = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk-1, lam=li, mu=mu, e_mu=e_mu, e_yk=True, retfit=True, ic=True)
+                  
+                  # append either bic or aic as specified
+                  IC += [ ic[psplineauto] ] 
+                  
+               # optimal penalty
+               Lamo = Lam[np.argmin(IC)] 
+               
+               # fit spline with optimal penalty
+               smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk, lam=Lamo, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
+               print("Lam=%0.0e \n" % Lamo, end='')
+
+               wko = smod.xk     # the knot positions
+               fko = smod()      # the knot values
+               eko = smod.e_yk   # the error estimates for knot values
+               dko = smod.dk()   # ~second derivative at knots
+               
+               if 0:
+                  # plot template with optimal penalty 
+                  
+                  # IC - penalty plot
+                  gplot2(np.log10(Lam), IC, 'w lp,', np.log10(Lamo), min(IC), 'lc 3 pt 7')
+                  
+                  # template plot
+                  gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w l lw 2,', smod.xk, smod(), 'w p pt 7,',)
+                  
+                  if wmod[(bmod&flag.atm > 0)].size>0:
+                     gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p,', wmod[tellind],mod[tellind], 'lc 4 pt 1 t "tellind",', wmod[(bmod&flag.atm > 0)],mod[(bmod&flag.atm > 0)], 'lc 5 pt 1 t "atm",',wmod[(bmod&flag.sky > 0)],mod[(bmod&flag.sky > 0)], 'lc 6 pt 1 t "sky",')
+
+                  pause()      
+
+              
             if vsiniauto:
                # vsini steps
                vs_hi = 150
@@ -1859,6 +1905,8 @@ def serval():
                spt.header['HIERARCH SERVAL COADD SN%03i' % o] = (float("%.3f" % sn), 'signal-to-noise estimate')
             if ofacauto:
                spt.header['HIERARCH SERVAL COADD K%03i' % o] = (Ko, 'optimal knot number')
+            elif psplineauto:
+               spt.header['HIERARCH SERVAL COADD LAM%03i' % o] = (Lamo, 'optimal penalty')
 
             # plot the model and spt
             if o in lookt:
@@ -2639,6 +2687,7 @@ if __name__ == "__main__":
    argopt('-pmin', help='Minimum pixel'+default, default=pmin, type=int)
    argopt('-pmax', help='Maximum pixel'+default, default=pmax, type=int)
    argopt('-pspline', help='pspline as coadd filter [smooth value]', nargs='?', const=0.0000001, dest='pspllam', type=float)
+   argopt('-psplineauto', help='automatic pspline smoothing using either the AIC or BIC information criteria.', nargs='?', const='aic', choices=["aic", "bic"])
    argopt('-pmu', help='analog to GP mean. Default no GP penalty. Without the mean in each order. Otherwise this value.', nargs='?', const=True, type=float)
    argopt('-pe_mu', help='analog to GP mean deviation', default=5., type=float)
    argopt('-reana', help='flag reanalyse only', action='store_true')
