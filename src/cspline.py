@@ -588,20 +588,6 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
                 DTD = lam * np.dot(D,D.T)
                 for k in range(4):
                    BTBbnd[k,:-k] += np.diag(DTD, k)
-                   
-         elif isinstance(lam, np.ndarray):
-             print('lambda is array')
-             if pord == 1:
-                #  1  2 ...  2  2  1
-                # -1 -1 ... -1 -1
-                # diagonal
-                BTBbnd[0,[0,-1]] += lam[[0,-2]]
-                BTBbnd[0,1:-1] += lam[0:-2]+lam[1:-1]
-                # subdiagonals
-                BTBbnd[1,:-1] -= lam[:-1]
-                   
-             else:
-                print('Not implemented.')
 
    #ds9(BTBbnd)
    #pause()
