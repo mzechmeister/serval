@@ -555,39 +555,39 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
          BTy = BTy[1:K+1] * 1
          BTBbnd = BTBbnd[:,1:K+1] *1
 
-      if lam is not None:
+      if lam:
          # Add penalty lam*DTD
-         if isinstance(lam, float):
-             if pord == 0:
-                # diagonal
-                BTBbnd[0] += lam
-             elif pord == 1:
-                #  1  2 ...  2  2  1
-                # -1 -1 ... -1 -1
-                # diagonal
-                BTBbnd[0,[0,-1]] += lam
-                BTBbnd[0,1:-1] += 2*lam
-                # subdiagonals
-                BTBbnd[1,:-1] -= lam
-             elif pord == 2:
-                #   1  5  6 ...  6  5  1
-                #  -2 -4 -4 ... -4 -2
-                #   1  1  1 ...  1
-                # diagonal
-                BTBbnd[0,[0,-1]] += lam
-                BTBbnd[0,[1,-2]] += 5 * lam
-                BTBbnd[0,2:-2] += 6 * lam
-                # first subdiagonal
-                BTBbnd[1,[0,-2]] -= 2*lam
-                BTBbnd[1,1:-2] -= 4 * lam
-                # second subdiagonal
-                BTBbnd[2,:-2] += lam
-             else:
-                # generic version
-                D = np.diff(np.eye(nk), n=pord)
-                DTD = lam * np.dot(D,D.T)
-                for k in range(4):
-                   BTBbnd[k,:-k] += np.diag(DTD, k)
+         print(lam)
+         if pord == 0:
+            # diagonal
+            BTBbnd[0] += lam
+         elif pord == 1:
+            #  1  2 ...  2  2  1
+            # -1 -1 ... -1 -1
+            # diagonal
+            BTBbnd[0,[0,-1]] += lam
+            BTBbnd[0,1:-1] += 2*lam
+            # subdiagonals
+            BTBbnd[1,:-1] -= lam
+         elif pord == 2:
+            #   1  5  6 ...  6  5  1
+            #  -2 -4 -4 ... -4 -2
+            #   1  1  1 ...  1
+            # diagonal
+            BTBbnd[0,[0,-1]] += lam
+            BTBbnd[0,[1,-2]] += 5 * lam
+            BTBbnd[0,2:-2] += 6 * lam
+            # first subdiagonal
+            BTBbnd[1,[0,-2]] -= 2*lam
+            BTBbnd[1,1:-2] -= 4 * lam
+            # second subdiagonal
+            BTBbnd[2,:-2] += lam
+         else:
+            # generic version
+            D = np.diff(np.eye(nk), n=pord)
+            DTD = lam * np.dot(D,D.T)
+            for k in range(4):
+               BTBbnd[k,:-k] += np.diag(DTD, k)
 
    #ds9(BTBbnd)
    #pause()
