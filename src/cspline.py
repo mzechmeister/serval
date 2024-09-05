@@ -733,7 +733,6 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
             
    return out
 
-
 # compute effective degrees of freedom
 def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
    """
@@ -742,16 +741,16 @@ def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
     Parameters:
     -----------
     BTWB_lamDTDinv : np.ndarray
-        A symmetric banded matrix (dim1 x dim1).
+        A symmetric banded matrix (Nknot x Nknot).
         
     G : np.ndarray
-        A 2D array (4 x dim2) representing transformed basis functions.
+        A 2D array (4 x Ndat) representing transformed basis functions.
         
     kk : np.ndarray
         A 1D array of indices defining the columns in G.
         
     w : np.ndarray
-        A 1D array of weights (size dim2) for each column in G.
+        A 1D array of weights (size Ndat) for each column in G.
 
     Returns:
     --------
@@ -775,11 +774,11 @@ def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
    for i in range(Ndat):
    # loop over each data points
       kki = kk[i]
-      if kki < dim1-4:
+      if kki < Nknot-4:
          edf += np.sum(BTWB_lamDTDinv[kki+kn, kki+ln] * GTGw[kn,ln,i])
       else:
          # need to check if elements are valid for the last elements of GTGw
-         valid = np.flatnonzero((kki+kn < dim1) & (kki+ln < dim1))
+         valid = np.flatnonzero((kki+kn < Nknot) & (kki+ln < Nknot))
          if valid.size > 0:
             # if elements are valid
             edf += np.sum(BTWB_lamDTDinv[kki+kn[valid], kki+ln[valid]] * GTGw[kn[valid],ln[valid],i])
