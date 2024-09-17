@@ -1803,7 +1803,7 @@ def serval():
                   smod, ymod, edf = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk-1, lam=li, mu=mu, e_mu=e_mu, e_yk=True, retfit=True, edf=True)
 
                   # compute information criterion
-                  chi = ((mod[ind] - ymod)**2*we[ind]).sum()
+                  chi2 = ((mod[ind] - ymod)**2 * we[ind]).sum()
                     
                   if psplineauto == 'aic':
                      ic = chi2 + 2*edf
