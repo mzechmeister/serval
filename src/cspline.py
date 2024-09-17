@@ -719,37 +719,37 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
 
 # compute effective degrees of freedom
 def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
-    """
-    Compute effective degrees of freedom using a loop-based method to restrict memory usage.
+   """
+   Compute effective degrees of freedom using a loop-based method to restrict memory usage.
 
-    Parameters:
-    -----------
-    BTWB_lamDTDinv : np.ndarray
-        A symmetric banded matrix (Nknot x Nknot).
-        
-    G : np.ndarray
-        A 2D array (4 x Ndat) representing transformed basis functions.
-        
-    kk : np.ndarray
-        A 1D array of indices defining the columns in G.
-        
-    w : np.ndarray
-        A 1D array of weights (size Ndat) for each column in G.
+   Parameters:
+   -----------
+   BTWB_lamDTDinv : np.ndarray
+      A symmetric banded matrix (Nknot x Nknot).
+      
+   G : np.ndarray
+      A 2D array (4 x Ndat) representing transformed basis functions.
+      
+   kk : np.ndarray
+      A 1D array of indices defining the columns in G.
+      
+   w : np.ndarray
+      A 1D array of weights (size Ndat) for each column in G.
 
-    Returns:
-    --------
-    float
-        Computed effective degrees of freedom.
-    """
-       
+   Returns:
+   --------
+   float
+      Computed effective degrees of freedom.
+   """
+         
    # get matrix dimensions
    Nknot = BTWB_lamDTDinv.shape[0]
    Ndat = G.shape[1]
-   
+
    # precompute for speed
    Gw = G * w[np.newaxis,:] 
    GTGw = G[np.newaxis,:,:] * Gw[:,np.newaxis,:]
-   
+
    # knot indices
    kn, ln = np.mgrid[:4,:4]
    kn = kn.ravel()
