@@ -677,11 +677,9 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
             mod.xk, mod(), ' lt 1 pt 7,',
             x, y, mod(x), ' lt 3, "" us 1:3 w l lt 2')
 
-   if ic:
-         # computes AIC and BIC information criteria
+   if edf:
         # using the effective degrees of freedom
         # see Eilers & Marx (1996) Eq. (27)
-        
         if 0:
             # without band matrices -> slow
             
@@ -721,7 +719,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
 
 # compute effective degrees of freedom
 def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
-   """
+    """
     Compute effective degrees of freedom using a loop-based method to restrict memory usage.
 
     Parameters:
