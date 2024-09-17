@@ -409,7 +409,7 @@ class v_cspl:
             v_f += B[k] * self.cov[kk+k,kk+j] * B[j]
       return v_f.reshape(kk.shape)
 
-def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu=None, e_mu=None, nat=True, retfit=False, var=False, e_yk=False, cov=False, ic= False, plot=False, c=True):
+def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu=None, e_mu=None, nat=True, retfit=False, var=False, e_yk=False, cov=False, edf=False, plot=False, c=True):
    '''
    Fit a uniform cubic spline to data.
 
@@ -447,15 +447,15 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    cov : boolean
       If false band matrices are used for efficient solution of equation system with band solver.
       If true covariances are estimated using matrix inversion.
-   ic : float, float, float
-      Compute information criteria. Return chi2, bic, aic.
+   edf : boolean
+      Effective degrees of freedom.
 
    Returns
    -------
    ucbspl
       The spline model.
-   ucbspl, yfit, varmod, v_cspl, ic
-      The content of tuple depends on keywords retfit, var, cov, ic.
+   ucbspl, yfit, varmod, v_cspl, edf
+      The content of tuple depends on keywords retfit, var, cov, edf.
 
    Examples
    --------
@@ -697,9 +697,8 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
             lamDTD = lam*np.dot(D.T, D)
                 
             # Compute the hat matrix for EDF
-            BT = B.T
-            BTWB = np.dot(np.dot(BT, W), B)
-            BTW = np.dot(BT, W)
+            BTW = np.dot(B.T, W)
+            BTWB = np.dot(BTW, B)
             BTWBplamDTD_inv_BTW = np.linalg.solve(BTWB + lamDTD, BTW)                
             
             # projection matrix
@@ -708,13 +707,6 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
             # effective degrees of freedom (edf)
             edf = np.trace(H_hat)
 
-            # Compute BIC & AIC
-            chi2 = ((y - yfit)**2 * w).sum()
-            bic = chi2 + edf*np.log(x.size)
-            aic = chi2 + 2*edf
-            ic = dict(chi2=chi2, bic=bic, aic=aic)
-            out += ic,
-            
         if 1:
             # band matrices version -> faster
 
@@ -723,14 +715,8 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
 
             # effective degrees of freedom (edf)
             edf = loop_sum_edf(BTWB_lamDTDinv, G, kk, w)
-            
-            # Compute BIC & AIC
-            chi2 = ((y - yfit)**2 * w).sum()
-            bic = chi2 + edf*np.log(x.size)
-            aic = chi2 + 2*edf
-            ic = dict(chi2=chi2, bic=bic, aic=aic)
-            out += ic,
-            
+           
+        out += edf, 
    return out
 
 # compute effective degrees of freedom
@@ -759,7 +745,8 @@ def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
     """
        
    # get matrix dimensions
-   Nknot, Ndat = BTWB_lamDTDinv.shape[0], G.shape[1]
+   Nknot = BTWB_lamDTDinv.shape[0]
+   Ndat = G.shape[1]
    
    # precompute for speed
    Gw = G * w[np.newaxis,:] 
@@ -770,7 +757,7 @@ def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
    kn = kn.ravel()
    ln = ln.ravel()
 
-   edf=0
+   edf = 0
    for i in range(Ndat):
    # loop over each data points
       kki = kk[i]
@@ -780,7 +767,6 @@ def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
          # need to check if elements are valid for the last elements of GTGw
          valid = np.flatnonzero((kki+kn < Nknot) & (kki+ln < Nknot))
          if valid.size > 0:
-            # if elements are valid
             edf += np.sum(BTWB_lamDTDinv[kki+kn[valid], kki+ln[valid]] * GTGw[kn[valid],ln[valid],i])
          
    return edf
