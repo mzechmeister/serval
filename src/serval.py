@@ -1791,10 +1791,10 @@ def serval():
                # automatic selection of penalty lambda for smoothing pspline
                
                print("\npspline auto")
-               IC = []  # array for information criterion
+               IC = []   # array for information criterion
                
                # penalty lambda grid
-               Lam = np.logspace(-3,15,10)
+               Lam = np.logspace(-3, 15, 10)
 
                for li in Lam:
                   # iterate through penalties
