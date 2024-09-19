@@ -409,8 +409,7 @@ class v_cspl:
             v_f += B[k] * self.cov[kk+k,kk+j] * B[j]
       return v_f.reshape(kk.shape)
 
-
-def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu=None, e_mu=None, nat=True, retfit=False, var=False, e_yk=False, cov=False, plot=False, c=True):
+def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu=None, e_mu=None, nat=True, retfit=False, var=False, e_yk=False, cov=False, edf=False, plot=False, c=True):
    '''
    Fit a uniform cubic spline to data.
 
@@ -448,13 +447,15 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    cov : boolean
       If false band matrices are used for efficient solution of equation system with band solver.
       If true covariances are estimated using matrix inversion.
+   edf : boolean
+      Effective degrees of freedom.
 
    Returns
    -------
    ucbspl
       The spline model.
-   ucbspl, yfit, varmod, v_cspl
-      The content of tuple depends on keywords retfit, var, cov.
+   ucbspl, yfit, varmod, v_cspl, edf
+      The content of tuple depends on keywords retfit, var, cov, edf.
 
    Examples
    --------
@@ -488,6 +489,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    ...    ogplot(xx, spl(xx), 'w l t "lam=%s"' % lam)
 
    '''
+
    if y is None:    # uniform data
       y = x
       x = np.linspace(xmin or 0, y.size-1 if xmax is None else xmax, num=y.size)
@@ -594,7 +596,10 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
       # GP like penality with mu and variance
       BTy += mu / e_mu**2
       BTBbnd[0] += 1. / e_mu**2
-
+      
+   # copy band matrix, since it gets overwritten below
+   BTWB_lamDTDb = np.copy(BTBbnd)
+   
    if cov:
       # invert matrix
       BTB = np.diag(BTBbnd[0])
@@ -672,7 +677,98 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
             mod.xk, mod(), ' lt 1 pt 7,',
             x, y, mod(x), ' lt 3, "" us 1:3 w l lt 2')
 
+   if edf:
+        # using the effective degrees of freedom
+        # see Eilers & Marx (1996) Eq. (27)
+        if 0:
+            # without band matrices -> slow
+            
+            # weight matrix
+            W = np.diag(w)
+            
+            # design matrix
+            B = bspline2((x-x.min())/(x.max()-x.min())*K, K, D=3)
+                
+            # penalty
+            n = B.shape[1]
+            D = np.diff(np.eye(n), n=pord).T
+            lamDTD = lam*np.dot(D.T, D)
+                
+            # Compute the hat matrix for EDF
+            BTW = np.dot(B.T, W)
+            BTWB = np.dot(BTW, B)
+            BTWBplamDTD_inv_BTW = np.linalg.solve(BTWB + lamDTD, BTW)                
+            
+            # projection matrix
+            H_hat = np.dot(B, BTWBplamDTD_inv_BTW)
+ 
+            # effective degrees of freedom (edf)
+            edf = np.trace(H_hat)
+
+        if 1:
+            # band matrices version -> faster
+
+            # Compute inverse for effective degrees of freedom (edf)
+            BTWB_lamDTDinv = solveh_banded(BTWB_lamDTDb, np.eye(np.shape(BTWB_lamDTDb)[1]), lower=True)
+
+            # effective degrees of freedom (edf)
+            edf = loop_sum_edf(BTWB_lamDTDinv, G, kk, w)
+           
+        out += edf, 
    return out
+
+# compute effective degrees of freedom
+def loop_sum_edf(BTWB_lamDTDinv, G, kk, w):
+   """
+   Compute effective degrees of freedom using a loop-based method to restrict memory usage.
+
+   Parameters:
+   -----------
+   BTWB_lamDTDinv : np.ndarray
+      A symmetric banded matrix (Nknot x Nknot).
+      
+   G : np.ndarray
+      A 2D array (4 x Ndat) representing transformed basis functions.
+      
+   kk : np.ndarray
+      A 1D array of indices defining the columns in G.
+      
+   w : np.ndarray
+      A 1D array of weights (size Ndat) for each column in G.
+
+   Returns:
+   --------
+   float
+      Computed effective degrees of freedom.
+   """
+         
+   # get matrix dimensions
+   Nknot = BTWB_lamDTDinv.shape[0]
+   Ndat = G.shape[1]
+
+   # precompute for speed
+   Gw = G * w[np.newaxis,:] 
+   GTGw = G[np.newaxis,:,:] * Gw[:,np.newaxis,:]
+
+   # knot indices
+   kn, ln = np.mgrid[:4,:4]
+   kn = kn.ravel()
+   ln = ln.ravel()
+
+   edf = 0
+   for i in range(Ndat):
+   # loop over each data points
+      kki = kk[i]
+      if kki < Nknot-4:
+         edf += np.sum(BTWB_lamDTDinv[kki+kn, kki+ln] * GTGw[kn,ln,i])
+      else:
+         # need to check if elements are valid for the last elements of GTGw
+         valid = np.flatnonzero((kki+kn < Nknot) & (kki+ln < Nknot))
+         if valid.size > 0:
+            edf += np.sum(BTWB_lamDTDinv[kki+kn[valid], kki+ln[valid]] * GTGw[kn[valid],ln[valid],i])
+         
+   return edf
+
 
 
 ### The following functions are more for demonstration, rather than efficient use.
