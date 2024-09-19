@@ -508,7 +508,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
    if nat:
       Gorg = 1 * G
       bk2bknat(G, kk, K)
-    
+
    nk = K + 2
    BTy = np.zeros(nk)
    BTBbnd = np.zeros((4, nk))
@@ -597,7 +597,7 @@ def ucbspl_fit(x, y=None, w=None, K=10, xmin=None, xmax=None, lam=0., pord=2, mu
       BTy += mu / e_mu**2
       BTBbnd[0] += 1. / e_mu**2
       
-   # copy band matrix since it gets overwritten below
+   # copy band matrix, since it gets overwritten below
    BTWB_lamDTDb = np.copy(BTBbnd)
    
    if cov:
