@@ -133,6 +133,8 @@ def scan(self, s, pfits=True, verb=False):
          self.drift = np.nan
       else:
          self.e_drift = hdr.get(HIERDRS+'DRIFT NOISE', np.nan)
+      self.drift = 0   # reset, because drifts are already included in the wavemap
+      # self.e_drift is kept to account now for wavemap uncertainty
 
       if self.instname == 'HARPS':
          # read the comment
