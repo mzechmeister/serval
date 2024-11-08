@@ -2,7 +2,9 @@ from read_spec import *
 from read_spec import Inst
 # Instrument parameters
 
-name = inst = __name__[5:]
+fibmode = 'HE' if __name__.endswith('_HE') else 'HR'
+name = inst = __name__[5:].replace('_HE', '')
+
 obsname = 'ohp' # for barycorrpy
 obsloc = dict(lat=43.9308, lon=5.7133, elevation=650)
 # 43.9308, 5.7133, 650 m
@@ -86,7 +88,7 @@ def scan(self, s, pfits=True, verb=False):
          HIERARCH = ''
 
       #self.drs = 'DRS CAL LOC NBO' in "".join(hdr.keys())  # check DRS or FOX
-      self.instname = hdr['INSTRUME'] #if self.drs else 'HARPS'
+      self.instname = hdr['INSTRUME']
       if self.instname != name:
          pause('\nWARNING: inst should be HARPS or HARPN, but got: '+self.inst+'\nSee option -inst for available inst.') 
       self.HIERARCH = HIERARCH
@@ -157,6 +159,9 @@ def scan(self, s, pfits=True, verb=False):
       self.calmode = ','.join(calmode)
       calmodedict = {'STAR,WAVE': 'OBJ,CAL', 'STAR,DARK': 'OBJ,SKY'}
       if self.calmode in calmodedict: self.calmode = calmodedict[self.calmode]
+
+      if hdr[HIERINST+'INS FIBER'].strip() != fibmode:   # high efficiency mode
+         self.flag |= sflag.config
 
       hdr['OBJECT'] = hdr.get(HIERINST+'TARG NAME', 'FOX')
       self.header = self.hdr = hdr # self.header will be set to None
