@@ -80,6 +80,9 @@ def scan(self, s, pfits=True):
       self.airmass = hdr.get('AIRMASS', np.nan)
       self.exptime = hdr['EXPTIME']
       self.tmmean = hdr.get(HIERARCH+'CARACAL TMEAN', 0.0)
+      if self.tmmean and self.exptime==0:
+         print('fixing zero EXPTIME with exposure meter TMEAN')
+         self.exptime = 2 * self.tmmean
       if self.exptime: self.tmmean /= self.exptime   # normalise
       if self.tmmean == 0: self.tmmean = 0.5
 
