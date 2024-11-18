@@ -396,6 +396,8 @@ class srv:
          arg += ', "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
 
       o = omap[np.isfinite(rvc.ravel())].min()
+      ostart, oend = np.where(np.any(~np.isnan(rvc), axis=0))[0][[0,-1]]
+      omap = omap.clip(ostart, oend)    # to limit color range
       gplot.bind('''"$" "i=!i; set xlabel i?'BJD - 2 450 000':'observation number'; repl"; i=1''')   # toggle observation BJD - number
       while 0 <= o < omax:
          gplot-(bjdmap-2450000, rvc.ravel(), e_rv.ravel(), omap, 'us (i?$1:int($0/'+str(omax)+')):2:4 w p pt 7 ps 0.5 palette t "RV_o",'+hypertext, bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg) # 'us 1:2:3 w e pt 6 lt 7, ""  us 1:2:($3/$4) w e pt 7 lt 7')
