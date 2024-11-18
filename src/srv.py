@@ -172,7 +172,7 @@ class srv:
       '''Show Halpha time series.'''
       bjd, halpha, e_halpha = self.halpha[0:3]
       arg = 'us 1:2:3 w e pt 6 lt 7 t "no drift"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nHalpha: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nHalpha: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 5 lc rgb "#ffff0000" t "",'
       arg += hypertext
 
       gplot.key('tit "%s"'%(self.keytitle))
@@ -334,7 +334,7 @@ class srv:
             if self.has_d.any():
                if arg: arg += ' "" '
                arg += 'us 1:($2/$4):3 w e pt 7 lt 7 t "RVc",'
-            hypertext = '"" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t "",'
+            hypertext = '"" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 5 lc rgb "#ffff0000" t "",'
 
             gplot(bjd-2450000, RVc, e_RVc, self.has_d, self.info, arg,
                   hypertext,
@@ -347,7 +347,7 @@ class srv:
          RVmod = crx[n]*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          RVlow = (crx[n]-e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
-         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
+         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
 
          plot = gplot
          if rvobkg:
@@ -392,8 +392,8 @@ class srv:
          if arg: arg += ', "" '
          arg += 'us i:2:($3/$4) w e pt 7 lt 7 t "RVc"'
       if 1:
-         hypertext = ' "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("o: %d\\nBJD: %f\\nRV: %f", $4, $1, $2)) w labels hypertext point pt 0 lt 1 t "",'
-         arg += ', "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
+         hypertext = ' "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("o: %d\\nBJD: %f\\nRV: %f", $4, $1, $2)) w labels hypertext point pt 5 ps 0.5 lc rgb "#ffff0000" t "",'
+         arg += ', "" us (i?$1:int($0/'+str(omax)+')):2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f+/-%f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
 
       o = omap[np.isfinite(rvc.ravel())].min()
       gplot.bind('''"$" "i=!i; set xlabel i?'BJD - 2 450 000':'observation number'; repl"; i=1''')   # toggle observation BJD - number
@@ -449,13 +449,14 @@ class srv:
          gplot.key('tit "%s\\n%s %s %s"'%(self.tag, n+1, bjd[n], self.info[n]))
          if 1:
             gplot.multiplot('layout 2,1')
-            # bottom panel
+            # top panel + mark one epoch
             self.plot_dlw(",", [bjd[n]-2450000], [dLW[n]], 'us 1:2 lc "#ff0000" pt 4 ps 1. t "n=%s (%s)"'%(n+1, self.info[n]), flush=' \n')
 
+         # bottom panel
          gplot.xlabel('"wavelength {/Symbol l} [A]"')\
               .ylabel('"dLW [1000(m/s)^2]"')
          gplot.put('i=2; bind "$" "i = i%2+1; xlab=i==1?\\"order\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; if (i==1) {unset log} else {set log x} ; repl"')
-         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], dLW[n], e_dLW[n])+ 'o: %d\\ndlw[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 0 lt 1 t ""'
+         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], dLW[n], e_dLW[n])+ 'o: %d\\ndlw[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
          gplot(self.orders, lam_o[n,self.orders], dlw[n,self.orders], e_dlw[n,self.orders], ' us i:3:4 w e pt 7 t "dLW_{%s,o} (%s)"' % (n+1, self.info[n]) + hypertext,
               ', %s t "dLW_{%s} = %5g +/- %5g", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' % (dLW[n], n+1, dLW[n], e_dLW[n], dLW[n]- e_dLW[n], dLW[n]+ e_dLW[n]))
          gplot.unset('multiplot')
@@ -483,7 +484,7 @@ class srv:
       if self.has_d.any():
          if arg: arg += ', "" '
          arg += 'us 1:($2/$4):3 w e pt 7 lt 7 t "RVc"'
-      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0  lt 1 t ""'
+      hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
       arg += hypertext
       gplot.key('tit "%s (rms = %.3g m/s)"' % (self.keytitle, self.mlrms[0]))
       gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
@@ -789,9 +790,9 @@ def compare(obj1, obj2, **kwargs):
            if arg2: arg2 += ', "" '
            arg2 += 'us 1:($2/$4):3 w e pt 7 lc "#770000FF" t "%s (rms = %.3g m/s)" noenh' % (obj2.keytitle, obj2.mlrms[0])
 
-        hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 0'
-        arg1 += hypertext + 'lc 1 t ""'
-        arg2 += hypertext + 'lc 3 t ""'
+        hypertext = ', "" us 1:2:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f",$0+1, stringcolumn(5),$1, $2, $3)) w labels hypertext point pt 7'
+        arg1 += hypertext + 'lc rgb "#ffff0000" t ""'
+        arg2 += hypertext + 'lc rgb "#ffff0000" t ""'
         gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
         gplot.mxtics().mytics()
         gplot-(obj1.bjd-2450000, obj1.RVc, obj1.e_RVc, obj1.has_d, obj1.info, arg1)
