@@ -6,28 +6,32 @@ from calcspec import redshift
 # ftp://ftp.eso.org/pub/dfs/pipelines/instruments/espresso/espdr-reflex-tutorial-1.3.2.pdf
 
 name = inst = __name__[5:]
-drs = name[9:]   # strip EXPRESSO
+drs = name[9:]   # strip ESPRESSO
 
-# ESPRESSO    2.0 and 2.5. Version 3.1 untested. Cf. ['ESO PRO REC1 PIPE ID']
-# EXPRESSOvMR 4UT medium resolution; both slices are already merged into one order [85x4545]
-# EXPRESSOv1  (espdr/1.3.0) [170x9111] oversampled?
+# ESPRESSO     2.0 and 2.5. Version 3.1 untested. Cf. ['ESO PRO REC1 PIPE ID']
+# ESPRESSO     HR_1x1 (espdr/1.3.0) [170x9111]
+# EXPRESSO_HR2 HR_4x2 (binning 2x) [170x4545]
+# EXPRESSO_MR  4UT medium resolution; both slices are already merged into one order [85x4545]
 
 # Instrument parameters
-pat = "*_0003.fits *.tar"   # splitted by white space
+pat = "*_0003.fits *.tar *ES_S2DA*.fits"   # splitted by white space
 
 obsname = 'paranal'   # for barycorrpy
 obsloc = dict(lat=-24.6268, lon=-70.4045, elevation=2648.)   # HIERARCH ESO TEL3 GEO*
 
 oset = np.s_[6:] #if not join_slice else np.s_[6/2:]
 
-user_mode = 'MULTIMR' if 'vMR' == drs else 'SINGLEHR'   # medium (85 slices) or high (170 slices) resolution
+user_mode = 'MULTIMR' if 'MR' in drs else 'SINGLEHR'   # medium (85 slices) or high (170 slices) resolution
 
 iomax = 85 if user_mode == 'MULTIMR' else 170
-pmin = 800
-pmax = 3700
-if drs == 'v1':
-   pmin = 1600
-   pmax = 7500
+
+biny = 2 if 'HR2' in drs else 1
+pmin = 1600
+pmax = 7500
+
+if biny == 2:
+   pmin = 800
+   pmax = 3700
 
 join_slice = (user_mode != 'MULTIMR') and False   # experimental and only drs<2.0.0
 # The idea is to create one high S/N template per order, instead of two noisy templates.
@@ -116,6 +120,11 @@ def scan(self, s, pfits=True, verb=False):
 
       if hdr['ESO INS MODE'] != user_mode:    # SINGLEHR, MULTIMR, UHR
          self.flag |= sflag.config
+         print('wrong mode:', user_mode, hdr['ESO INS MODE'])
+      if hdr['ESO DET BINY'] != biny:
+         self.flag |= sflag.config
+         print('wrong binning:', biny, hdr['ESO DET BINY'])
+
 
       hdr['OBJECT'] = hdr.get('OBJECT', 'FOX')
       self.header = self.hdr = hdr # self.header will be set to None
