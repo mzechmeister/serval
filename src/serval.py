@@ -2352,7 +2352,7 @@ def serval():
                gplot.key('left Left rev samplen 2 tit "%s (o=%s, v=%.2f+/-%.2f m/s)"'%(obj,o,rvo, e_rv[n,o]))
                gplot.ytics('nomirr; set y2tics; set y2range [-5*%f:35*%f]; set bar 0.5'%(rchio, rchio))
                gplot.put('i=1; bind "$" "i = i%2+1; xlab=i==1?\\"pixel\\":\\"wavelength\\"; set xlabel xlab; set xra [*:*]; print i; repl"')
-               gplot-('[][][][-5:35]', x2, w2, f2, e2.clip(0.,f2.max()), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"')
+               gplot-('[][][][-5:35]', x2, w2, f2, e2.clip(0.,np.nanmax(f2)), 'us (column(i)):3:4 w errorli t "'+sp.timeid+' all"')
                gplot<(x2,w2, f2, ((b2==0)|(b2==flag.clip))*0.5, 1+4*(b2==flag.clip), 'us (column(i)):3:4:5 w p pt 7 lc var ps var t "'+sp.timeid+' telluric free"')
                gplot<(x2,w2, f2mod,(b2==0)*0.5, 'us (column(i)):3:4 w lp lt 3 pt 7 ps var t "Fmod"')
                gplot<(x2,w2, res, b2, "us (column(i)):3:4 w lp pt 7 ps 0.5 lc var axis x1y2 t 'residuals'")
