@@ -35,7 +35,8 @@ SERVAL - SpEctrum Radial Velocity AnaLyser (%s)
 # fix of keepdim capability of genfromtxt
 genfromtxt2d = lambda *x,**y: np.atleast_2d(np.genfromtxt(*x,**y))
 
-gplot.bar(0.5)
+gplot.bar(0.5).colors('classic').mxtics().mytics()
+
 
 class srv:
    '''
