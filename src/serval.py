@@ -42,6 +42,7 @@ from chi2map import Chi2Map
 
 gplot2 = Gplot() # for a second plot window
 gplot.bar(0).colors('classic')
+gplot.unset('pointintervalbox')   # suppress annoying white circles, gnuplot 5.4.4+
 gplot.tmp = None
 
 if 'gplot_set' in locals():
