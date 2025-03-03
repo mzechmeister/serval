@@ -41,8 +41,8 @@ import phoenix_as_RVmodel
 from chi2map import Chi2Map
 
 gplot2 = Gplot() # for a second plot window
-gplot.bar(0).colors('classic')
-gplot.unset('pointintervalbox')   # suppress annoying white circles, gnuplot 5.4.4+
+gplot.reset = lambda *x: gplot.put('reset', *x).unset('pointintervalbox').bar(0).colors('classic')   # suppress annoying white circles, gnuplot 5.4.4+
+gplot.reset()
 gplot.tmp = None
 
 if 'gplot_set' in locals():
@@ -1919,7 +1919,7 @@ def serval():
 
             # plot the model and spt
             if o in lookt:
-               gplot.bar(0).key("tit '%s order %s'"% (obj,o))
+               gplot.key("tit '%s order %s'"% (obj,o))
                gplot.mxtics().mytics().xlabel("'ln {/Symbol l}'")
                # estimate a good x2tics spacing
                i10, f10 = divmod(np.log10((np.exp(max(TPL[o].wk))-np.exp(min(TPL[o].wk)))/5), 1)
