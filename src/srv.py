@@ -359,7 +359,7 @@ class srv:
 
          plot(self.orders, lam_o[n,self.orders], self.rvc[n], self.e_rv[n], RVmod, RVlow, RVupp, ' us i:3:4 w e lc 1 pt 7 t "n = %i"'%(n+1)+hypertext+', "" us i:5 w l lt 2 t "CRX = %g +/- %g m/s/Np", "" us i:6:7 w  filledcurves lt 2 fs transparent solid 0.20 t "",  %s lt 3 t "%g +/- %g m/s", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' %(crx[n], e_crx[n], RVc[n], RVc[n], e_RVc[n], RVc[n]-e_RVc[n], RVc[n]+e_RVc[n]))
 
-         gplot.unset('multiplot')
+         gplot.unset('multiplot\n $GPVAL_LAST_MULTIPLOT << EOD\nrefresh\nEOD')
          nn = pause('%i/%i %s %s'% (n+1, self.N, bjd[n], self.info[n]))
          try:
             n += int(nn)
@@ -462,7 +462,7 @@ class srv:
          hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\ndLW: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], dLW[n], e_dLW[n])+ 'o: %d\\ndlw[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
          gplot(self.orders, lam_o[n,self.orders], dlw[n,self.orders], e_dlw[n,self.orders], ' us i:3:4 w e pt 7 t "dLW_{%s,o} (%s)"' % (n+1, self.info[n]) + hypertext,
               ', %s t "dLW_{%s} = %5g +/- %5g", "+" us 1:(%s):(%s) w filledcurves lt 3 fs transparent solid 0.20 t ""' % (dLW[n], n+1, dLW[n], e_dLW[n], dLW[n]- e_dLW[n], dLW[n]+ e_dLW[n]))
-         gplot.unset('multiplot')
+         gplot.unset('multiplot\n $GPVAL_LAST_MULTIPLOT << EOD\nrefresh\nEOD')
          nn = pause('%i/%i %s %s'% (n+1,self.N, bjd[n], self.info[n]))
          try:
             n += int(nn)
