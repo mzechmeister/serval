@@ -41,7 +41,7 @@ import phoenix_as_RVmodel
 from chi2map import Chi2Map
 
 gplot2 = Gplot() # for a second plot window
-gplot.reset = lambda *x: gplot.put('reset', *x).unset('pointintervalbox').bar(0).colors('classic')   # suppress annoying white circles, gnuplot 5.4.4+
+gplot.reset = lambda *x: gplot.put('reset', *x).unset('pointintervalbox').bar(0).colors('classic').mxtics().mytics()   # suppress annoying white circles, gnuplot 5.4.4+
 gplot.reset()
 gplot.tmp = None
 
@@ -930,7 +930,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -1069,6 +1069,7 @@ def serval():
       exit(1)
    # expand slices to index arrays
    if look: look = np.arange(iomax)[look]
+   if looka: looka = np.arange(iomax)[looka]
    if lookt: lookt = np.arange(iomax)[lookt]
    if lookp: lookp = np.arange(iomax)[lookp]
    if lookssr: lookssr = np.arange(iomax)[lookssr]
@@ -1116,12 +1117,24 @@ def serval():
       # standard telluric spectrum
       if inst.name != 'CARM_VIS':
          pause('Only implemented for CARM_VIS')
-      import astropy.io.fits as pyfits
-      #hdu = pyfits.open('/home/astro115/carmenes/tellurics/stdatmos_vis/stdatmos_vis30a090rh0780p000t.fits')
-      hdu = pyfits.open(atmspec)
-      wt, ft = lam2wave(hdu[1].data.field(0).astype(float)), hdu[1].data.field(1).astype(float)
-      atmmod = spl.ucbspl_fit(wt, ft, K=int(ft.size/2))
-      tidx = slice(None, -5)
+      atmspec_file = ('' if os.path.exists(atmspec) else servallib) + atmspec
+      if not os.path.exists(atmspec_file):
+          raise FileNotFoundError(atmspec)
+
+      print("atmspec:", atmspec)
+      import atm
+      atm.load(atmspec_file)
+      if atmspec.endswith('stdAtmos_vis.fits'):
+          # a molefit spectrum that needs a convolution
+          ww = np.linspace(np.log(atm.tpl1[0][0]), np.log(atm.tpl1[0][-1]), 4*atm.tpl1[0].size)
+          fwhm = 1/64600   # [ln(A)]  1/R = dlam/lam = d(ln(lam)); v_fwhm = c/R
+          sig = fwhm / (2*np.sqrt(2*np.log(2)))
+          ff = np.interp(ww, np.log(atm.tpl1[0]), atm.tpl1[1])
+          ww, ff = ipbroad(ww, ff, ff, sig)[:2]
+          atm.tpl1 = np.exp(ww), ff
+          ff = np.interp(ww, np.log(atm.tpl2[0]), atm.tpl2[1])
+          ww, ff = ipbroad(ww, ff, ff, sig*0.7)[:2]
+          atm.tpl2 = np.exp(ww), ff
 
    if atmfile:
       if atmfile != 'auto':
@@ -1437,6 +1450,25 @@ def serval():
       else:
          '''set up a spline template from spt'''
          TPLrv = spt.ccf.rvc
+         if atmspec:
+             o_atm = 30   # reference order
+             o_atm = 44   # less stellar lines, some water, but no O2 in stdAtmos.fits, use when airmass informed
+
+             spt.atm_par = atm.fit_atm_par(spt.w[o_atm], spt.f[o_atm], a1=spt.airmass, o=o_atm)
+             spt.f0 = 1 * spt.f
+             yatm = atm.calc_atm(spt.w, spt.atm_par)
+
+             spt.f /= yatm
+             spt.e /= yatm
+             if 1:
+                  for o in looka:
+                      gplot.xlabel('"wavelength"')
+                      gplot.key(f'title "{obj} (o = {o})"')
+                      gplot(np.exp(spt.w[o]), spt.f0[o], 'w lp lc 9 pt 7 t "input",',
+                            np.exp(spt.w[o]), spt.f[o], 'w lp lc 1 pt 6 t "corrected",',
+                            np.exp(spt.w[o]), np.nanmedian(spt.f0[o])  *yatm[o], 'w l lc 7 lw 2 t "atm model"')
+                      pause(o)
+
          for o in sorted(set(orders) | set(corders)):
             if inst.name == 'FEROS':
                ptmin = ptomin[o]
@@ -1594,11 +1626,21 @@ def serval():
              if not sp.flag:  # every flagged spectrum is excluded; more stringent than in RV loop
                if cache:
                    sp.read_data()
+               if atmspec:
+                   if not hasattr(sp, 'atm_par'):
+                       # compute here for cases skippre or vtfix
+                       o_atm = 44    # less stellar lines, some water
+                       sp_atm = sp.get_data(pfits=2, orders=o_atm)
+                       ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
+
+                       sp.atm_par = atm.fit_atm_par(sp_atm.w[ok], sp_atm.f[ok], o=o_atm, a1=sp.airmass)
+                   atm_par = sp.atm_par
                sp = sp.get_data(pfits=2, orders=o)
                if atmspec:
-                  ft = atmmod(sp.w)
-                  sp.f = sp.f / ft
-                  sp.e = sp.e / ft
+                   yatm = atm.calc_atm(sp.w, atm_par, order=o)
+
+                   sp.f = sp.f / yatm
+                   sp.e = sp.e / yatm
 
                if inst.name == 'FEROS':
                   thisnpix = len(sp.bpmap)
@@ -1948,6 +1990,9 @@ def serval():
                if 0: # overplot normalised residuals
                   gplot_set('set y2tics; set ytics nomir; set y2range [-5*%f:35*%f]; set bar 0.5'%(sig,sig))
                   ogplot(wmod[ind], res,' w p pt 7 ps 0.5 lc rgb "black" axis x1y2')
+               #look for tellurics left overs
+               #gplot2.unset('pointintervalbox').bar(0)
+               #gplot2(wmod[ind], mod[ind]/smod(wmod[ind]), emod[ind], ' w e pt 7 ps 0.5 t "data"')
                pause('lookt ',o)
                gplot.reset()
                # plot relative residuals
@@ -2122,11 +2167,28 @@ def serval():
             # deepcopy probably does not copy everything properly
             sp.header = None
          sp.read_data()
+
          if atmspec:
-            # Divide out a standard atmosphere
-            ft = atmmod(sp.w[tidx])
-            sp.f[tidx] /= ft
-            sp.e[tidx] /= ft
+            o_atm = 30
+            o_atm = 44    # less stellar lines, some water
+            ok = (sp.bpmap[o_atm] == 0) & (sp.f[o_atm] / sp.e[o_atm] > 3)
+
+            atm_par = atm.fit_atm_par(sp.w[o_atm, ok], sp.f[o_atm,ok], o=o_atm, a1=sp.airmass)
+
+            # store atm coefficients
+            spoklist[n].atm_par = sp.atm_par = atm_par
+            sp.f0 = 1 * sp.f
+
+            # Divide out the atmosphere
+            yatm = atm.calc_atm(sp.w, sp.atm_par)
+            sp.f /= yatm
+            sp.e /= yatm
+            for o in looka:
+                yO2 = atm.calc_atm(sp.w, [*sp.atm_par[0:2], 0])
+                gplot.key('tit "%s (n=%s, o=%s)"' % (obj, n, o))
+                gplot(sp.w[o,ok], sp.f0[o,ok], sp.f[o,ok], yatm[o,ok], yO2[o,ok], 'w lp pt 7 ps 0.5 lc 9 t "input", "" us 1:3 w l lc 1 lw 2 t "atm corrected", "" us 1:4 w l lc 3 lw 2 t "atm", "" us 1:5 w l lc 2 lw 1 t "O2"')
+                pause(sp.airmass, sp.atm_par[1])
+
          bjd[n] = sp.bjd
 
          if wfix: sp.w = spt.w
@@ -2538,6 +2600,9 @@ def serval():
       mlcfile = outdir+obj+'.mlc'+fibsuf+'.dat' # maximum likehood estimated RVCs and CRX
       srvfile = outdir+obj+'.srv'+fibsuf+'.dat' # serval top-level file
       vsinifile = outdir+obj+'.vsini'+fibsuf+'.dat'
+      atmunit = []
+      if atmspec:
+         atmunit = [open(outdir+obj+'.atm.dat', w_or_a)]
       rvunit = [open(rvfile, w_or_a), open(outdir+obj+'.badrv'+fibsuf+'.dat', w_or_a)]
       rvounit = [open(rvofile, w_or_a), open(rvofile+'bad', w_or_a)]
       rvcunit = [open(rvcfile, w_or_a), open(rvcfile+'bad', w_or_a)]
@@ -2586,9 +2651,11 @@ def serval():
             print(sp.bjd, *(lineindex(irt1[n], irt1a[n], irt1b[n]) + lineindex(irt2[n], irt2a[n], irt2b[n]) + lineindex(irt3[n], irt3a[n], irt3b[n])), file=irtunit[rvflag])
          if meas_NaD:
             print(sp.bjd, *(lineindex(nad1[n],nadr1[n],nadr2[n]) + lineindex(nad2[n],nadr2[n],nadr3[n])), file=nadunit[rvflag])
+         if atmspec:
+            print(sp.bjd, sp.airmass, *sp.atm_par, file=atmunit[0])
 
       for ifile in rvunit + rvounit + rvcunit + snrunit + chiunit + mypfile + crxunit \
-                 + srvunit + mlcunit + dlwunit +e_dlwunit + halunit + irtunit + nadunit:
+                 + srvunit + mlcunit + dlwunit +e_dlwunit + halunit + irtunit + nadunit + atmunit:
          ifile.close()
 
       t2 = time.time() - t0
@@ -2654,7 +2721,7 @@ if __name__ == "__main__":
    argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
-   argopt('-atmspec', help='Telluric spectrum  (in fits format, e.g. lib/stdatmos_vis30a090rh0780p000t.fits) to correct spectra by simple division'+default, type=str, default=None)
+   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=None, const='atm_carm_vis.fits')
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist'+default, type=float, default=4.)
@@ -2676,6 +2743,7 @@ if __name__ == "__main__":
    argopt('-kapsig', help='kappa sigma clip value'+default, type=float, default=3.0)
    argopt('-last', help='use last template (-tpl <obj>/<obj>.fits)', action='store_true')
    argopt('-look', help='slice of orders to view the fit [:]', nargs='?', default=[], const=':', type=arg2slice)
+   argopt('-looka', help='orders to watch atmosphere correction', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-looki', help='list of indices to watch', nargs='*', choices=sorted(lines.keys()), default=[]) #, const=['Halpha'])
    argopt('-lookt', help='slice of orders to view the coadd fit [:]', nargs='?', default=[], const=':', type=arg2slice)
    argopt('-lookp', help='slice of orders to view the preRV fit [:]', nargs='?', default=[], const=':', type=arg2slice)
