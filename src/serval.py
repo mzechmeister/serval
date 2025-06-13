@@ -1453,8 +1453,9 @@ def serval():
          if atmspec:
              o_atm = 30   # reference order
              o_atm = 44   # less stellar lines, some water, but no O2 in stdAtmos.fits, use when airmass informed
+             ok = (spt.bpmap[o_atm] == 0) & (spt.f[o_atm] / spt.e[o_atm] > 3)
 
-             spt.atm_par = atm.fit_atm_par(spt.w[o_atm], spt.f[o_atm], a1=spt.airmass, o=o_atm)
+             spt.atm_par = atm.fit_atm_par(spt.w[o_atm,ok], spt.f[o_atm,ok], a1=spt.airmass, o=o_atm)
              spt.f0 = 1 * spt.f
              yatm = atm.calc_atm(spt.w, spt.atm_par)
 
@@ -2700,6 +2701,7 @@ if __name__ == "__main__":
    ofac = getattr(inst, 'ofac', 1.)
    snmax = getattr(inst, 'snmax', 400.)
    R_inst = getattr(inst, 'R', None)
+   atmspec = getattr(inst, 'atmspec', None)
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2721,7 +2723,7 @@ if __name__ == "__main__":
    argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
-   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=None, const='atm_carm_vis.fits')
+   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='atm_carm_vis.fits')
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist'+default, type=float, default=4.)

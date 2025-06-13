@@ -11,9 +11,9 @@ snmax = 500
 oset = '10:52'
 
 maskfile = 'telluric_mask_carm_short.dat'
+atmspec = 'atm_carm_vis.fits'
 
 pat = '*-vis_%(fib)s.fits *-vis_%(fib)s-tac.fits'   # => vis_A.fits, vis_B.fits
-
 
 def scan(self, s, pfits=True):
    """

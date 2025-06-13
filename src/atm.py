@@ -88,6 +88,9 @@ def calc_atm(uo, atm_par, order=None):
         global tplo1, tplo2
         yatmo = 1 + 0*uo
         for o in (range(len(tpl1[0])) if order is None else [order]):
+            if o >= len(tpl1[0]):
+                # model not available
+                continue
             tplo1 = tpl1[0][o], tpl1[1][o]
             tplo2 = tpl2[0][o], tpl2[1][o]
             if order is None:
