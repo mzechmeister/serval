@@ -2372,12 +2372,12 @@ def serval():
                      dlwo = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2c-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
                      e_dlwo = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
                   else:
-                     dlwo = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])
-                     e_dlwo = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))
+                     dlwo = c**2 * np.dot(1/e2[keep]**2*ddy[keep], (f2-f2mod)[keep]) / np.dot(1/e2[keep]**2*ddy[keep], ddy[keep])   # Eq. (25) from serval paper
+                     e_dlwo = c**2 * np.sqrt(1 / np.dot(1/e2[keep]**2, ddy[keep]**2))   # Eq. (26) from serval paper
                   drchi = rms(((f2-f2mod) - dlwo/c**2*ddy)[keep] / e2[keep])
                   #print(par.params[1],par.params[0], v, dlwo*1000, e_dlwo)
                   if np.isnan(dlwo) and not safemode: pause()
-                  dlw[n,o] = dlwo * 1000       # convert from (km/s) to m/s km/s
+                  dlw[n,o] = dlwo * 1000       # convert from (km/s)^2 to (m/s * km/s)
                   e_dlw[n,o] = e_dlwo * 1000 * drchi
                   if 0:
                      gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,', wmod[keep],(f2-f2mod)[keep], 'us 1:2')

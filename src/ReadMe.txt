@@ -129,14 +129,14 @@ Column Format Units     Label     Explanations
 
 Description of file: obj.dlw.dat
 --------------------------------------------------------------------------------
-Column Format Units     Label     Explanations
+Column Format Units      Label     Explanations
 --------------------------------------------------------------------------------
-     1 D      ---       BJD       Barycentric Julian date [1]
-     2 D      ---       dLW       differential line width
-     3 D      ---     E_dLW       error for dLW
-     4 D      ---       dLWO_00   differential line width in order 0
-     5 D      ---       dLWO_01   differential line width in order 1
-     6 D      ---       dLWO_02   differential line width in order 2
+     1 D      ---        BJD       Barycentric Julian date [1]
+     2 D      m/s.km/s   dLW       differential line width
+     3 D      m/s.km/s E_dLW       error for dLW
+     4 D      m/s.km/s   dLWO_00   differential line width in order 0
+     5 D      m/s.km/s   dLWO_01   differential line width in order 1
+     6 D      m/s.km/s   dLWO_02   differential line width in order 2
 etc...
 --------------------------------------------------------------------------------
 
@@ -157,14 +157,14 @@ Column Format Units     Label     Explanations
 
 Description of file: obj.e_dlw.dat
 --------------------------------------------------------------------------------
-Column Format Units     Label     Explanations
+Column Format Units      Label     Explanations
 --------------------------------------------------------------------------------
-     1 D      ---       BJD       Barycentric Julian date [1]
-     2 D      ---       dLW       Differential line width
-     3 D      ---     E_dLW       Error for dLW
-     4 D      ---     E_dLWO_00   Error for differential line width in order 0
-     5 D      ---     E_dLWO_01   Error for differential line width in order 1
-     6 D      ---     E_dLWO_02   Error for differential line width in order 2
+     1 D      ---        BJD       Barycentric Julian date [1]
+     2 D      m/s.km/s   dLW       Differential line width
+     3 D      m/s.km/s E_dLW       Error for dLW
+     4 D      m/s.km/s E_dLWO_00   Error for differential line width in order 0
+     5 D      m/s.km/s E_dLWO_01   Error for differential line width in order 1
+     6 D      m/s.km/s E_dLWO_02   Error for differential line width in order 2
 etc...
 --------------------------------------------------------------------------------
 
@@ -224,15 +224,15 @@ Column Format Units     Label     Explanations
 
 Description of file: obj.mlc.dat
 --------------------------------------------------------------------------------
-Column Format Units     Label     Explanations
+Column Format Units      Label     Explanations
 --------------------------------------------------------------------------------
-     1 D      ---       BJD       Barycentric Julian date [1]
-     2 D      m/s       MLRVC     ML Radial velocity (drift and sa corrected)
-     3 D      m/s     E_MLRVC     ML Radial velocity error
-     4 D      m/s       MLCRX     ML Chromatic index (Slope over logarithmic wavelength)
-     5 D      m/s     E_MLCRX     error for MLCRX (slope error)
-     6 D      m^2/s^2   DLW       Differential Line Width
-     7 D      m^2/s^2 E_DLW       Error in DLW
+     1 D      ---        BJD       Barycentric Julian date [1]
+     2 D      m/s        MLRVC     ML Radial velocity (drift and sa corrected)
+     3 D      m/s      E_MLRVC     ML Radial velocity error
+     4 D      m/s        MLCRX     ML Chromatic index (Slope over logarithmic wavelength)
+     5 D      m/s      E_MLCRX     error for MLCRX (slope error)
+     6 D      m/s.km/s   DLW       Differential Line Width
+     7 D      m/s.km/s E_DLW       Error in DLW
 --------------------------------------------------------------------------------
 
 
@@ -321,15 +321,15 @@ etc...
 
 Description of file: obj.srv.dat
 --------------------------------------------------------------------------------
-Column Format Units     Label     Explanations
+Column Format Units      Label     Explanations
 --------------------------------------------------------------------------------
-     1 D      ---       BJD       Barycentric Julian date [1]
-     2 D      m/s       RVC       Radial velocity (drift and sa corrected)
-     3 D      m/s     E_RVC       Radial velocity error
-     4 D      m/s       CRX       Chromatic index (Slope over logarithmic wavelength)
-     5 D      m/s     E_CRX       error for CRX (slope error)
-     6 D      m^2/s^2   DLW       Differential Line Width
-     7 D      m^2/s^2 E_DLW       Error in DLW
+     1 D      ---        BJD       Barycentric Julian date [1]
+     2 D      m/s        RVC       Radial velocity (drift and sa corrected)
+     3 D      m/s      E_RVC       Radial velocity error
+     4 D      m/s        CRX       Chromatic index (Slope over logarithmic wavelength)
+     5 D      m/s      E_CRX       error for CRX (slope error)
+     6 D      m/s.km/s   DLW       Differential Line Width
+     7 D      m/s.km/s E_DLW       Error in DLW
 --------------------------------------------------------------------------------
 
 Description of file: obj.targ.csv
