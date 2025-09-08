@@ -348,7 +348,7 @@ class srv:
          RVmod = crx[n]*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          RVlow = (crx[n]-e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
          RVupp = (crx[n]+e_crx[n])*(np.log(lam_o[n,self.orders])-lnlv[n])+RVc[n]
-         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, $4)) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
+         hypertext = ', "" us i:3:(sprintf("No: %d\\nID: %s\\nBJD: %f\\nRV: %f +/- %f\\n' % (n+1,self.info[n],bjd[n], RVc[n], e_RVc[n])+ 'o: %d\\nrv[o]: %f +/- %f", $1, $3, real(strcol(4)))) w labels hypertext point pt 5 lc rgb "#ffff0000" t ""'
 
          plot = gplot
          if rvobkg:
