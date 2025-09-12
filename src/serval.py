@@ -1975,7 +1975,7 @@ def serval():
                #bmod[ind<ind0] |= flag.clip
                #linecolor = np.array([0,1,6,4,4,5])[np.argmax([0*bmod, (bmod&~flag.badT)==0] + hasflags(bmod, [flag.atm, flag.out, flag.nan, flag.clip]), axis=0)]
                #gplot2.bar(0)(wmod.ravel(), mod.ravel(), emod.ravel(), linecolor.ravel(), ' us 1:2:3:4  w e pt 7 ps 0.5 lc var t "data"')
-               gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 t "data"')
+               gplot-(wmod[ind], mod[ind], emod[ind], ' w e pt 7 ps 0.5 lc "grey" t "", "" w p pt 7 lc 1 ps 0.5 t "data"')
                gplot<(TPL[o].wk, TPL[o].fk, 'us 1:2 w lp lt 2 ps 0.5 t "prev template"')
                www, fff = smod.osamp(4)
                qqq = interp(wko, qko)(www)
@@ -2427,8 +2427,8 @@ def serval():
                gplot<("0 axis x1y2 lt 3 t'',"+b+" axis x1y2 lt 1,-"+b+" axis x1y2 lt 1 t ''")
 
                if atmspec:
-                  gplot<(x2, w2, atmmod(np.log(w2))*40-5, 'us (column(i)):3 w l lt rgb 0x999999  axis x1y2')
-                  gplot<(x2,w2, atmmod(np.log(w2)) * ((b2&flag.atm)==flag.atm)*40-5, 'us (column(i)):3 w filledcurve x1 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
+                  gplot<(x2, w2, yatm[o]*40-5, 'us (column(i)):3 w l lt rgb 0x999999  axis x1y2 t "atm model"')
+                  gplot<(x2,w2, yatm[o] * ((b2&flag.atm)==flag.atm)*40-5, 'us (column(i)):3 w filledcurve x1 fs transparent solid 0.2 noborder lc 9 axis x1y2 t "tellurics"')
                else:
                   gplot<(x2,w2, ((b2&flag.atm)!=flag.atm)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 9 axis x1y2 t "tellurics"')
                gplot+(x2,w2, ((b2&flag.sky)!=flag.sky)*40-5, 'us (column(i)):3 w filledcurve x2 fs transparent solid 0.5 noborder lc 6 axis x1y2 t "sky"')
