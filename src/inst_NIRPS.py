@@ -1,5 +1,5 @@
 from read_spec import *
-
+from calcspec import redshift
 
 inst    = 'NIRPS'
 name    = 'NIRPS'
@@ -82,7 +82,7 @@ def data(self, orders, pfits=True):
     
     f = hdulist['SCIDATA'].section[orders]
     e = hdulist['ERRDATA'].section[orders]
-    w = hdulist['WAVEDATA_VAC_BARY'].section[orders]
+    w = redshift(hdulist['WAVEDATA_VAC_BARY'].section[orders], ve=self.drsberv, wlog=False)   # undo drsberv correction
 
     bpmap = np.isnan(f).astype(int)   # flag 1 for nan
 
