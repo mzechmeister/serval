@@ -2379,10 +2379,25 @@ def serval():
                   if np.isnan(dlwo) and not safemode: pause()
                   dlw[n,o] = dlwo * 1000       # convert from (km/s)^2 to (m/s * km/s)
                   e_dlw[n,o] = e_dlwo * 1000 * drchi
-                  if 0:
-                     gplot(wmod,(f2-f2mod),e2, 'us 1:2:3 w e,', wmod[keep],(f2-f2mod)[keep], 'us 1:2')
-                     ogplot(wmod,dlwo/c**2*ddy); #ogplot(wmod,f2, 'axis x1y2')
+                  if 0: # and o in (37, 38):
+                     m = 0*(x2 < 0); m[keep] = 1
+                     ok = np.isfinite(f2mod)
+                     gplot.key('left Left rev samplen 2 title "%s (n=%s, o=%s, dLW[o]=%.2f+/-%.2f)" noenhanced' % (obj, n, o, dlw[n,o], e_dlw[n,o]))
+                     gplot.xlabel('"wavelength"').ylabel('"residuals f - f_{tpl}"')
+                     gplot.x2label('"scaled second derivative f\'\' / c^2"')
+
+                     # plot correlation in the same plot with y2 axis, since gnuplot has bad interactive multiplot
+                     gplot.var(wa=wmod[0], wb=wmod[-1], x2a=np.min(ddy[keep]/c**2), x2b=np.max(ddy[keep]/c**2))
+                     gplot.var(wb='wb + 0.2*(wb-wa)', scale='(x2b - x2a) / (wb - wa)')
+                     gplot.link('x2 via (x-wb)*scale+x2a inverse (x-x2a)/scale+wb').xtics('nomirror').x2tics('10**floor(log10(x2b -x2a))')
+
+                     gplot-(wmod, (f2-f2mod), e2, 'us 1:2:3 w e pt 7 ps 0.5 lc "grey" t "residuals (all)",',
+                            wmod[keep], (f2-f2mod)[keep], 'us 1:2 lc "red" ps 0.5 pt 7 t "residuals (ok)"')
+                     gplot<(wmod[ok], dlwo/c**2*ddy[ok], m[ok], ' us 1:2:($3>0? 3:5) pt 4 ps 0.5 lc var t "model dLW[o] / c^2 * f\'\'"')
+                     gplot+(ddy[ok]/c**2, (f2-f2mod)[ok], m[ok], 'us 1:2:($3>0? 1:9) pt 4 ps 0.5 lc var axes x2y1, %s * x lc black axes x2y1' % (dlwo))
+                     #ogplot(wmod,f2, 'axis x1y2')
                      pause(o, 'dLW', dlw[n,o])
+                     gplot.reset()
 
             fmod[o] = f2mod
             if par.perror is None: par.perror = [0.,0.,0.,0.]
