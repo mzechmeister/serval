@@ -37,3 +37,52 @@ def list2mask(filename, wd=4., wl=0.01, merge=True):
    maskf = np.tile([0., 1, 1, 0], len(maskl))
    mask = np.vstack((maskl.ravel(),maskf)).T
    return mask
+
+def mask2taperingweights(mask, taper_halfwidth=10, downweighting_factor=1e-2):
+    '''
+    Creates tapering weights from a binary mask.
+
+    Parameters
+    ----------
+    mask : ndarray
+        Binary mask indicating the region of interest.
+    taper_halfwidth : int, optional
+        Half-width of the tapering region. The default is 10.
+    downweighting_factor : float, optional
+        Downweighting factor applied to tapering weights. The default is 1e-2.
+
+    Returns
+    -------
+    ndarray
+        Tapering weights for downweighting points around the masked region.
+    '''
+
+    # Create a binary array from the mask
+    taper = np.clip(mask, 0, 1)
+
+    # Convolve with a flat hat to extend the size of the mask
+    flat_hat = np.ones(taper_halfwidth)
+    taper = np.convolve(taper, flat_hat, mode='same')
+    taper = np.clip(taper, 0, 1)
+
+    # Convolve with a triangular kernel to taper the weights
+    triangle = 1 - np.abs(np.linspace(-1, 1, taper_halfwidth + 1))
+    triangle /= np.sum(triangle)
+    taper = np.convolve(taper, triangle, mode='same')
+
+    # Set weights to 1 at the edges due to edge effect of convolution
+    taper[:taper_halfwidth] = 1
+    taper[-taper_halfwidth:] = 1
+
+    # Apply downweighting factor to tapering weights
+    taper = 1 + taper * (1/downweighting_factor - 1)
+
+    # Invert to obtain the final weights
+    w_taper = 1 / taper
+
+    # Uncomment the following lines for debugging or visualization
+    # gplot(np.clip(mask, 0, 1))
+    # gplot(w_taper)
+    # pause(o)
+
+    return w_taper
