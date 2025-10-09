@@ -1535,7 +1535,7 @@ def serval():
    targrvs = {'simbad': targ.rv,
               'tpl': TPLrv,
               'drsspt': spt.ccf.rvc,
-              'drsmed': np.median(rvdrs[np.isfinite(rvdrs)]),
+              'drsmed': np.nan if np.isnan(rvdrs).all() else np.nanmedian(rvdrs),
               'user': targrv,
               'usertpl': tplrv
              }
