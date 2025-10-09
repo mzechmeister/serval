@@ -1831,35 +1831,35 @@ def serval():
                   #pause()
 
 
-            elif psplineauto:          
+            elif psplineauto:
                # automatic selection of penalty lambda for smoothing pspline
-               
+
                print("\npspline auto")
                IC = []   # array for information criterion
-               
+
                # penalty lambda grid
                Lam = np.logspace(-3, 15, 10)
 
                for li in Lam:
                   # iterate through penalties
-                  
+
                   # fit spline with penalty
                   smod, ymod, edf = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk-1, lam=li, mu=mu, e_mu=e_mu, e_yk=True, retfit=True, edf=True)
 
                   # compute information criterion
                   chi2 = ((mod[ind] - ymod)**2 * we[ind]).sum()
-                    
+
                   if psplineauto == 'aic':
                      ic = chi2 + 2*edf
                   elif splineauto == 'bic':
                      ic = chi2 + edf*np.log(we[ind].size)
 
                   # append either bic or aic as specified
-                  IC += [ ic ] 
-                  
+                  IC += [ ic ]
+
                # optimal penalty
-               Lamo = Lam[np.argmin(IC)] 
-               
+               Lamo = Lam[np.argmin(IC)]
+
                # fit spline with optimal penalty
                smod, ymod = spl.ucbspl_fit(wmod[ind], mod[ind], we[ind], K=nk, lam=Lamo, mu=mu, e_mu=e_mu, e_yk=True, retfit=True)
                print("Lam=%0.0e \n" % Lamo, end='')
@@ -1868,22 +1868,22 @@ def serval():
                fko = smod()      # the knot values
                eko = smod.e_yk   # the error estimates for knot values
                dko = smod.dk()   # ~second derivative at knots
-               
+
                if 0:
-                  # plot template with optimal penalty 
-                  
+                  # plot template with optimal penalty
+
                   # IC - penalty plot
                   gplot2(np.log10(Lam), IC, 'w lp,', np.log10(Lamo), min(IC), 'lc 3 pt 7')
-                  
+
                   # template plot
                   gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w l lw 2,', smod.xk, smod(), 'w p pt 7,',)
-                  
+
                   if wmod[(bmod&flag.atm > 0)].size>0:
                      gplot(wmod[ind], mod[ind], 'w d,', smod.osamp(10), 'w lp ps 0.3,', smod.xk, smod(), 'w p,', wmod[tellind],mod[tellind], 'lc 4 pt 1 t "tellind",', wmod[(bmod&flag.atm > 0)],mod[(bmod&flag.atm > 0)], 'lc 5 pt 1 t "atm",',wmod[(bmod&flag.sky > 0)],mod[(bmod&flag.sky > 0)], 'lc 6 pt 1 t "sky",')
 
-                  pause()      
+                  pause()
 
-              
+
             if vsiniauto:
                # vsini steps
                vs_hi = 150
@@ -2340,7 +2340,7 @@ def serval():
 
                   '''estimate differential changes in line width ("FWHM")
                      correlate the residuals with the second derivative
-                  We want to scale the residuals (without the poly) to the second derivative 
+                  We want to scale the residuals (without the poly) to the second derivative
                   f = p * t
                   t = f/p
                   a*ddt ~ y/p - t = (y-pt)/p = r/p

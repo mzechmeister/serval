@@ -41,7 +41,7 @@ gplot.bar(0.5).colors('classic').mxtics().mytics()
 class srv:
    '''
    Analysis of SERVAL products.
-   
+
    '''
 
    def __init__(self, obj, fibsuf='', oidx=None, pdf=False, cen=False):
@@ -194,7 +194,7 @@ class srv:
          gplot(drsbjd-2450000, drsRVc, drse_RVc, 'us 1:2:3 w e pt 7 lt 1 t "DRS (rms = %1.3g m/s)"'% mlrms(drsRVc, e=drse_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
          ogplot(bjd-2450000, RVc-np.median(RVc)+np.nanmedian(drsRVc), e_RVc, ' us 1:2:3 w e pt 5 lt 3 t "\\nRVc (rms = %1.3g m/s)\\nrms(diff) = %.2f m/s"'%(self.mlrms[0], mlrms(drsRVc - RVc, e_RVc)[0]))
-         pause('drsrv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
+         pause('drsrv ', self.tag)
 
    def mlc(self):
       '''Show RVs over order for each observation.'''
@@ -205,7 +205,7 @@ class srv:
          gplot.xlabel('"BJD - 2 450 000"').ylabel('"RV [m/s]"')
          gplot(bjd-2450000, RVc, e_RVc, ' us 1:2:3 w e pt 5 lc 1 t "RVc (rms = %1.3g m/s)'%self.mlrms[0])
          ogplot(bjd-2450000,self.tmlc.T[1:], 'us 1:2:3 w e pt 7 lc 3 t "\\nmlRVc (rms = %1.3g m/s)\\nrms(diff)=%.2f m/s"'% (mlrms(mlRVc, e=e_mlRVc)[0], mlrms(mlRVc - RVc, e_RVc)[0]))
-         pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
+         pause('rv ', self.tag)
 
    def plot_chi2map(self, maxnorm=True, suf='_A_chi2map.fits'):
       n = 0
@@ -560,7 +560,7 @@ class srv:
          gplot(prebjd-2450000, preRVc, pree_RVc, 'us 1:2:3 w e pt 5 lt 3 t "preRVc (rms = %1.3g m/s)"'% mlrms(preRVc, e=pree_RVc)[0])
 #         ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(drsRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc-med(RVc)+med(DRS)"')
          ogplot(bjd-2450000, RVc-np.median(RVc)+np.median(preRVc), e_RVc, ' us 1:2:3 w e pt 7 lt 1 t "RVc (rms = %1.3g m/s)"'%self.mlrms[0])
-         pause('rv ', self.tag) # , ""  us 1:2:($3/$4) w e pt 7 lt 1 
+         pause('rv ', self.tag)
 
    def spaghetti(self):
          o = np.tile(self.orders, (self.rvc.shape[0],1))
