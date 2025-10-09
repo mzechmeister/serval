@@ -1304,6 +1304,8 @@ def serval():
       tpl =  outdir + obj + '%s.fits' % fibsuf
    elif tpl is None:
       tpl = spi   # choose highest S/N spectrum
+   if driftref:
+      tpl = driftref
 
    if isinstance(tpl, int):
       spi = tpl
@@ -1360,10 +1362,6 @@ def serval():
       to = time.time()
       if ccf:
          ccfmask = np.loadtxt(servallib + ccf)
-      elif driftref:
-         print(driftref)
-         spt = Spectrum(driftref, inst=inst, pfits=True, orders=np.s_[:], drs=drs, fib=fib, targ=targ)
-         ww, ff = spt.w, spt.f
       elif isinstance(tpl, str):
          print("restoring template: ", tpl)
          try:
