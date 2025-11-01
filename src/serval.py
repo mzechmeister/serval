@@ -2501,7 +2501,7 @@ def serval():
             # ML version of chromatic trend
             oo = ~np.isnan(chi2map[:,0]) & ~np.isnan(rchi[n])
 
-            gg = Chi2Map(chi2map, (v_lo, v_step), RV[n]/1000, e_RV[n]/1000, rv[n,oo]/1000, e_rv[n,oo]/1000, orders=oo, keytitle=obj+' ('+inst.name+')\\n'+sp.timeid, rchi=rchi[n], No=Nok[n], name='')
+            gg = Chi2Map(chi2map, (targrv-tplrv+v_lo, v_step), RV[n]/1000, e_RV[n]/1000, rv[n,oo]/1000, e_rv[n,oo]/1000, orders=oo, keytitle=obj+' ('+inst.name+')\\n'+sp.timeid, rchi=rchi[n], No=Nok[n], name='')
             mlRV[n], e_mlRV[n] = gg.mlRV, gg.e_mlRV
 
             mlRVc[n] = mlRV[n] - np.nan_to_num(sp.drift) - np.nan_to_num(sp.sa)
