@@ -85,21 +85,21 @@ class Chi2Map:
 
       # Plot all maps normalised
       gplot.yrange('[-0.1:1.1]')
-      gplot.key('Left center rev top title "%s"' % keytitle)
+      gplot.key('Left center rev top title "%s" noenhanced' % keytitle)
       gplot.palette('defined (0 "blue", 1 "green", 2 "red")')
       gplot.xlabel('"v [km/s]"; set ylabel "chi^2 / max(chi^2)"; set cblabel "order"')
       #gplot(chi2map, ' matrix us ($1*%s+%s):3:2 w l palette'%self.vrange)
-      gplot((chi2map/chi2map.max(axis=1)[:,np.newaxis]).T, ' matrix us (%s+$1*%s):3:2 w l palette t "%s"'% (self.vrange +(self.info,)), flush='')
+      gplot-((chi2map/chi2map.max(axis=1)[:,np.newaxis]).T, ' matrix us (%s+$1*%s):3:2 w l palette t "%s"'% (self.vrange +(self.info,)))
 
       #ogplot(self.rCCF/self.rCCF.max(), ' us (%s+$0*%s):1 w l lt 4 lw 2 t "total"'%self.vrange, flush='')
       # the master CCF
-      ogplot(self.nmCCF, ' us (%s+$0*%s):1 w l lt 7 lw 2 t "lnL"'%self.vrange, flush='')
+      gplot<(self.nmCCF, ' us (%s+$0*%s):1 w l lt 7 lw 2 t "lnL"' % self.vrange)
       # the parabola  for the master
-      ogplot('((x-%s)**2/%s**2+%s)/%s lc 7 dt 2 t "lnL (parabola %.5g +/- %.5g m/s)"'% (self.mlRV/1000, self.e_mlRV/1000., self.mCCF.min(), self.mCCF.max(), self.mlRV, self.e_mlRV), flush='')
-      ogplot("((x-%s)**2/%s**2+%s)/%s lc 9 dt 3 t 'RV,e\_RV (parabola)'"%(RV, e_RV, self.mCCF.min(), self.mCCF.max()), flush='')
+      gplot<('((x-%s)**2/%s**2+%s)/%s lc 7 dt 2 t "lnL (parabola %.5g +/- %.5g m/s)"'% (self.mlRV/1000, self.e_mlRV/1000., self.mCCF.min(), self.mCCF.max(), self.mlRV, self.e_mlRV))
+      gplot<("((x-%s)**2/%s**2+%s)/%s lc 9 dt 3 t 'RV,e\_RV (parabola)'" % (RV, e_RV, self.mCCF.min(), self.mCCF.max()))
 
-      ogplot([RV]*2, [0,1], [e_RV]*2, 'us 1:2:3 w xerrorlines pt 2 lt 9 t "%.5g +/- %.5g m/s"'% (RV*1000, e_RV*1000), flush='')
-      ogplot(rv, (chi2map /chi2map.max(axis=1)[:,np.newaxis]).min(axis=1), 'us 1:2 lt 7 pt 1 t "chi^2_{min}"')
+      gplot<([RV]*2, [0,1], [e_RV]*2, 'us 1:2:3 w xerrorlines pt 2 lt 9 t "RV = %.5g +/- %.5g m/s"'% (RV*1000, e_RV*1000))
+      gplot+(rv, (chi2map /chi2map.max(axis=1)[:,np.newaxis]).min(axis=1), 'us 1:2 lt 7 pt 1 t "chi^2_{min}"')
       #pause()
 
    def mlcrx(self, x, xc, ind):
