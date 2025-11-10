@@ -296,10 +296,10 @@ def read_template(filename):
 def is_serval_tpl(tpl):
     if os.path.isdir(tpl):
         # assuming this is a serval output directory
-        return true
+        return True
     elif not tpl.endswith('.fits'):
         # serval templates must end with suffix fits
-        return false
+        return False
     else:
         # finally, we need to pre-check the format
         hdu = pyfits.open(tpl)
