@@ -2,7 +2,7 @@ from read_spec import *
 from astropy.time import Time
 
 #Instrument parameters
-name = 'chiron'
+name = __name__[5:]
 obsloc = dict(lat = -30.169286, lon = -70.806789, elevation = 2200.) #approximate height - don't know exact elevation
 
 pat = 'achi*.fits'
@@ -28,7 +28,7 @@ def scan(self, s, pfits=True, verb = False):
    self.mjd = hdr.get('DATE_JUL', default = Time(self.dateobs, format = 'isot', scale = 'utc').mjd)
    self.drift = np.nan
    self.e_drift = np.nan
-   self.sn55 = hdr.get('SNR', default = np.nan) #SNR values are not in the header
+   self.sn55 = 10 * hdr.get('EMNETINT', default = np.nan)   # a guess for S/N?
    self.fileid = hdr['OBSID']
    self.calmode = "%s,%s,%s" % (hdr.get('OBSTYPE', ''), hdr.get('STOKNAME', ''), hdr.get('P_NAME2', '')) #I have no idea what this means
    self.utc = datetime.datetime.strptime(self.dateobs, '%Y-%m-%dT%H:%M:%S.%f')
@@ -38,22 +38,19 @@ def scan(self, s, pfits=True, verb = False):
    self.airmass = hdr['AIRMASS']
    self.exptime = hdr['EXPTIME']
    self.tmmean = 0.5 #Flux weighted mean point (default = 0.5 for most spectrographs)
-    
+   self.timeid = self.dateobs
 
 def data(self, orders, pfits=True): #Need to edit this section (What do I write when this spectrograph has multiple orders?)
-   hdulist = self.hdulist
-   # read order data
+    hdulist = self.hdulist
 
-    hdu_data = hdu_list[0].data
+    hdu_data = hdulist[0]
 
-    w = (hdu_data.section[orders])[0] #First part of array = wavelengths
-    f = (hdu_data.section[orders])[1] #Second part of array = flux
-    #What do I write for "errors" if there isn't an error section in the header?
-    #CHIRON doesn't have BPMAP values
+    w = hdu_data.section[orders,:,0].astype(float)   # Uh, wavelengths only in float32!?
+    f = hdu_data.section[orders,:,1].astype(float)
+    e = np.sqrt(1.**2 + np.abs(f))   # RON 4.66 and gain 1.3 should be used
 
-    #f = self.hdulist['SCIDATA'].section[orders]
-    #e = self.hdulist['ERRDATA'].section[orders]
-    #w = self.hdulist[waveext].section[orders]
-    #bpmap = 1 * (self.hdulist['QUALDATA'].section[orders] > 0)
+    bpmap = 1 * np.isnan(f)
+    with np.errstate(invalid='ignore'):
+        bpmap[f < -3*e] |= flag.neg
 
-   return w, f, e, bpmap
+    return w, f, e, bpmap
