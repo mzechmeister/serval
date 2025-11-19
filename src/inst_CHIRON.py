@@ -17,9 +17,7 @@ def scan(self, s, pfits=True, verb = False):
    hdulist = self.hdulist = pyfits.open(s)
    self.header = hdr = hdulist[0].header
  
-   self.instname = hdr['FPA']
-   if self.instname == 'CHIRON  ':
-       self.instname = 'CHIRON'
+   self.instname = hdr['FPA'].rstrip()   # 'CHIRON'
    self.drsberv = hdr.get('BERV', np.nan)
    self.drsbjd = hdr.get('BTLA', np.nan)
    self.dateobs = hdr['DATE-OBS']
@@ -28,7 +26,7 @@ def scan(self, s, pfits=True, verb = False):
    self.e_drift = np.nan
    self.sn55 = 10 * hdr.get('EMNETINT', np.nan)   # a guess for S/N from exposure meter
    self.fileid = hdr['OBSID']
-   self.calmode = "%s,%s,%s" % (hdr.get('OBSTYPE', ''), hdr.get('STOKNAME', ''), hdr.get('P_NAME2', ''))
+   self.calmode = "%s,%s,%s" % (hdr.get('DECKER', ''), hdr.get('BINNING', ''), hdr.get('IODCELL', ''))
    self.utc = datetime.datetime.strptime(self.dateobs, '%Y-%m-%dT%H:%M:%S.%f')
 
    self.ra = hdr['RA']
