@@ -69,6 +69,9 @@ def scan(self, s, pfits=True):
    #self.e_drift = hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan)
    self.drift = hdr.get(HIERARCH+'CARACAL SERVAL FP RV', hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan))
    self.e_drift = hdr.get(HIERARCH+'CARACAL SERVAL FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan))
+   if np.isnan(self.drift):
+       self.drift = hdr.get(HIERARCH+'CARACAL GUESS FP RV', np.nan)
+
    self.ccf.rvc = hdr.get(HIERARCH+'CARACAL SERVAL RV', np.nan)
    self.ccf.err_rvc = hdr.get(HIERARCH+'CARACAL SERVAL E_RV', np.nan)
 

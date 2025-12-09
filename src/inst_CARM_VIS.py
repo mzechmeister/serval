@@ -55,6 +55,9 @@ def scan(self, s, pfits=True):
                        "Please use lastest products.")
       self.drift = hdr.get(HIERARCH+'CARACAL SERVAL FP RV', hdr.get(HIERARCH+'CARACAL DRIFT FP RV', np.nan))
       self.e_drift = hdr.get(HIERARCH+'CARACAL SERVAL FP E_RV', hdr.get(HIERARCH+'CARACAL DRIFT FP E_RV', np.nan))
+      if np.isnan(self.drift):
+         self.drift = hdr.get(HIERARCH+'CARACAL GUESS FP RV', np.nan)
+
       self.fox = HIERARCH+'CARACAL FOX XWD' in hdr
       self.sn55 = hdr.get(HIERARCH+'CARACAL '+('FOX' if self.fox else 'LXT')+' SNR 36', np.nan)   # @ 746nm
       sn25 = hdr.get(HIERARCH+'CARACAL FOX SNR 25', np.nan)
@@ -100,6 +103,7 @@ def data(self, orders, pfits=True):
       bpmap0[14:38,1643] |= 1   # ghost of hotspot tail
       bpmap0[14:38,2459] |= 1   # spikes of hotspot satellite (bug not correct due to bug in v2.00)
       bpmap0[15:41,3374] |= 1   # displaced column; ignore by marking as nan
+      bpmap0[15:41,3604:3609] |= 1   # dead column; ignore by marking as nan
       bpmap0[28,3395:3400] |= flag.sky # car-20160701T00h49m36s-sci-gtoc-vis.fits
       bpmap0[34,838:850] |= flag.sky # car-20160803T22h46m41s-sci-gtoc-vis.fits
       bpmap0[34,2035:2044] |= flag.sky # car-20160714T00h18m29s-sci-gtoc-vis
