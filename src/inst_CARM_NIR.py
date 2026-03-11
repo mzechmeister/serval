@@ -36,7 +36,7 @@ def scan(self, s, pfits=True):
 
    """
    HIERARCH = 'HIERARCH '
-   self.hdulist = hdulist = pyfits.open(s) # slow 30 ms
+   self.hdulist = hdulist = pyfits.open(s, memmap=False) # slow 30 ms, memmap see https://github.com/mzechmeister/serval/issues/32
    hdr = hdulist[0].header
    self.header = hdr
    self.instname = hdr['INSTRUME'][0:4]+'_NIR'
@@ -155,6 +155,7 @@ def data(self, orders, pfits=True):
          w = hdulist['WAVE'].section[orders].reshape(dim)
          e = hdulist['SIG'].section[orders].reshape(dim)
          bpmap = np.isnan(f).astype(int)            # flag 1 for nan
+
          # a hand made bad pixel list car-20160218T18h48m52s-sci-gtoc-nir.fits
          bpmap[bp[0],bp[1]] = 1
       # interpolate bad columns, they mess up a lot the creation of the template

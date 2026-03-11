@@ -33,7 +33,7 @@ def scan(self, s, pfits=True):
 
    """
    HIERARCH = 'HIERARCH '
-   hdulist = self.hdulist = pyfits.open(s) # slow 30 ms
+   hdulist = self.hdulist = pyfits.open(s, memmap=False) # slow 30 ms, memmap see https://github.com/mzechmeister/serval/issues/32
    if 1:
       self.header = hdr = hdulist[0].header
       if 'HIERARCH CARACAL DRIFT FP REF' in hdr: del hdr['HIERARCH CARACAL DRIFT FP REF']
