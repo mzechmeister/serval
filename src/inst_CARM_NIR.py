@@ -13,14 +13,17 @@ iomax *= 2 # reshaping
 pmax = 1800
 
 oset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
-coset = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})
+coset = sorted(set(range(iomax))) - {37,38,39} # these are the orders that are not used for telluric modeling
 
-maskfile = 'telluric_mask_carm_short.dat'
-maskfile = 'telluric_mask_nir4.dat'
+# coset = sorted(set(range(iomax))) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})) # these are the orders not used when not using the telluric modeling
+
+maskfile = 'telluric_mask_CARM_NIR_0.1_limit.dat'
+atmspec = 'atm_carm_nir.fits'
 skyfile = 'sky_carm_nir'
 
 pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits
 
+atm_fit_order = [30,32,33] # these are the best orders, they need to fit simultaneously, because the water lines are not in all orders
 
 def scan(self, s, pfits=True):
    """
@@ -140,7 +143,7 @@ def data(self, orders, pfits=True):
                         [25,2755],[25,3058],[25,3786],
                         [27,2440],[27,3616],[27,3792]
                         ]).T
-      if orders == np.s_[:]:
+      if orders == np.s_[:] or isinstance(orders, list):
          #f = hdulist['SPEC'].data
          # "data" atribute seems to open again the fits file. For large data set (GJ273) this lead to "error: too many files open". So use "section"
          f = 1.*hdulist['SPEC'].section[orders]

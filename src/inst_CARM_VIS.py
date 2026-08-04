@@ -13,6 +13,8 @@ oset = '10:52'
 maskfile = 'telluric_mask_carm_short.dat'
 atmspec = 'atm_carm_vis.fits'
 
+atm_fit_order = 44 # order has some O2 and some water, alternative is order 30 - taken from the main script, with the implementation of CARM NIR, now moved here 
+
 pat = '*-vis_%(fib)s.fits *-vis_%(fib)s-tac.fits'   # => vis_A.fits, vis_B.fits
 
 def scan(self, s, pfits=True):

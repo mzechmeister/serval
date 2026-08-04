@@ -545,10 +545,31 @@ def polyreg(x2, y2, e_y2, v, deg=1, retmod=True):   # polynomial regression
       ind = 0.0001
       # no check for zero division inside _pKolynomial.polyfit!
       #pause()
-      SSR = _pKolynomial.polyfit(x2, y2, e_y2, fmod, ind, x2.size, calcspec.wcen, deg, p, lhs, pstat)
+
+      nanind = np.isnan(fmod) | np.isnan(y2) | np.isnan(e_y2)
+      if nanind.any(): print('WARNING: NaN in polyreg input. Masking!')
+      SSR = _pKolynomial.polyfit(x2[~nanind], y2[~nanind], e_y2[~nanind], fmod[~nanind], ind, x2.size, calcspec.wcen, deg, p, lhs, pstat)
+
       if SSR < 0:
          ii, = np.where((e_y2<=0) & (fmod>0.01))
-         print('WARNING: Matrix is not positive definite.', 'Zero or negative yerr values for ', ii.size, 'at', ii)
+         if len(ii) > 0:
+            print('WARNING: Matrix is not positive definite.', 'Zero or negative yerr values for ', ii.size, 'at', ii)
+         else: 
+            print('WARNING: SSR<0 - polyfit failed. Reason unknown. Returning zeros.')
+            #gplot(x2, y2, calcspec(x2, v, *p), ' w lp,"" us 1:3 w l, "" us 1:($2-$3) t "res [v=%f,SSR=%f]"'%(v, SSR))
+
+            # import matplotlib.pyplot as plt
+
+            # plt.errorbar(x2, y2, e_y2, label='Data', ls='none')
+            # plt.plot(x2, fmod, label='fmod')
+            # plt.plot(x2, calcspec(x2, v, *p), label='calcspec')
+            # plt.legend()
+            # plt.show()
+
+            gplot(x2, y2, calcspec(x2, v, *p), fmod, ' w lp,"" us 1:3 w l,"" us 1:4 w l lc 4 t "fmod","" us 1:($2-$3) t "res [v=%f,SSR=%f]"' % (v, SSR))
+            pause('v, SSR: ',v,SSR)            
+            #raise ValueError('polyfit failed. SSR<0, reason unknown. Returning zeros.')
+         
          p = 0*p
          #pause(0)
 
@@ -739,7 +760,7 @@ def SSRstat(vgrid, SSR, dk=1, plot=2):
    elif a[2] <= 0:
       print('opti warning: a[2]=%f<=0 (extremum is not a minimum).' % a[2])
    elif not vgrid[0] <= v <= vgrid[-1]:
-      print('opti warning: v not in [va,vb].')
+      print('opti warning: v not in [va = %.2f, vb = %.2f].' % (vgrid[0], vgrid[-1]))
    else:
       e_v = 1. / a[2]**0.5
    if plot&1 or (plot&2 and np.isnan(e_v)):
@@ -766,7 +787,7 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=2):
 
    # analyse the CCF peak fitting
    v, e_v, a = SSRstat(vgrid, SSR, plot=plot)
-
+   
    if np.isnan(e_v):
       v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
       print(" Setting  v=" % v)
@@ -860,6 +881,7 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
    p = np.array([v, 1.] + [0]*deg)   # => [v,1,0,0,0]
    fMod = np.nan * w
    #fres = 0.*w     # same size
+
    for n in range(nclip+1):
       if df is not None:
          '''drift mode: scale derivative to residuals'''
@@ -930,7 +952,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, fitO2, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmfile, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -1115,13 +1137,17 @@ def serval():
 
    if atmspec:
       # standard telluric spectrum
-      if inst.name != 'CARM_VIS':
-         pause('Only implemented for CARM_VIS')
+      atmspec_implemented = True
+
+      if not hasattr(inst, 'atm_fit_order'):
+         pause('Telluric modelling only implemented for CARM_VIS or CARM_NIR') 
+         atmspec_implemented = False 
+      
       atmspec_file = ('' if os.path.exists(atmspec) else servallib) + atmspec
       if not os.path.exists(atmspec_file):
-          raise FileNotFoundError(atmspec)
+          raise FileNotFoundError(atmspec, atmspec_file)
 
-      print("atmspec:", atmspec)
+      print("atmspec: %s, fitO2: %s" % (atmspec, fitO2))
       import atm
       atm.load(atmspec_file)
       if atmspec.endswith('stdAtmos_vis.fits'):
@@ -1138,7 +1164,7 @@ def serval():
 
    if atmfile:
       if atmfile != 'auto':
-         maskfile = atmfile
+         maskfile = ('' if os.path.exists(atmfile) else servallib) + atmfile
       if 'mask_ne' in atmfile:
          maskfile = servallib + atmfile
 
@@ -1448,25 +1474,27 @@ def serval():
       else:
          '''set up a spline template from spt'''
          TPLrv = spt.ccf.rvc
-         if atmspec:
-             o_atm = 30   # reference order
-             o_atm = 44   # less stellar lines, some water, but no O2 in stdAtmos.fits, use when airmass informed
-             ok = (spt.bpmap[o_atm] == 0) & (spt.f[o_atm] / spt.e[o_atm] > 3)
+         if atmspec and atmspec_implemented:
+             
+            ok = (spt.bpmap[inst.atm_fit_order] == 0) & (spt.f[inst.atm_fit_order] / spt.e[inst.atm_fit_order] > 3)
+            spt.atm_par = atm.fit_atm_par(spt.w[inst.atm_fit_order][ok], spt.f[inst.atm_fit_order][ok], o=inst.atm_fit_order, a1=None if fitO2 else spt.airmass)
 
-             spt.atm_par = atm.fit_atm_par(spt.w[o_atm,ok], spt.f[o_atm,ok], a1=spt.airmass, o=o_atm)
-             spt.f0 = 1 * spt.f
-             yatm = atm.calc_atm(spt.w, spt.atm_par)
+            spt.f0 = 1 * spt.f
+            yatm = atm.calc_atm(spt.w, spt.atm_par)
 
-             spt.f /= yatm
-             spt.e /= yatm
-             if 1:
-                  for o in looka:
-                      gplot.xlabel('"wavelength"')
-                      gplot.key(f'title "{obj} (o = {o})"')
-                      gplot(np.exp(spt.w[o]), spt.f0[o], 'w lp lc 9 pt 7 t "input",',
-                            np.exp(spt.w[o]), spt.f[o], 'w lp lc 1 pt 6 t "corrected",',
-                            np.exp(spt.w[o]), np.nanmedian(spt.f0[o])  *yatm[o], 'w l lc 7 lw 2 t "atm model"')
-                      pause(o)
+            spt.f /= yatm
+            spt.e /= yatm
+
+            for o in looka:
+               gplot.xlabel('"wavelength"')
+               gplot.key(f'title "{obj} (o = {o})"')
+
+               oko = (spt.bpmap[o] == 0) & (spt.f[o] / spt.e[o] > 3)
+               mean_o = np.nanmean(spt.f[o][oko])
+               gplot(np.exp(spt.w[o][oko]).ravel(), spt.f0[o][oko].ravel()/mean_o, 'w lp lc 9 pt 7 t "input",',
+                     np.exp(spt.w[o]).ravel(), spt.f[o].ravel()/mean_o, 'w lp lc 1 pt 6 t "corrected",',
+                     np.exp(spt.w[o]).ravel(), np.nanmedian(spt.f0[o].ravel())  *yatm[o].ravel()/mean_o, 'w l lc 7 lw 2 t "atm model"')
+               pause(o, *spt.atm_par)
 
          for o in sorted(set(orders) | set(corders)):
             if inst.name == 'FEROS':
@@ -1477,6 +1505,11 @@ def serval():
 
             pixx, = where((np.isfinite(spt.w) & np.isfinite(spt.f) & np.isfinite(spt.e))[o,ptmin:ptmax])
             idx = pixx + ptmin
+
+            if int(idx.size*ofac/2) == 0:
+               print('order %i has no valid pixels, skipping' % o)
+               continue   # skip orders with no valid pixels
+
             #ind = spt.bpmap[o,idx] == 0  # let out zero errors, interpolate over
 
             # Smoothing with bspline
@@ -1628,15 +1661,16 @@ def serval():
                if atmspec:
                    if not hasattr(sp, 'atm_par'):
                        # compute here for cases skippre or vtfix
-                       o_atm = 44    # less stellar lines, some water
-                       sp_atm = sp.get_data(pfits=2, orders=o_atm)
+                       
+                       print('atm_fit_order:', inst.atm_fit_order, 'airmass:', spt.airmass)
+                       sp_atm = sp.get_data(pfits=2) # , orders=inst.atm_fit_order)
                        ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
 
-                       sp.atm_par = atm.fit_atm_par(sp_atm.w[ok], sp_atm.f[ok], o=o_atm, a1=sp.airmass)
+                       sp.atm_par = atm.fit_atm_par(sp_atm.w[ok], sp_atm.f[ok], o=inst.atm_fit_order, a1=None if fitO2 else sp.airmass)
                    atm_par = sp.atm_par
                sp = sp.get_data(pfits=2, orders=o)
                if atmspec:
-                   yatm = atm.calc_atm(sp.w, atm_par, order=o)
+                   yatm = atm.calc_atm(sp.w, atm_par, order=o) 
 
                    sp.f = sp.f / yatm
                    sp.e = sp.e / yatm
@@ -1689,6 +1723,12 @@ def serval():
                   if not safemode: pause()
                   break
 
+               if o in lookt:
+                  gplot-(w2, sp.f, poly, ' t "sp.f", "" us 1:3 w l t "poly"')
+                  gplot<(w2[i0:ie].take(keep, mode='clip'), sp.f[i0:ie].take(keep, mode='clip'), sp.e[i0:ie].take(keep, mode='clip'), 'w l t "keep"')
+                  gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
+                  pause(n)
+
                # get poly from fit with mean RV
                par, fmod, keep, stat = fitspec(TPL[o],
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg, plot=0)   # RV  (in dopshift instead of v=RV; easier masking?)
@@ -1696,7 +1736,7 @@ def serval():
                wmod[n] = w2
                mod[n] = sp.f / poly   # be careful if  poly<0
                emod[n] = sp.e / poly
-               if 0:# o in lookt: #o==-29:
+               if 0: #o in lookt: #o==-29:
                   gplot-(w2, sp.f, poly, ' t "sp.f", "" us 1:3 w l t "poly"')
                   gplot<(w2[i0:ie][keep], sp.f[i0:ie][keep], sp.e[i0:ie][keep], 'w e')
                   gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
@@ -2168,11 +2208,16 @@ def serval():
          sp.read_data()
 
          if atmspec:
-            o_atm = 30
-            o_atm = 44    # less stellar lines, some water
-            ok = (sp.bpmap[o_atm] == 0) & (sp.f[o_atm] / sp.e[o_atm] > 3)
+            
+            # atm_fit_order = 30
+            # atm_fit_order = 44    # less stellar lines, some water
+            ok = (sp.bpmap[inst.atm_fit_order] == 0) & (sp.f[inst.atm_fit_order] / sp.e[inst.atm_fit_order] > 3)
 
-            atm_par = atm.fit_atm_par(sp.w[o_atm, ok], sp.f[o_atm,ok], o=o_atm, a1=sp.airmass)
+            atm_par = atm.fit_atm_par(sp.w[inst.atm_fit_order][ok], sp.f[inst.atm_fit_order][ok], o=inst.atm_fit_order, a1=None if fitO2 else sp.airmass)
+
+            if not fitO2:
+               atm_par_no_am = atm.fit_atm_par(sp.w[inst.atm_fit_order][ok], sp.f[inst.atm_fit_order][ok], o=inst.atm_fit_order)
+               print('atm_par_no_am', ', '.join([f'{x[0]:.3f} vs {x[1]:.3f}' for x in zip(atm_par, atm_par_no_am)]))
 
             # store atm coefficients
             spoklist[n].atm_par = sp.atm_par = atm_par
@@ -2180,13 +2225,20 @@ def serval():
 
             # Divide out the atmosphere
             yatm = atm.calc_atm(sp.w, sp.atm_par)
+
             sp.f /= yatm
             sp.e /= yatm
+
+            
             for o in looka:
                 yO2 = atm.calc_atm(sp.w, [*sp.atm_par[0:2], 0])
+                yH2O = atm.calc_atm(sp.w, [sp.atm_par[0], 0, sp.atm_par[2]])
+                # create a new mask for each order, because the atm mask is not necessarily the same as the original mask
+                ok_o = (sp.bpmap[o] == 0) & (sp.f[o] / sp.e[o] > 3)
+                mean_o = np.nanmean(sp.f[o][ok_o])
                 gplot.key('tit "%s (n=%s, o=%s)"' % (obj, n, o))
-                gplot(sp.w[o,ok], sp.f0[o,ok], sp.f[o,ok], yatm[o,ok], yO2[o,ok], 'w lp pt 7 ps 0.5 lc 9 t "input", "" us 1:3 w l lc 1 lw 2 t "atm corrected", "" us 1:4 w l lc 3 lw 2 t "atm", "" us 1:5 w l lc 2 lw 1 t "O2"')
-                pause(sp.airmass, sp.atm_par[1])
+                gplot(sp.w[o][ok_o], sp.f0[o][ok_o]/mean_o, sp.f[o][ok_o]/mean_o, yH2O[o][ok_o]+1, yO2[o][ok_o]+1, 'w lp pt 7 ps 0.5 lc 9 t "input", "" us 1:3 w l lc 1 lw 2 t "atm corrected", "" us 1:4 w l lc 3 lw 2 t "H2O", "" us 1:5 w l lc 2 lw 1 t "O2"')
+                pause('airmass: %.3f, atm_par O2: %.3f' % (sp.airmass, sp.atm_par[1]))
 
          bjd[n] = sp.bjd
 
@@ -2319,7 +2371,7 @@ def serval():
                   pause(o)
 
                # pause()
-               if o==41: pind=pind[:-9]   # @CARM_NIR?
+               if o==41: pind=pind[:-9]   # @CARM_NIR ? 
                par, f2mod, keep, stat, chi2mapo = fitspec(TPL[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=(o in lookssr)|(2*(not safemode)), deg=deg, chi2map=True)
 
                if diff_width:
@@ -2737,6 +2789,7 @@ if __name__ == "__main__":
    argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto', dest='atmfile')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='atm_carm_vis.fits')
+   argopt('-atm_fit_order', help='Order to fit the telluric spectrum'+default, default='auto')
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist'+default, type=float, default=4.)
@@ -2752,6 +2805,7 @@ if __name__ == "__main__":
    argopt('-distmax', help='[arcsec] Max distance telescope position from target coordinates.', nargs='?', type=float, const=30.)
    argopt('-driftref', help='reference file for drift mode', type=str)
    argopt('-fib',  help='fibre', choices=['', 'A', 'B', 'AB'], default='')
+   argopt('-fitO2', help='fit for the O2 content if modelling the telluric spectrum, else the airmass is used', type=bool, default=False)
    argopt('-inst', help='instrument '+default, default='HARPS', choices=insts)
    argopt('-nset', '-iset', help='slice for file subset (e.g. 1:10, ::5)', default=':', type=arg2slice)
    argopt('-n_excl',  help='pattern for files to exclude', nargs='+', default=[])
