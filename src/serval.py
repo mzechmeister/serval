@@ -942,7 +942,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmmask, atmspec, atmspec_mask, atm_cal_dry, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmmask, atmspec, atm_cal_dry, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -987,9 +987,13 @@ def serval():
    corders = np.arange(iomax)[coset]
 
    # if atmspec is empty and the instrument is CARM_NIR, select old set of orders without atmospheric spectrum
-   if atmspec == '' and inst.name == 'CARM_NIR':
-      orders = np.arange(iomax)[inst.oset_no_atmspec]
-      corders = np.arange(iomax)[inst.coset_no_atmspec]
+   if atmspec:
+      orders = getattr(inst, 'oset_atmspec', orders)
+      corders = getattr(inst, 'coset_atmspec', corders)
+      # atmspec_mask is a specific mask for lines that cannot be corrected; needed for e.g. CARM NIR.
+      if atmmask == 'auto': 
+         # in this case atmmask is not defined by the user so set to auto and we will use the atmspec_mask defined in the inst_*.py files. 
+         atmmask = getattr(inst, 'atmspec_mask', atmmask) 
 
    orders = sorted(set(orders) - set(o_excl))
    corders = sorted(set(corders) - set(co_excl))
@@ -1140,10 +1144,6 @@ def serval():
       atmspec = ('' if os.path.exists(atmspec) else servallib) + atmspec # check if the file exists in the current directory, otherwise use the servallib path
       if not os.path.exists(atmspec):
           raise FileNotFoundError(atmspec, atmspec) # if the file now still does not exist, raise an error
-
-      # atmspec_mask is a specific mask for lines that cannot be corrected; needed for e.g. CARM NIR.
-      if atmspec_mask and atmmask == 'auto': 
-         atmmask = atmspec_mask # in this case atmmask is not defined and we will use the atmspec_mask defined in the inst_*.py files. 
 
       print("atmspec: %s, atm_cal_order: %s, atm_cal_dry: %s" % (atmspec, atm_cal_order, atm_cal_dry) )
 
@@ -2752,7 +2752,6 @@ if __name__ == "__main__":
    snmax = getattr(inst, 'snmax', 400.)
    R_inst = getattr(inst, 'R', None)
    atmspec = getattr(inst, 'atmspec', None)
-   atmspec_mask = getattr(inst, 'atmspec_mask', None)
    atm_cal_order = getattr(inst, 'atm_cal_order', None)
 
    default = " (default: %(default)s)."
