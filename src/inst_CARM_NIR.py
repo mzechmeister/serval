@@ -12,18 +12,21 @@ iomax = 28
 iomax *= 2 # reshaping
 pmax = 1800
 
+oset = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})
+coset = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
+
+# these are the old setting pre atm cal 
 oset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
-coset = sorted(set(range(iomax))) - {37,38,39} # these are the orders that are not used for telluric modeling
+coset = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})
 
-# coset = sorted(set(range(iomax))) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})) # these are the orders not used when not using the telluric modeling
-
-maskfile = 'telluric_mask_CARM_NIR_0.1_limit.dat'
+maskfile = 'telluric_mask_nir4.dat'
 atmspec = 'atm_carm_nir.fits'
+atmspec_mask = 'telluric_mask_CARM_NIR_0.1_limit.dat'   # the 0.1 in the filename shows the transmission limit for the telluric lines that are not corrected properly and need to be masked. This is a specific mask for lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib. 
 skyfile = 'sky_carm_nir'
 
 pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits
 
-atm_fit_order = [30,32,33] # these are the best orders, they need to fit simultaneously, because the water lines are not in all orders
+atm_cal_order = [30, 32, 33]   # these are the best orders; they are fitted simultaneously, o30 is mainly for O2 and o32 and o33 are for H2O.
 
 def scan(self, s, pfits=True):
    """
@@ -200,5 +203,7 @@ def data(self, orders, pfits=True):
          #bpmap[:,:-1] |= flag.sat * (f>300000)[:,1:]
       bpmap[f < -3*e] |= flag.neg
       bpmap[e==0] |= flag.nan
+
+      ok = np.ones_like(f, dtype=bool)
       return w, f, e, bpmap
 

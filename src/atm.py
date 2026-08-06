@@ -81,7 +81,7 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     f : np.ndarray
         flux of the observed spectrum
     a1 : float, optional
-        airmass of the observation, if known it can be provided to reduce the number of free parameters
+        airmass of the observation; if known it can be provided to reduce the number of free parameters
     o : int, optional
         echelle order
 
@@ -96,6 +96,8 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     w2 = np.exp(ln_wave[ok])
 
     if is_echelle:
+        # .ravel is a quick workaround for the NIR, it breaks if orders overlap, so be carefull in the future 
+        # paste together o30 and o33 in NIR 
         atm1 = np.interp(w2, tpl1[0][o].ravel()[tpl_ok], tpl1[1][o].ravel()[tpl_ok])
         atm2 = np.interp(w2, tpl2[0][o].ravel()[tpl_ok], tpl2[1][o].ravel()[tpl_ok])
 
@@ -104,7 +106,7 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
         atm2 = np.interp(w2, *tpl2)
 
     A = np.c_[atm1*0+1, np.log(atm1), np.log(atm2)]
-    y = f[ok]/np.nanmedian(f[ok])
+    y = f[ok]
     if a1 is not None:
         A = A[:, [0,2]]
         c1 = airmass_to_c1(a1)
@@ -113,13 +115,13 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     atm_par = np.linalg.lstsq(A, np.log(y), rcond=None)[0]
     
     if a1 is not None:
-        # inset the airmass coefficient into the parameter array
+        # insert the airmass coefficient c1 into the parameter array
         atm_par = np.array([atm_par[0], c1, atm_par[1]])
 
     return atm_par
 
 def _calc_atm(_ln_wave, atm_par):
-    ''' wrapper function to calculate the atmospheric transmission from the templates and the atmospheric parameters
+    ''' Wrapper function to calculate the atmospheric transmission from the templates and the atmospheric parameters
     
     Parameters
     ----------
@@ -138,6 +140,9 @@ def _calc_atm(_ln_wave, atm_par):
     atm1 = np.interp(_wave, *tplo1)   # only linear interpolation so far
     atm2 = np.interp(_wave, *tplo2)
     yatmo = atm1**atm_par[1] * atm2**atm_par[2]
+
+    yatmo = np.where(yatmo == 0, 1, yatmo)
+    yatmo = np.nan_to_num(yatmo, nan=1.0, posinf=1.0, neginf=1.0)
     return yatmo
 
 def calc_atm(ln_wave, atm_par, order=None):
