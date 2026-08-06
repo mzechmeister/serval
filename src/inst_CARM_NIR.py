@@ -16,8 +16,8 @@ oset = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})
 coset = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
 
 # these are the old setting pre atm cal 
-oset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
-coset = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})
+oset_no_atmspec = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
+coset_no_atmspec = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})
 
 maskfile = 'telluric_mask_nir4.dat'
 atmspec = 'atm_carm_nir.fits'

@@ -986,6 +986,11 @@ def serval():
    orders = np.arange(iomax)[oset]
    corders = np.arange(iomax)[coset]
 
+   # if atmspec is empty and the instrument is CARM_NIR, select old set of orders without atmospheric spectrum
+   if atmspec == '' and inst.name == 'CARM_NIR':
+      orders = np.arange(iomax)[inst.oset_no_atmspec]
+      corders = np.arange(iomax)[inst.coset_no_atmspec]
+
    orders = sorted(set(orders) - set(o_excl))
    corders = sorted(set(corders) - set(co_excl))
    omin = min(orders)
@@ -2194,7 +2199,7 @@ def serval():
             ok = (sp.bpmap[atm_o] == 0) & (sp.f[atm_o] / sp.e[atm_o] > 3)
             atm_par = atm.fit_atm_par(sp.w[atm_o][ok], sp.f[atm_o][ok], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
 
-            if 1:
+            if 0:
                if atm_cal_dry:
                   # compare cal pars for c1 based on airmass and fitted c1
                   atm_par_am = atm.fit_atm_par(sp.w[atm_o][ok], sp.f[atm_o][ok], o=atm_o, a1=sp.airmass)
