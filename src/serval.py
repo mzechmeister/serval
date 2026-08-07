@@ -947,12 +947,20 @@ def serval():
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
 
+   print('atmspec', atmspec)
+   print('atmmask', atmmask)
+   print('oset', oset)
+   print('coset', coset)
+   stopstop
+
    print(description)
 
    ### SELECT INSTRUMENTAL FORMAT ###
    # general default values
    pat = getattr(inst, 'pat', '*tar')  # default search pattern
-   maskfile = servallib + getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')   # set a default telluric mask defined by the instrument, or a defualt
+
+   if atmmask == 'auto':
+      maskfile = servallib + getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')   # this has been moved to L2760 to 2780 but we still keep the sanity check for now
 
    # instrument specific default values
    iomax = inst.iomax
@@ -985,15 +993,6 @@ def serval():
 
    orders = np.arange(iomax)[oset]
    corders = np.arange(iomax)[coset]
-
-   # if atmspec is empty and the instrument is CARM_NIR, select old set of orders without atmospheric spectrum
-   if atmspec:
-      orders = getattr(inst, 'oset_atmspec', orders)
-      corders = getattr(inst, 'coset_atmspec', corders)
-      # atmspec_mask is a specific mask for lines that cannot be corrected; needed for e.g. CARM NIR.
-      if atmmask == 'auto': 
-         # in this case atmmask is not defined by the user so set to auto and we will use the atmspec_mask defined in the inst_*.py files. 
-         atmmask = getattr(inst, 'atmspec_mask', atmmask) 
 
    orders = sorted(set(orders) - set(o_excl))
    corders = sorted(set(corders) - set(co_excl))
@@ -2738,8 +2737,14 @@ if __name__ == "__main__":
    preparser = argparse.ArgumentParser(add_help=False)
    preparser.add_argument('args', nargs='*')
    preparser.add_argument('-inst', help='instrument', default='HARPS', choices=insts)
+   preparser.add_argument('-atmspec', default='auto', dest="atmspec")
+   preparser.add_argument('-atmmask', default='auto')
    preargs, _ =  preparser.parse_known_args()
 
+   # getting atmmask and atmspec from preparser
+   atmspec = preargs.atmspec
+   atmmask = preargs.atmmask
+   
    inst = preargs.inst
    inst = importlib.import_module('inst_'+inst)
 
@@ -2751,8 +2756,25 @@ if __name__ == "__main__":
    ofac = getattr(inst, 'ofac', 1.)
    snmax = getattr(inst, 'snmax', 400.)
    R_inst = getattr(inst, 'R', None)
-   atmspec = getattr(inst, 'atmspec', None)
+   inst_atmspec = getattr(inst, 'atmspec', None)
    atm_cal_order = getattr(inst, 'atm_cal_order', None)
+
+   # if the user turns off atmspec we use the instrument specific atmmask named maskfile in inst_*.py
+   if not atmspec: 
+      atmmask = getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')  # default telluric mask for the instrument
+
+   # if user does not turn off atmspec we use it - this can either be a user defined atmspec or the default one from inst_*.py
+   else:
+      atmspec = inst_atmspec if atmspec == 'auto' else atmspec   # if it is set to auto we use the default one from inst_*.py
+
+      # check if the instrument has specific oset and coset for atmspec if not use the default oset and coset from inst_*.py
+      oset = getattr(inst, 'oset_atmspec', oset)
+      coset = getattr(inst, 'coset_atmspec', coset)
+
+      # lastly check if the atmmask is set by the user
+      if atmmask == 'auto':
+         # look for atmspec_mask or fall back to maskfile or default telluric mask
+         atmmask = getattr(inst, 'atmspec_mask', getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat'))
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2772,11 +2794,11 @@ if __name__ == "__main__":
    argopt('-targplx', help='[mas] Target parallax.', type=float, default='nan', metavar='PLX')
    argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad)).', default={'CARM_NIR': None, 'else': 'auto'}, metavar='RV')
    argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
-   argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto')
+   argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default=atmmask)
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
-   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='atm_carm_vis.fits')
-   argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order)
-   argopt('-atm_cal_dry', help='Calibrate also the dry content when modelling the telluric spectrum; default: the coefficient is predicted with airmass', type=bool, default=False)
+   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=inst_atmspec, const='auto')
+   argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order, type=arg2slice)
+   argopt('-atm_cal_dry', help='Calibrate also the dry content when modelling the telluric spectrum; default: the coefficient is predicted with airmass', default=False, action='store_true')
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist'+default, type=float, default=4.)

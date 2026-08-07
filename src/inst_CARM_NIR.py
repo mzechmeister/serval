@@ -12,16 +12,20 @@ iomax = 28
 iomax *= 2 # reshaping
 pmax = 1800
 
-oset = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})
-coset = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
+oset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
+coset = sorted(set(oset) | {0, 2, 12, 13, 16, 22, 23, 24, 25, 26, 27, 30, 32, 33, 34, 45, 47, 49, 51, 53, 54, 55})
 
 # these are the old setting pre atm cal 
-oset_no_atmspec = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
-coset_no_atmspec = sorted(set(range(iomax)) - {17,18,19,20,21,35,36,37,38,39,40,41,42,43,44})
+oset_atmspec = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
+coset_atmspec = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
 
 maskfile = 'telluric_mask_nir4.dat'
 atmspec = 'atm_carm_nir.fits'
-atmspec_mask = 'telluric_mask_CARM_NIR_0.1_limit.dat'   # the 0.1 in the filename shows the transmission limit for the telluric lines that are not corrected properly and need to be masked. This is a specific mask for lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib. 
+atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 
+                                                         # that are not corrected properly and need to be masked. This is a specific mask for
+                                                         # lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib.
+                                                         # In first tests, the 0.25 limit seems to be a good compromise between masking too many lines and 
+                                                         # not masking enough lines that are not corrected properly and yield the best results for Barnard's Star. 
 skyfile = 'sky_carm_nir'
 
 pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits
@@ -146,7 +150,7 @@ def data(self, orders, pfits=True):
                         [25,2755],[25,3058],[25,3786],
                         [27,2440],[27,3616],[27,3792]
                         ]).T
-      if orders == np.s_[:] or isinstance(orders, list):
+      if orders == np.s_[:]:
          #f = hdulist['SPEC'].data
          # "data" atribute seems to open again the fits file. For large data set (GJ273) this lead to "error: too many files open". So use "section"
          f = 1.*hdulist['SPEC'].section[orders]
