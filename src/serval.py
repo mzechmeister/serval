@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
+from arrow import get
+
 __author__ = 'Mathias Zechmeister'
 __version__ = '2022-01-26'
 
@@ -947,26 +949,16 @@ def serval():
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
 
-   print('atmspec', atmspec)
-   print('atmmask', atmmask)
-   print('skyfile', skyfile)
-   print('oset', oset)
-   print('coset', coset)
-   stopstop
-
    print(description)
 
    ### SELECT INSTRUMENTAL FORMAT ###
-   # general default values
+
    pat = getattr(inst, 'pat', '*tar')  # default search pattern
+   iomax = getattr(inst, 'iomax', None)
 
-   # instrument specific default values
-   iomax = inst.iomax
+   if fib == 'B': iomax = getattr(inst, 'iomax_B', None)
 
-   if 'HARP' in inst.name and fib == 'B': iomax = 71
-   elif inst.name == 'FEROS':
-      iomax = 38
-      if fib == 'B': atmmask_file = servallib + 'feros_mask_short.dat'
+   if inst.name == 'FEROS':
       ptomin = np.array([1800, 2000, 1800, 2000, 2000, 1600, 1500, 1400, 1100, 1000,
                          1000, 1000, 1000,  900,  800,  800,  800,  600,  500,  500,
                           400,  400,  300,  100,  100,  100,  100,  100,  100,  100,
@@ -1125,7 +1117,7 @@ def serval():
       atmspec = ('' if os.path.exists(atmspec) else servallib) + atmspec # check if the file exists in the current directory, otherwise use the servallib path
       if not os.path.exists(atmspec): raise FileNotFoundError(atmspec, atmspec) # if the file now still does not exist, raise an error
 
-      print("atmspec: %s, atm_cal_order: %s, atm_cal_dry: %s" % (atmspec, atm_cal_order, atm_cal_dry) )
+      print("\natmspec: %s \natm_cal_order: %s \natm_cal_dry: %s" % (atmspec, atm_cal_order, atm_cal_dry) )
       import atm
       atm.load(atmspec)
       if atmspec.endswith('stdAtmos_vis.fits'):
@@ -1163,7 +1155,7 @@ def serval():
       loaded_tel_mask = masktools.list2mask(msklist, wd=mskwd)
       loaded_tel_mask[:,1] = loaded_tel_mask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means good)
 
-   if loaded_tel_mask:
+   if atmmask or msklist:
       # make the discrete mask to a continuous mask via linear interpolation
       tellmask = interp(lam2wave(loaded_tel_mask[:,0]), loaded_tel_mask[:,1])
 
@@ -1185,7 +1177,7 @@ def serval():
    skymsk = nomask
    if skyfile:
       skyfile = ('' if os.path.exists(skyfile) else servallib) + skyfile
-      print('sky maskfile %s' % skyfile)
+      print('sky maskfile %s\n' % skyfile)
       loaded_sky_mask = np.genfromtxt(skyfile)
       skymsk = interp(lam2wave(loaded_sky_mask[:,0]), loaded_sky_mask[:,1])
 
@@ -2764,14 +2756,11 @@ if __name__ == "__main__":
    if skyfile == 'auto': skyfile = inst_skyfile
 
    # resolve 'auto' first, regardless of whether it came from an explicit flag or the default
-   print("Using instrument:", inst.name, "with fiber:", fib, "and skyfile:", skyfile, "and atmspec:", atmspec)
    if atmspec == 'auto':
       atmspec = inst_atmspec
 
-   print("Using instrument:", inst.name, "with fiber:", fib, "and skyfile:", skyfile, "and atmspec:", atmspec)
    # now check what we actually ended up with
    if not atmspec: # no atmspec defined for this instrument (or user disabled it with '') 
-      print("No telluric spectrum defined for this instrument, disabling telluric correction.")
       atmmask = getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')   # → fall back to masking
    else:
       oset = getattr(inst, 'oset_atmspec', oset)
@@ -2779,12 +2768,14 @@ if __name__ == "__main__":
       if atmmask == 'auto':
          atmmask = getattr(inst, 'atmspec_mask', getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat'))
 
-   if fib == 'B' and atmmask == 'auto': atmmask = None   # if fiber B, no masking 
+   if fib == 'B' and atmmask == 'auto': atmmask = None   # if fiber B, no masking except for FEROS, which has a special mask for fiber B
+   if inst.name == 'FEROS' and fib == 'B': atmmask_file = 'feros_mask_short.dat'
    if fib == 'B' and skyfile == 'auto': skyfile = None   # if fiber B, no masking 
 
    # save the final atmspec and atmmask value for use in the argument parser
    atmspec_set = atmspec
    atmmask_set = atmmask
+   skyfile_set = skyfile
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2906,7 +2897,7 @@ if __name__ == "__main__":
 
    if atmspec == 'auto': atmspec = atmspec_set   # if the user passes '-atmspec auto', we need to use the value that was resolved from the instrument defaults   
    if atmmask == 'auto': atmmask = atmmask_set
-   if skyfile == 'auto' and fib == 'B': skyfile = None   # if the user passes '-skymsk auto', we need to use the value that was resolved from the instrument defaults
+   if skyfile == 'auto': skyfile = skyfile_set if fib != 'B' else None   # if the user passes '-skymsk auto', we need to use the value that was resolved from the instrument defaults
 
    if dir_or_inputlist is None:
       ## execute last command

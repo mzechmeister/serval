@@ -12,6 +12,7 @@ obsloc = dict(lat=-29.2584, lon=-70.7345, elevation=2400.)   # lasilla
 pat = '*[vs][ep].fits'  # _wave, _sp
 
 iomax = 25
+iomax= 38    # taken from serval() 
 pmax =  4096 - 300
 
 default_fib = 'A'  # default fiber for science spectra
