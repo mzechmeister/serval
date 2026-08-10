@@ -959,8 +959,8 @@ def serval():
    # general default values
    pat = getattr(inst, 'pat', '*tar')  # default search pattern
 
-   if atmmask == 'auto':
-      maskfile = servallib + getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')   # this has been moved to L2760 to 2780 but we still keep the sanity check for now
+   # if atmmask == 'auto':
+   #    maskfile = servallib + getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')   # this has been moved to L2760 to 2780 but we still keep the sanity check for now
 
    # instrument specific default values
    iomax = inst.iomax
@@ -2737,7 +2737,7 @@ if __name__ == "__main__":
    preparser = argparse.ArgumentParser(add_help=False)
    preparser.add_argument('args', nargs='*')
    preparser.add_argument('-inst', help='instrument', default='HARPS', choices=insts)
-   preparser.add_argument('-atmspec', default='auto', dest="atmspec")
+   preparser.add_argument('-atmspec', default=None, dest="atmspec")
    preparser.add_argument('-atmmask', default='auto')
    preargs, _ =  preparser.parse_known_args()
 
@@ -2759,22 +2759,23 @@ if __name__ == "__main__":
    inst_atmspec = getattr(inst, 'atmspec', None)
    atm_cal_order = getattr(inst, 'atm_cal_order', None)
 
-   # if the user turns off atmspec we use the instrument specific atmmask named maskfile in inst_*.py
-   if not atmspec: 
-      atmmask = getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')  # default telluric mask for the instrument
+   # resolve 'auto' first, regardless of whether it came from an explicit flag or the default
+   if atmspec == 'auto':
+      atmspec = inst_atmspec
 
-   # if user does not turn off atmspec we use it - this can either be a user defined atmspec or the default one from inst_*.py
+   # now check what we actually ended up with
+   if not atmspec:
+      # no atmspec defined for this instrument (or user disabled it with '') → fall back to masking
+      atmmask = getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')
    else:
-      atmspec = inst_atmspec if atmspec == 'auto' else atmspec   # if it is set to auto we use the default one from inst_*.py
-
-      # check if the instrument has specific oset and coset for atmspec if not use the default oset and coset from inst_*.py
       oset = getattr(inst, 'oset_atmspec', oset)
       coset = getattr(inst, 'coset_atmspec', coset)
-
-      # lastly check if the atmmask is set by the user
       if atmmask == 'auto':
-         # look for atmspec_mask or fall back to maskfile or default telluric mask
          atmmask = getattr(inst, 'atmspec_mask', getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat'))
+
+   # save the final atmspec and atmmask value for use in the argument parser
+   atmspec_set = atmspec
+   atmmask_set = atmmask
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2794,7 +2795,7 @@ if __name__ == "__main__":
    argopt('-targplx', help='[mas] Target parallax.', type=float, default='nan', metavar='PLX')
    argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad)).', default={'CARM_NIR': None, 'else': 'auto'}, metavar='RV')
    argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
-   argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default=atmmask)
+   argopt('-atmmask', help='Telluric line mask ('' for no masking)'+default, default='auto')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=inst_atmspec, const='auto')
    argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order, type=arg2slice)
@@ -2893,6 +2894,9 @@ if __name__ == "__main__":
 
    if skippre or vtfix or last or isinstance(tpl, str) or driftref:
       niter -= 1
+
+   if atmspec=='auto': atmspec = atmspec_set   # if the user passes '-atmspec auto', we need to use the value that was resolved from the instrument defaults
+   if atmmask=='auto': atmmask = atmmask_set   # same for atmmask
 
    if dir_or_inputlist is None:
       ## execute last command
