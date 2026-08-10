@@ -19,6 +19,8 @@ coset = sorted(set(oset) | {0, 2, 12, 13, 16, 22, 23, 24, 25, 26, 27, 30, 32, 33
 oset_atmspec = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
 coset_atmspec = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
 
+default_fib = 'A'  # default fiber for science spectra
+
 maskfile = 'telluric_mask_nir4.dat'
 atmspec = 'atm_carm_nir.fits'
 atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 

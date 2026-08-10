@@ -14,6 +14,8 @@ pat = '*[vs][ep].fits'  # _wave, _sp
 iomax = 25
 pmax =  4096 - 300
 
+default_fib = 'A'  # default fiber for science spectra
+
 maskfile = 'telluric_mask_carm_short.dat'
 
 # Instrument read functions

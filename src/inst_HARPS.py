@@ -10,6 +10,8 @@ obsloc = {'HARPS': dict(lat=-29.2584, lon=-70.7345, elevation=2400.),       # fr
 iomax = {'HARPS': 72, 'HARPN': 69}[name]
 oset = {'HARPS': '10:71', 'HARPN': '10:'}[name]
 
+default_fib = 'A'  # default fiber for science spectra
+
 pat = "*.tar *e2ds_%(fib)s.fits *e2ds_%(fib)s.fits.gz *_S2D_%(fib)s.fits"   # space separated suffices
 #maskfile = 'telluric_mask_carm_short.dat'
 

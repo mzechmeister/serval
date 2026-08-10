@@ -10,6 +10,8 @@ iomax = 61 # NAXIS2
 snmax = 500
 oset = '10:52'
 
+default_fib = 'A'  # default fiber for science spectra
+
 maskfile = 'telluric_mask_carm_short.dat'
 atmspec = 'atm_carm_vis.fits'
 atmspec_mask = None
