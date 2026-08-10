@@ -2769,7 +2769,7 @@ if __name__ == "__main__":
          atmmask = getattr(inst, 'atmspec_mask', getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat'))
 
    if fib == 'B' and atmmask == 'auto': atmmask = None   # if fiber B, no masking except for FEROS, which has a special mask for fiber B
-   if inst.name == 'FEROS' and fib == 'B': atmmask_file = 'feros_mask_short.dat'
+   if inst.name == 'FEROS' and fib == 'B' and atmmask == 'auto': atmmask = 'feros_mask_short.dat'
    if fib == 'B' and skyfile == 'auto': skyfile = None   # if fiber B, no masking 
 
    # save the final atmspec and atmmask value for use in the argument parser
