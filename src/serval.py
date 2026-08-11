@@ -2304,7 +2304,7 @@ def serval():
                   gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
                   pause(o)
                
-               par, f2mod, keep, stat = fitspec((spt.w[o][spt.ok[o]],spt.f[o][spt.ok[o]]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=(o in lookssr)|(2*(not safemode)))
+               par, f2mod, keep, stat = fitspec((spt.w[o], spt.f[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=(o in lookssr)|(2*(not safemode)))
 
                e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
                e_vi_min = 1/ np.sqrt(np.sum(1/e_vi[keep]**2)) # total velocity error (Butler et al., 1996)
@@ -2721,7 +2721,7 @@ if __name__ == "__main__":
    preparser = argparse.ArgumentParser(add_help=False)
    preparser.add_argument('args', nargs='*')
    preparser.add_argument('-inst', help='instrument', default='HARPS', choices=insts)
-   preparser.add_argument('-atmspec', default='auto', dest="atmspec")
+   preparser.add_argument('-atmspec', default='auto')
    preparser.add_argument('-atmmask', default='auto')
    preparser.add_argument('-fib', default='')
    preparser.add_argument('-skymsk', default='auto', dest='skyfile')
@@ -2753,11 +2753,10 @@ if __name__ == "__main__":
    if fib == '': fib = getattr(inst, 'default_fib', '')
 
    # check for user set skyfile, otherwise use the default skyfile for this instrument (if defined)
-   if skyfile == 'auto': skyfile = inst_skyfile
+   skyfile = inst_skyfile if skyfile == 'auto' else skyfile
 
    # resolve 'auto' first, regardless of whether it came from an explicit flag or the default
-   if atmspec == 'auto':
-      atmspec = inst_atmspec
+   atmspec = inst_atmspec if atmspec == 'auto' else atmspec
 
    # now check what we actually ended up with
    if not atmspec: # no atmspec defined for this instrument (or user disabled it with '') 
