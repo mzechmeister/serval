@@ -14,7 +14,6 @@ default_fib = 'A'  # default fiber for science spectra
 
 maskfile = 'telluric_mask_carm_short.dat'
 atmspec = 'atm_carm_vis.fits'
-atmspec_mask = None
 
 atm_cal_order = 44 # order has some O2 and some water, alternative is order 30
 

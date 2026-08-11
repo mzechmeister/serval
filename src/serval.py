@@ -545,8 +545,6 @@ def polyreg(x2, y2, e_y2, v, deg=1, retmod=True):   # polynomial regression
       ind = 0.0001
       # no check for zero division inside _pKolynomial.polyfit!
       #pause()
-      # ok = ~(np.isnan(fmod) | np.isnan(y2) | np.isnan(e_y2) | np.isnan(x2))
-      # SSR = _pKolynomial.polyfit(x2[ok], y2[ok], e_y2[ok], fmod[ok], ind, x2.size, calcspec.wcen, deg, p, lhs, pstat)
 
       SSR = _pKolynomial.polyfit(x2, y2, e_y2, fmod, ind, x2.size, calcspec.wcen, deg, p, lhs, pstat)
       if SSR < 0:
@@ -777,7 +775,7 @@ def opti(va, vb, x2, y2, e_y2, p=None, vfix=False, plot=2):
 
    # analyse the CCF peak fitting
    v, e_v, a = SSRstat(vgrid, SSR, plot=plot)
-   
+
    if np.isnan(e_v):
       v = vgrid[nk//2]   # actually it should be nan, but may the next clipping loop or plot use vcen
       print(" Setting  v=" % v)
@@ -942,7 +940,7 @@ def serval():
 
    if not bp: sys.stdout = Logger()
 
-   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmmask, atmspec, atm_cal_dry, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
+   global obj, targ, oset, coset, last, tpl, sp, fmod, reana, inst, fib, look, looka, looki, lookt, lookp, lookssr, lookvsini, pmin, pmax, debug, pspllam, kapsig, nclip, atmmask_file, atmspec, atm_cal_dry, skyfile, atmwgt, omin, omax, ptmin, ptmax, driftref, deg, targrv, tplrv, tplvsini, tplR, R_inst
 
    outdir = obj + '/'
    fibsuf = '_B' if inst=='FEROS' and fib=='B' else ''
@@ -984,8 +982,6 @@ def serval():
    omax = max(orders)
    comin = min(corders)
    comax = max(corders)
-
-   print('orders:', orders, 'corders:', corders)
 
    if reana:
       x = analyse_rv(obj, postiter=postiter, fibsuf=fibsuf, oidx=orders)
@@ -1106,7 +1102,7 @@ def serval():
    # check the special case here
    if ccf and 'th_mask' not in ccf:
       print('WARNING: ccf is set, but not to th_mask, so no telluric mask will be used.')
-      atmmask = None
+      atmmask_file = None
 
    # first check if atmspec is set, and if so, load the telluric spectrum
    if atmspec:
@@ -1133,53 +1129,53 @@ def serval():
           atm.tpl2 = np.exp(ww), ff
 
    # now we check that a telluric mask is set, either via atmmask or msklist, and if not, we set the telluric mask to None
-   if not atmmask and not msklist:
+   if not atmmask_file and not msklist:
       print('Neiter atmmask nor msklist is set, so no telluric mask will be used.')
-      loaded_tel_mask = None
+      atmmask = None
       tellmask = nomask
 
-   if atmmask:
+   if atmmask_file:
       # load the telluric mask
-      atmmask_file = ('' if os.path.exists(atmmask) else servallib) + atmmask
+      atmmask_file = ('' if os.path.exists(atmmask_file) else servallib) + atmmask_file
       print('telluric maskfile %s' % atmmask_file)
-      loaded_tel_mask = np.genfromtxt(atmmask_file)
+      atmmask = np.genfromtxt(atmmask_file)
 
       if 'telluric_mask_atlas_short.dat' in atmmask_file:
          lcorr = 0.000009  # Guillems mask needs this shift of 2.7 km/s
-         loaded_tel_mask[:,0] = airtovac(loaded_tel_mask[:,0]) * (1-lcorr)
+         atmmask[:,0] = airtovac(atmmask[:,0]) * (1-lcorr)
       if 'th_mask' in atmmask_file: # well, it is not atmosphere, but ...
-         loaded_tel_mask[:,1] = loaded_tel_mask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means flagged and bad)
+         atmmask[:,1] = atmmask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means flagged and bad)
 
    if msklist:   # if msklist is set, load the line list and convert to binary mask 
-      if atmmask: print('WARNING: both atmmask and msklist are set, msklist %s is prioritized' % msklist)
-      loaded_tel_mask = masktools.list2mask(msklist, wd=mskwd)
-      loaded_tel_mask[:,1] = loaded_tel_mask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means good)
+      if atmmask_file: print('WARNING: both atmmask and msklist are set, msklist %s is prioritized' % msklist)
+      atmmask = masktools.list2mask(msklist, wd=mskwd)
+      atmmask[:,1] = atmmask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means good)
 
-   if atmmask or msklist:
+   if atmmask_file or msklist:
       # make the discrete mask to a continuous mask via linear interpolation
-      tellmask = interp(lam2wave(loaded_tel_mask[:,0]), loaded_tel_mask[:,1])
+      tellmask = interp(lam2wave(atmmask[:,0]), atmmask[:,1])
 
    if 0:
       mask2 = np.genfromtxt('telluric_add.dat')
       # DO YOU NEED THIS: mask2[:,0] = airtovac(mask2[:,0])  ??
       i0 = 0 #where(loaded_tel_mask[:,0]<mask2[0][0])[0][-1]
       for ran in mask2:
-         while (loaded_tel_mask[i0,0]<ran[0]): i0 += 1
+         while (atmmask[i0,0]<ran[0]): i0 += 1
          #if loaded_tel_mask[i0-1,0]==0:
-         loaded_tel_mask = np.insert(loaded_tel_mask,i0,[ran[0]-0.0000001,0.0],axis=0) # insert
-         loaded_tel_mask = np.insert(loaded_tel_mask,i0+1,[ran[0],1.0],axis=0) # insert
+         atmmask = np.insert(atmmask,i0,[ran[0]-0.0000001,0.0],axis=0) # insert
+         atmmask = np.insert(atmmask,i0+1,[ran[0],1.0],axis=0) # insert
          #while (loaded_tel_mask[i0,0]<ran[1]): np.delete(loaded_tel_mask,i0,axis=0)
          #if loaded_tel_mask[i0-1,0]==0:
-         loaded_tel_mask = np.insert(loaded_tel_mask,i0+2,[ran[1],1.0],axis=0) # insert
-         loaded_tel_mask = np.insert(loaded_tel_mask,i0+3,[ran[1]+0.0000001,0.0],axis=0) # insert
+         atmmask = np.insert(atmmask,i0+2,[ran[1],1.0],axis=0) # insert
+         atmmask = np.insert(atmmask,i0+3,[ran[1]+0.0000001,0.0],axis=0) # insert
 
 
    skymsk = nomask
    if skyfile:
       skyfile = ('' if os.path.exists(skyfile) else servallib) + skyfile
       print('sky maskfile %s\n' % skyfile)
-      loaded_sky_mask = np.genfromtxt(skyfile)
-      skymsk = interp(lam2wave(loaded_sky_mask[:,0]), loaded_sky_mask[:,1])
+      sky = np.genfromtxt(skyfile)
+      skymsk = interp(lam2wave(sky[:,0]), sky[:,1])
 
    msksky = [0] * iomax
    if inst.name=='CARM_VIS':
@@ -1711,7 +1707,7 @@ def serval():
             ind *= emod > 0.0
             we = 0*mod
             we[ind] = 1. / emod[ind]**2
-            if atmmask and ('UNe' in atmmask or 'UAr' in atmmask or 'ThNe' in atmmask or 'ThAr' in atmmask): # old downweight scheme
+            if atmmask_file and ('UNe' in atmmask_file or 'UAr' in atmmask_file or 'ThNe' in atmmask_file or 'ThAr' in atmmask_file): # old downweight scheme
                we[ind] += 0.000000001
                we[tellind] /= 10       # downweight
             elif atmwgt: # down weight with a constant factor
@@ -2330,7 +2326,7 @@ def serval():
                   pause(o)
 
                # pause()
-               if o==41: pind=pind[:-9]   # @CARM_NIR? 
+               if o==41: pind=pind[:-9]   # @CARM_NIR?
                par, f2mod, keep, stat, chi2mapo = fitspec(TPL[o], wmod, f2, e2, v=targrv-tplrv, clip=kapsig, nclip=nclip, keep=pind, indmod=np.s_[pmin:pmax], plot=(o in lookssr)|(2*(not safemode)), deg=deg, chi2map=True, order=o)
 
                if diff_width:
@@ -2704,15 +2700,6 @@ def arg2slice(arg):
       arg = eval('np.s_['+arg+']')
    return [arg] if isinstance(arg, int) else arg
 
-def str2bool(v):
-   if isinstance(v, bool):
-      return v
-   if v.lower() in ('1', 'yes', 'true'):
-      return True
-   if v.lower() in ('0', 'no', 'false'):
-      return False
-   raise argparse.ArgumentTypeError(f"Boolean value expected, got '{v}'")
-
 
 if __name__ == "__main__":
    insts = [os.path.basename(i)[5:-3] for i in glob.glob(servalsrc+'inst_*.py')]
@@ -2722,16 +2709,10 @@ if __name__ == "__main__":
    preparser.add_argument('args', nargs='*')
    preparser.add_argument('-inst', help='instrument', default='HARPS', choices=insts)
    preparser.add_argument('-atmspec', default='auto')
-   preparser.add_argument('-atmmask', default='auto')
+   preparser.add_argument('-atmmask', default='auto', dest='atmmask_file')
    preparser.add_argument('-fib', default='')
    preparser.add_argument('-skymsk', default='auto', dest='skyfile')
    preargs, _ =  preparser.parse_known_args()
-
-   # getting atmmask and atmspec from preparser
-   atmspec = preargs.atmspec
-   atmmask = preargs.atmmask
-   fib = preargs.fib
-   skyfile = preargs.skyfile
    
    inst = preargs.inst
    inst = importlib.import_module('inst_'+inst)
@@ -2744,37 +2725,39 @@ if __name__ == "__main__":
    ofac = getattr(inst, 'ofac', 1.)
    snmax = getattr(inst, 'snmax', 400.)
    R_inst = getattr(inst, 'R', None)
-
    inst_skyfile = getattr(inst, 'skyfile', None)
+   inst_atmmask_file = getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')
+   inst_atmspec_mask = getattr(inst, 'atmspec_mask', inst_atmmask_file)
    inst_atmspec = getattr(inst, 'atmspec', None)
    atm_cal_order = getattr(inst, 'atm_cal_order', None)
+
+   fib = preargs.fib
 
    # check for user set fiber, otherwise use the default fiber for this instrument (if defined)
    if fib == '': fib = getattr(inst, 'default_fib', '')
 
    # check for user set skyfile, otherwise use the default skyfile for this instrument (if defined)
-   skyfile = inst_skyfile if skyfile == 'auto' else skyfile
+   skyfile = inst_skyfile if preargs.skyfile == 'auto' else preargs.skyfile
 
    # resolve 'auto' first, regardless of whether it came from an explicit flag or the default
-   atmspec = inst_atmspec if atmspec == 'auto' else atmspec
+   atmspec = inst_atmspec if preargs.atmspec == 'auto' else preargs.atmspec
 
-   # now check what we actually ended up with
-   if not atmspec: # no atmspec defined for this instrument (or user disabled it with '') 
-      atmmask = getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat')   # → fall back to masking
-   else:
+   atmmask_file = inst_atmmask_file if preargs.atmmask_file == 'auto' else preargs.atmmask_file 
+
+   if atmspec:
       oset = getattr(inst, 'oset_atmspec', oset)
       coset = getattr(inst, 'coset_atmspec', coset)
-      if atmmask == 'auto':
-         atmmask = getattr(inst, 'atmspec_mask', getattr(inst, 'maskfile', 'telluric_mask_atlas_short.dat'))
 
-   if fib == 'B' and atmmask == 'auto': atmmask = None   # if fiber B, no masking except for FEROS, which has a special mask for fiber B
-   if inst.name == 'FEROS' and fib == 'B' and atmmask == 'auto': atmmask = 'feros_mask_short.dat'
+      atmmask_file = inst_atmspec_mask if preargs.atmmask_file == 'auto' else atmmask_file
+
+   if fib == 'B' and atmmask_file == 'auto': atmmask_file = None   # if fiber B, no masking except for FEROS, which has a special mask for fiber B
+   if inst.name == 'FEROS' and fib == 'B' and atmmask_file == 'auto': atmmask_file = 'feros_mask_short.dat'
    if fib == 'B' and skyfile == 'auto': skyfile = None   # if fiber B, no masking 
 
    # save the final atmspec, atmmask and skyfile settings for use after the argument parser, in case the user sets one to "auto"
-   atmspec_set = atmspec
-   atmmask_set = atmmask
-   skyfile_set = skyfile
+   atmspec_def = atmspec
+   atmmask_def = atmmask_file
+   skyfile_def = skyfile
 
    default = " (default: %(default)s)."
    epilog = """\
@@ -2797,7 +2780,7 @@ if __name__ == "__main__":
    argopt('-atm_cal_dry', help='Calibrate also the dry content when modelling the telluric spectrum; default: the coefficient is predicted with airmass', default=False, action='store_true')
    argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order, type=arg2slice)
    argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='auto')
-   argopt('-atmmask', help='Telluric line mask ("" for no masking)'+default, nargs='?', default=atmmask, const='auto', type=str)
+   argopt('-atmmask', help='Telluric line mask ("" for no masking)'+default, nargs='?', default=atmmask_file, const='auto', type=str, dest='atmmask_file')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
@@ -2894,9 +2877,9 @@ if __name__ == "__main__":
    if skippre or vtfix or last or isinstance(tpl, str) or driftref:
       niter -= 1
 
-   if atmspec == 'auto': atmspec = atmspec_set   # if the user passes '-atmspec auto', we need to use the value that was resolved from the instrument defaults   
-   if atmmask == 'auto': atmmask = atmmask_set
-   if skyfile == 'auto': skyfile = skyfile_set if fib != 'B' else None   # if the user passes '-skymsk auto', we need to use the value that was resolved from the instrument defaults
+   if atmspec == 'auto': atmspec = atmspec_def   # if the user passes '-atmspec auto', we need to use the value that was resolved from the instrument defaults   
+   if atmmask_file == 'auto': atmmask_file = atmmask_def
+   if skyfile == 'auto': skyfile = skyfile_def if fib != 'B' else None   # if the user passes '-skymsk auto', we need to use the value that was resolved from the instrument defaults
 
    if dir_or_inputlist is None:
       ## execute last command

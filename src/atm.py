@@ -92,14 +92,14 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     '''
     
     ok = np.isfinite(f) 
-    tpl_ok = np.isfinite(tpl1[0][o].ravel()) & np.isfinite(tpl2[0][o].ravel())
+    tpl_ok = np.isfinite(tpl1[0][o]) & np.isfinite(tpl2[0][o])
     w2 = np.exp(ln_wave[ok])
 
     if is_echelle:
-        # .ravel is a quick workaround for the NIR, it breaks if orders overlap, so be carefull in the future 
+        # quick workaround for the NIR, tpl_ok maps a 2D array to 1D, it breaks if orders overlap, so be careful in the future 
         # paste together o30 and o33 in NIR 
-        atm1 = np.interp(w2, tpl1[0][o].ravel()[tpl_ok], tpl1[1][o].ravel()[tpl_ok])
-        atm2 = np.interp(w2, tpl2[0][o].ravel()[tpl_ok], tpl2[1][o].ravel()[tpl_ok])
+        atm1 = np.interp(w2, tpl1[0][o][tpl_ok], tpl1[1][o][tpl_ok])
+        atm2 = np.interp(w2, tpl2[0][o][tpl_ok], tpl2[1][o][tpl_ok])
 
     else:
         atm1 = np.interp(w2, *tpl1)
