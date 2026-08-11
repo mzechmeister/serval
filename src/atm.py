@@ -120,12 +120,12 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
 
     return atm_par
 
-def _calc_atm(_ln_wave, atm_par):
+def _calc_atm(ln_wave, atm_par):
     ''' Wrapper function to calculate the atmospheric transmission from the templates and the atmospheric parameters
     
     Parameters
     ----------
-    _ln_wave : np.ndarray
+    ln_wave : np.ndarray
         natural log of the wavelength, i.e. log(wavelength)
     atm_par : np.ndarray
         atmospheric parameters
@@ -136,9 +136,9 @@ def _calc_atm(_ln_wave, atm_par):
         calculated atmospheric transmission
     '''
     # the normalisation scaling is ignored
-    _wave = np.exp(_ln_wave)
-    atm1 = np.interp(_wave, *tplo1)   # only linear interpolation so far
-    atm2 = np.interp(_wave, *tplo2)
+    wave = np.exp(ln_wave)
+    atm1 = np.interp(wave, *tplo1)   # only linear interpolation so far
+    atm2 = np.interp(wave, *tplo2)
     yatmo = atm1**atm_par[1] * atm2**atm_par[2]
 
     yatmo = np.where(yatmo == 0, 1, yatmo)
@@ -183,9 +183,6 @@ def calc_atm(ln_wave, atm_par, order=None):
                 yatmo[o] = _calc_atm(ln_wave[o], atm_par)
             else:
                 yatmo = _calc_atm(ln_wave, atm_par)
-
-        if np.isnan(yatmo).any():
-            yatmo[np.isnan(yatmo)] = 1.0
         
         return yatmo
     else:
