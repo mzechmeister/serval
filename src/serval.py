@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
-from arrow import get
-
 __author__ = 'Mathias Zechmeister'
 __version__ = '2022-01-26'
 
@@ -987,6 +985,8 @@ def serval():
    comin = min(corders)
    comax = max(corders)
 
+   print('orders:', orders, 'corders:', corders)
+
    if reana:
       x = analyse_rv(obj, postiter=postiter, fibsuf=fibsuf, oidx=orders)
       exit()
@@ -1630,7 +1630,7 @@ def serval():
                    if not hasattr(sp, 'atm_par'):
                        # compute here for cases skippre or vtfix
                        
-                       print('atm_cal_order:', atm_o, 'airmass:', spt.airmass)
+                       print('atm_cal_order:', atm_o, 'airmass:', sp.airmass)
                        sp_atm = sp.get_data(pfits=2)
                        ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
 
@@ -2772,7 +2772,7 @@ if __name__ == "__main__":
    if inst.name == 'FEROS' and fib == 'B' and atmmask == 'auto': atmmask = 'feros_mask_short.dat'
    if fib == 'B' and skyfile == 'auto': skyfile = None   # if fiber B, no masking 
 
-   # save the final atmspec and atmmask value for use in the argument parser
+   # save the final atmspec, atmmask and skyfile settings for use after the argument parser, in case the user sets one to "auto"
    atmspec_set = atmspec
    atmmask_set = atmmask
    skyfile_set = skyfile
@@ -2795,11 +2795,11 @@ if __name__ == "__main__":
    argopt('-targplx', help='[mas] Target parallax.', type=float, default='nan', metavar='PLX')
    argopt('-targrv', help='[km/s] Target RV guess (for index measures) [float, "drsspt", "drsmed", "targ", None, "auto"]. None => no measure; targ => from simbad, hdr; auto => first from headers, second from simbad)).', default={'CARM_NIR': None, 'else': 'auto'}, metavar='RV')
    argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
+   argopt('-atm_cal_dry', help='Calibrate also the dry content when modelling the telluric spectrum; default: the coefficient is predicted with airmass', default=False, action='store_true')
+   argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order, type=arg2slice)
+   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='auto')
    argopt('-atmmask', help='Telluric line mask ("" for no masking)'+default, nargs='?', default=atmmask, const='auto', type=str)
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
-   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='auto')
-   argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order, type=arg2slice)
-   argopt('-atm_cal_dry', help='Calibrate also the dry content when modelling the telluric spectrum; default: the coefficient is predicted with airmass', default=False, action='store_true')
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')
    argopt('-msklist', help='Ascii table with vacuum wavelengths to mask.', default='') # [flux and width]
    argopt('-mskwd', help='[km/s] Broadening width for msklist'+default, type=float, default=4.)

@@ -82,7 +82,7 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
         flux of the observed spectrum
     a1 : float, optional
         airmass of the observation; if known it can be provided to reduce the number of free parameters
-    o : int, optional
+    o : int, list, slice or np.ndarray, optional
         echelle order
 
     Returns

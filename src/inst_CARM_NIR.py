@@ -209,7 +209,5 @@ def data(self, orders, pfits=True):
          #bpmap[:,:-1] |= flag.sat * (f>300000)[:,1:]
       bpmap[f < -3*e] |= flag.neg
       bpmap[e==0] |= flag.nan
-
-      ok = np.ones_like(f, dtype=bool)
       return w, f, e, bpmap
 
