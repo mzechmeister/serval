@@ -908,6 +908,7 @@ def fitspec(tpl, w, f, e_f=None, v=0, vfix=False, clip=None, nclip=1, keep=None,
          # else: break
       if len(keep)<10: # too much rejected? too many negative values?
          print("too much rejected, skipping order %s" % order)
+
          break
       if 0 and np.abs(par.params[0]*1000)>20:
          if df:
@@ -1441,9 +1442,9 @@ def serval():
       else:
          '''set up a spline template from spt'''
          TPLrv = spt.ccf.rvc
+
          if atmspec:
          
-            
             ok = (spt.bpmap[atm_o] == 0) & (spt.f[atm_o] / spt.e[atm_o] > 3)
             spt.atm_par = atm.fit_atm_par(spt.w[atm_o][ok], spt.f[atm_o][ok], o=atm_o, a1=None if atm_cal_dry else spt.airmass)
 
@@ -1453,12 +1454,18 @@ def serval():
             spt.f /= yatm
             spt.e /= yatm
 
+            spt.bpmap[np.isnan(yatm)] |= flag.atm
+
             for o in looka:
                gplot.xlabel('"wavelength"')
                gplot.key(f'title "{obj} (o = {o})"')
 
                ok_o = (spt.bpmap[o] == 0) & (spt.f[o] / spt.e[o] > 3)
-               mean_o = np.nanmean(spt.f[o][ok_o])
+               if not np.any(ok_o):
+                  mean_o = 1.0
+                  ok_o = np.ones_like(spt.f[o], dtype=bool)
+               else:
+                  mean_o = np.nanmean(spt.f[o][ok_o])
                gplot(np.exp(spt.w[o][ok_o]), spt.f0[o][ok_o]/mean_o, 'w lp lc 9 pt 7 t "input",',
                      np.exp(spt.w[o]), spt.f[o]/mean_o, 'w lp lc 1 pt 6 t "corrected",',
                      np.exp(spt.w[o]), np.nanmedian(spt.f0[o])  *yatm[o]/mean_o, 'w l lc 7 lw 2 t "atm model"')
@@ -1636,6 +1643,7 @@ def serval():
                if atmspec:
                    yatm = atm.calc_atm(sp.w, atm_par, order=o) 
 
+                   sp.bpmap[np.isnan(yatm)] |= flag.atm
                    sp.f = sp.f / yatm
                    sp.e = sp.e / yatm
 
@@ -1687,6 +1695,11 @@ def serval():
                   if not safemode: pause()
                   break
 
+               if 0:# o in lookt: #o==-29:
+                  gplot-(w2, sp.f, poly, ' t "sp.f", "" us 1:3 w l t "poly"')
+                  gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
+                  pause(n)
+
                # get poly from fit with mean RV
                par, fmod, keep, stat = fitspec(TPL[o],
                   w2[i0:ie], sp.f[i0:ie], sp.e[i0:ie], v=0, vfix=True, keep=pind, v_step=False, clip=kapsig, nclip=nclip, deg=deg, plot=0)   # RV  (in dopshift instead of v=RV; easier masking?)
@@ -1700,6 +1713,7 @@ def serval():
                   gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
                   pause(n)
               #(fmod<0) * flag.neg
+              
             bmod &= ~flag.badT   # take out badT flag from observation, needed only in normalisation
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
             tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
@@ -2181,6 +2195,7 @@ def serval():
 
             # Divide out the atmosphere
             yatm = atm.calc_atm(sp.w, sp.atm_par)
+            sp.bpmap[np.isnan(yatm)] |= flag.atm
 
             sp.f /= yatm
             sp.e /= yatm
@@ -2190,6 +2205,11 @@ def serval():
                 yH2O = atm.calc_atm(sp.w, [sp.atm_par[0], 0, sp.atm_par[2]])
                 # create a new mask for each order, because the atm mask is not necessarily the same as the original mask
                 ok_o = (sp.bpmap[o] == 0) & (sp.f[o] / sp.e[o] > 3)
+                if not np.any(ok_o): 
+                  mean_o = 1.0
+                  ok_o = np.ones_like(spt.f[o], dtype=bool)
+                else:
+                  mean_o = np.nanmean(spt.f[o][ok_o])
                 mean_o = np.nanmean(sp.f[o][ok_o])
                 gplot.key('tit "%s (n=%s, o=%s)"' % (obj, n, o))
                 gplot(sp.w[o][ok_o], sp.f0[o][ok_o]/mean_o, sp.f[o][ok_o]/mean_o, yH2O[o][ok_o]+1, yO2[o][ok_o]+1, 'w lp pt 7 ps 0.5 lc 9 t "input", "" us 1:3 w l lc 1 lw 2 t "atm corrected", "" us 1:4 w l lc 3 lw 1 t "H2O", "" us 1:5 w l lc 2 lw 1 t "O2"')

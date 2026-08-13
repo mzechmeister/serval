@@ -92,7 +92,7 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     '''
     
     ok = np.isfinite(f) 
-    tpl_ok = np.isfinite(tpl1[0][o]) & np.isfinite(tpl2[0][o])
+    tpl_ok = np.isfinite(tpl1[1][o]) & np.isfinite(tpl2[1][o])
     w2 = np.exp(ln_wave[ok])
 
     if is_echelle:
@@ -141,8 +141,8 @@ def _calc_atm(ln_wave, atm_par):
     atm2 = np.interp(wave, *tplo2)
     yatmo = atm1**atm_par[1] * atm2**atm_par[2]
 
-    yatmo = np.where(yatmo == 0, 1, yatmo)
-    yatmo = np.nan_to_num(yatmo, nan=1.0, posinf=1.0, neginf=1.0)
+    yatmo = np.where(yatmo < 0.02, np.nan, yatmo)
+    #yatmo = np.nan_to_num(yatmo, nan=1.0, posinf=1.0, neginf=1.0)
     return yatmo
 
 def calc_atm(ln_wave, atm_par, order=None):
