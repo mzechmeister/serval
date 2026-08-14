@@ -10,8 +10,12 @@ iomax = 61 # NAXIS2
 snmax = 500
 oset = '10:52'
 
+default_fib = 'A'  # default fiber for science spectra
+
 maskfile = 'telluric_mask_carm_short.dat'
 atmspec = 'atm_carm_vis.fits'
+
+atm_cal_order = 44 # order has some O2 and some water, alternative is order 30
 
 pat = '*-vis_%(fib)s.fits *-vis_%(fib)s-tac.fits'   # => vis_A.fits, vis_B.fits
 
