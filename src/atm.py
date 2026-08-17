@@ -6,9 +6,9 @@ airmass_to_c1 = lambda x: x
 def load(filename):
     ''' Load atmospheric model from file
 
-    Standard files that ship with SERVAL and currently supported are 
+    Standard files that ship with SERVAL and currently supported are
     'stdatm.fits'
-        Description: Standard atmospheric model     
+        Description: Standard atmospheric model
     'stdAtmos_vis.fits'
         Description: Standard atmospheric model from MOLECFIT that still needs a convolution
     'atm_carm_nir.fits' or 'atm_carm_vis.fits'
@@ -96,8 +96,8 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     w2 = np.exp(ln_wave[ok])
 
     if is_echelle:
-        # quick workaround for the NIR, tpl_ok maps a 2D array to 1D, it breaks if orders overlap, so be careful in the future 
-        # paste together o30 and o33 in NIR 
+        # quick workaround for the NIR, tpl_ok maps a 2D array to 1D, it breaks if orders overlap, so be careful in the future
+        # paste together o30 and o33 in NIR
         atm1 = np.interp(w2, tpl1[0][o][tpl_ok], tpl1[1][o][tpl_ok])
         atm2 = np.interp(w2, tpl2[0][o][tpl_ok], tpl2[1][o][tpl_ok])
 
@@ -146,7 +146,7 @@ def _calc_atm(ln_wave, atm_par):
     return yatmo
 
 def calc_atm(ln_wave, atm_par, order=None):
-    ''' Calculate the atmospheric transmission from the templates and the atmospheric parameters. 
+    ''' Calculate the atmospheric transmission from the templates and the atmospheric parameters.
         If the order is provided, only that order is calculated, otherwise all orders are calculated.
 
     Parameters
