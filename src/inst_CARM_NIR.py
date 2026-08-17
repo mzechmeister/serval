@@ -15,7 +15,7 @@ pmax = 1800
 oset = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 28, 29, 31, 46, 48, 50, 52]
 coset = sorted(set(oset) | {0, 2, 12, 13, 16, 22, 23, 24, 25, 26, 27, 30, 32, 33, 34, 45, 47, 49, 51, 53, 54, 55})
 
-# these are the old setting pre atm cal 
+# these are the old setting pre atm cal
 oset_atmspec = sorted(set(range(iomax)) - {36, 37, 38, 39, 40, 41})   # these are the orders that are not used for telluric modeling
 coset_atmspec = oset_atmspec   # these are the orders that are not used for telluric modeling
 
@@ -23,10 +23,10 @@ default_fib = 'A'  # default fiber for science spectra
 
 maskfile = 'telluric_mask_nir4.dat'
 #atmspec = 'atm_carm_nir.fits'
-#atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 
+#atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines
                                                          # lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib.
-                                                         # In first tests, the 0.25 limit seems to be a good compromise between masking too many lines and 
-                                                         # not masking enough lines that are not corrected properly and yield the best results for Barnard's Star. 
+                                                         # In first tests, the 0.25 limit seems to be a good compromise between masking too many lines and
+                                                         # not masking enough lines that are not corrected properly and yield the best results for Barnard's Star.
 skyfile = 'sky_carm_nir'
 
 pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits

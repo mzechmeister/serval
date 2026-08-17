@@ -551,13 +551,13 @@ def polyreg(x2, y2, e_y2, v, deg=1, retmod=True):   # polynomial regression
          ii, = np.where((e_y2<=0) & (fmod>0.01))
          if len(ii) > 0:
             print('WARNING: Matrix is not positive definite.', 'Zero or negative yerr values for ', ii.size, 'at', ii)
-         else: 
+         else:
             if debug: print('WARNING: SSR<0 - polyfit failed. Reason unknown. Returning zeros.')
             if 0:
                gplot(x2, y2, calcspec(x2, v, *p), fmod, ' w lp,"" us 1:3 w l,"" us 1:4 w l lc 4 t "fmod","" us 1:($2-$3) t "res [v=%f,SSR=%f]"' % (v, SSR))
-               pause('v: %f; SSR: %f',v,SSR)            
+               pause('v: %f; SSR: %f',v,SSR)
             #raise ValueError('polyfit failed. SSR<0, reason unknown. Returning zeros.')
-         
+
          p = 0*p
          #pause(0)
 
@@ -1107,7 +1107,6 @@ def serval():
 
    # first check if atmspec is set, and if so, load the telluric spectrum
    if atmspec:
-      
       atm_o = atm_cal_order   # simplify the variable name for better readability below
       if not atm_o: raise ValueError('Telluric basis spectra have been defined, but no fit order.\n So far telluric modelling only implemented for CARM_VIS or CARM_NIR by default')
 
@@ -1147,7 +1146,7 @@ def serval():
       if 'th_mask' in atmmask_file: # well, it is not atmosphere, but ...
          atmmask[:,1] = atmmask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means flagged and bad)
 
-   if msklist:   # if msklist is set, load the line list and convert to binary mask 
+   if msklist:   # if msklist is set, load the line list and convert to binary mask
       if atmmask_file: print('WARNING: both atmmask and msklist are set, msklist %s is prioritized' % msklist)
       atmmask = masktools.list2mask(msklist, wd=mskwd)
       atmmask[:,1] = atmmask[:,1] == 0  # invert mask; actually the telluric mask should be inverted (so that 1 means good)
@@ -1444,7 +1443,6 @@ def serval():
          TPLrv = spt.ccf.rvc
 
          if atmspec:
-         
             ok = (spt.bpmap[atm_o] == 0) & (spt.f[atm_o] / spt.e[atm_o] > 3)
             spt.atm_par = atm.fit_atm_par(spt.w[atm_o][ok], spt.f[atm_o][ok], o=atm_o, a1=None if atm_cal_dry else spt.airmass)
 
@@ -1632,7 +1630,7 @@ def serval():
                if atmspec:
                    if not hasattr(sp, 'atm_par'):
                        # compute here for cases skippre or vtfix
-                       
+
                        print('atm_cal_order:', atm_o, 'airmass:', sp.airmass)
                        sp_atm = sp.get_data(pfits=2)
                        ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
@@ -1641,10 +1639,11 @@ def serval():
                    atm_par = sp.atm_par
                sp = sp.get_data(pfits=2, orders=o)
                if atmspec:
-                   yatm = atm.calc_atm(sp.w, atm_par, order=o) 
+                   yatm = atm.calc_atm(sp.w, atm_par, order=o)
 
                    sp.bpmap[np.isnan(yatm)] |= flag.atm
                    sp.f = sp.f / yatm
+                   if o== 13: stop()
                    sp.e = sp.e / yatm
 
                if inst.name == 'FEROS':
@@ -1713,7 +1712,7 @@ def serval():
                   gplot+(w2[i0:ie], (sp.f / poly)[i0:ie], ' w l t "spf.f/poly",', TPL[o].wk, TPL[o].fk, ' w l t "TPL"')
                   pause(n)
               #(fmod<0) * flag.neg
-              
+
             bmod &= ~flag.badT   # take out badT flag from observation, needed only in normalisation
             ind = (bmod&(flag.nan+flag.neg+flag.out)) == 0 # not valid
             tellind = (bmod&(flag.atm+flag.sky)) > 0                  # valid but down weighted
@@ -2205,7 +2204,7 @@ def serval():
                 yH2O = atm.calc_atm(sp.w, [sp.atm_par[0], 0, sp.atm_par[2]])
                 # create a new mask for each order, because the atm mask is not necessarily the same as the original mask
                 ok_o = (sp.bpmap[o] == 0) & (sp.f[o] / sp.e[o] > 3)
-                if not np.any(ok_o): 
+                if not np.any(ok_o):
                   mean_o = 1.0
                   ok_o = np.ones_like(spt.f[o], dtype=bool)
                 else:
@@ -2319,7 +2318,7 @@ def serval():
                if 0:#o==29:
                   gplot(f2, 'w p,', spt.f[o], 'w lp,', pind, f2[pind])
                   pause(o)
-               
+
                par, f2mod, keep, stat = fitspec((spt.w[o], spt.f[o]), wmod,f2,e2, v=targrv/1000, clip=kapsig, nclip=nclip,keep=pind, df=dy, plot=(o in lookssr)|(2*(not safemode)))
 
                e_vi = np.abs(e2/dy)*c*1000.   # velocity error per pixel
@@ -2733,7 +2732,7 @@ if __name__ == "__main__":
    preparser.add_argument('-fib', default='')
    preparser.add_argument('-skymsk', default='auto', dest='skyfile')
    preargs, _ =  preparser.parse_known_args()
-   
+
    inst = preargs.inst
    inst = importlib.import_module('inst_'+inst)
 
@@ -2762,7 +2761,7 @@ if __name__ == "__main__":
    # resolve 'auto' first, regardless of whether it came from an explicit flag or the default
    atmspec = inst_atmspec if preargs.atmspec == 'auto' else preargs.atmspec
 
-   atmmask_file = inst_atmmask_file if preargs.atmmask_file == 'auto' else preargs.atmmask_file 
+   atmmask_file = inst_atmmask_file if preargs.atmmask_file == 'auto' else preargs.atmmask_file
 
    if atmspec:
       oset = getattr(inst, 'oset_atmspec', oset)
@@ -2772,7 +2771,7 @@ if __name__ == "__main__":
 
    if fib == 'B' and atmmask_file == 'auto': atmmask_file = None   # if fiber B, no masking except for FEROS, which has a special mask for fiber B
    if inst.name == 'FEROS' and fib == 'B' and atmmask_file == 'auto': atmmask_file = 'feros_mask_short.dat'
-   if fib == 'B' and skyfile == 'auto': skyfile = None   # if fiber B, no masking 
+   if fib == 'B' and skyfile == 'auto': skyfile = None   # if fiber B, no masking
 
    # save the final atmspec, atmmask and skyfile settings for use after the argument parser, in case the user sets one to "auto"
    atmspec_def = atmspec
@@ -2897,7 +2896,7 @@ if __name__ == "__main__":
    if skippre or vtfix or last or isinstance(tpl, str) or driftref:
       niter -= 1
 
-   if atmspec == 'auto': atmspec = atmspec_def   # if the user passes '-atmspec auto', we need to use the value that was resolved from the instrument defaults   
+   if atmspec == 'auto': atmspec = atmspec_def   # if the user passes '-atmspec auto', we need to use the value that was resolved from the instrument defaults
    if atmmask_file == 'auto': atmmask_file = atmmask_def
    if skyfile == 'auto': skyfile = skyfile_def if fib != 'B' else None   # if the user passes '-skymsk auto', we need to use the value that was resolved from the instrument defaults
 

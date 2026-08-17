@@ -13,7 +13,7 @@ def load(filename):
         Description: Standard atmospheric model from MOLECFIT that still needs a convolution
     'atm_carm_nir.fits' or 'atm_carm_vis.fits'
         Description: Data driven atmospheric model for the CARMENES VIS or NIR, derived from a large number of telluric standard spectra. The model is provided as a function of airmass and echelle order.
-    
+
     Also a user can provide their own atmospheric model in the format of a FITS file with the following structure:
     - The first extension (index 0) should contain the header with the following keywords:
         - C1_REF: Reference value for the linear relation to transform airmass to coefficients
@@ -22,7 +22,7 @@ def load(filename):
         - WAVE: Wavelength values
         - O2: Oxygen transmission values
         - H2O: Water vapor transmission values
-    
+
     Parameters
     ----------
     filename : str
@@ -73,7 +73,7 @@ def load(filename):
 
 def fit_atm_par(ln_wave, f, a1=None, o=None):
     ''' Determine the atmospheric parameters from a given spectrum and 2 templates. If the airmass is known, it can be provided to reduce the number of free parameters.
-    
+
     Parameters
     ----------
     ln_wave: np.ndarray
@@ -90,8 +90,8 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
     atm_par : np.ndarray
         fitted atmospheric parameters
     '''
-    
-    ok = np.isfinite(f) 
+
+    ok = np.isfinite(f)
     tpl_ok = np.isfinite(tpl1[1][o]) & np.isfinite(tpl2[1][o])
     w2 = np.exp(ln_wave[ok])
 
@@ -113,7 +113,7 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
         y /= atm1 ** c1
 
     atm_par = np.linalg.lstsq(A, np.log(y), rcond=None)[0]
-    
+
     if a1 is not None:
         # insert the airmass coefficient c1 into the parameter array
         atm_par = np.array([atm_par[0], c1, atm_par[1]])
@@ -122,7 +122,7 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
 
 def _calc_atm(ln_wave, atm_par):
     ''' Wrapper function to calculate the atmospheric transmission from the templates and the atmospheric parameters
-    
+
     Parameters
     ----------
     ln_wave : np.ndarray
@@ -148,7 +148,7 @@ def _calc_atm(ln_wave, atm_par):
 def calc_atm(ln_wave, atm_par, order=None):
     ''' Calculate the atmospheric transmission from the templates and the atmospheric parameters. 
         If the order is provided, only that order is calculated, otherwise all orders are calculated.
-    
+
     Parameters
     ----------
     ln_wave : np.ndarray
@@ -183,7 +183,7 @@ def calc_atm(ln_wave, atm_par, order=None):
                 yatmo[o] = _calc_atm(ln_wave[o], atm_par)
             else:
                 yatmo = _calc_atm(ln_wave, atm_par)
-        
+
         return yatmo
     else:
         return _calc_atm(ln_wave, atm_par)
