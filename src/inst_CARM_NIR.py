@@ -177,24 +177,22 @@ def data(self, orders, pfits=True):
             #o=17; gplot(g[o],'w l,',f[o],  'w lp')
             #pause()
       else:
-         orders, det = divmod(orders,2)
+         # reshape orders to half-orders; bad hack to stick with section (should we avoid data.reshape?)
+         hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [2040, 56]
          f = 1.*hdulist['SPEC'].section[orders]
-         if 1:
-            # split and renumber the orders and indices
-            sl = [None, None]
-            sl[1-det] = int(f.shape[0]/2)
-            sl = slice(*sl)
-            f = f[sl]
-            bp[0], bp[1] = bp[0]*2, bp[1]%f.shape[0]
-
-         w = hdulist['WAVE'].section[orders][sl]
-         e = hdulist['SIG'].section[orders][sl]
+         w = hdulist['WAVE'].section[orders]
+         e = hdulist['SIG'].section[orders]
+         hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [4080, 28]
 
          bpmap = np.isnan(f).astype(int)            # flag 1 for nan
-         bp = bp[:,np.where(bp[0]==orders)[0]]
-         if len(bp):
-           bpmap[bp[1]] = 1
-           f[bp[1]] = (f[bp[1]-1]+f[bp[1]+1]) / 2
+         bp[0], bp[1] = bp[0]*2, bp[1]%f.shape[-1]      # from echelle orders to half-orders
+         # bp = bp[:,np.where(bp[0]==orders)[0]]        # bug in previous version: bp[0] was half-order, but orders was converted to full-order in divmod
+         idx = np.where((bp[0][:,None]==orders//2).T)   # replicating bug
+         # idx = np.where((bp[0][:,None]==orders).T)    # correct version
+         bp = (None if np.isscalar(orders) else idx[0]), bp[1][idx[1]]   # prepend a dummy dimension or a reduced order index [30,32,33] -> [0,1,2]
+         if len(bp[1]):
+           bpmap[bp] = 1
+           f[bp] = (f[bp[0],bp[1]-1]+f[bp[0],bp[1]+1]) / 2
          #pause()
       if self.fox:
          # scale spectrum
