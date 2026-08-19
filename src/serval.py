@@ -1632,7 +1632,7 @@ def serval():
                        # compute here for cases skippre or vtfix
 
                        print('atm_cal_order:', atm_o, 'airmass:', sp.airmass)
-                       sp_atm = sp.get_data(pfits=2)
+                       sp_atm = sp.get_data(pfits=2, orders=atm_o)
                        ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
 
                        sp.atm_par = atm.fit_atm_par(sp_atm.w[ok], sp_atm.f[ok], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
