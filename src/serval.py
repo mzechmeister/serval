@@ -1643,7 +1643,6 @@ def serval():
 
                    sp.bpmap[np.isnan(yatm)] |= flag.atm
                    sp.f = sp.f / yatm
-                   if o== 13: stop()
                    sp.e = sp.e / yatm
 
                if inst.name == 'FEROS':

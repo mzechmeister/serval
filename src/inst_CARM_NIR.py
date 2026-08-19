@@ -186,9 +186,7 @@ def data(self, orders, pfits=True):
 
          bpmap = np.isnan(f).astype(int)            # flag 1 for nan
          bp[0], bp[1] = bp[0]*2, bp[1]%f.shape[-1]      # from echelle orders to half-orders
-         # bp = bp[:,np.where(bp[0]==orders)[0]]        # bug in previous version: bp[0] was half-order, but orders was converted to full-order in divmod
-         idx = np.where((bp[0][:,None]==orders//2).T)   # replicating bug
-         # idx = np.where((bp[0][:,None]==orders).T)    # correct version
+         idx = np.where((bp[0][:,None]==orders).T)
          bp = (None if np.isscalar(orders) else idx[0]), bp[1][idx[1]]   # prepend a dummy dimension or a reduced order index [30,32,33] -> [0,1,2]
          if len(bp[1]):
            bpmap[bp] = 1
