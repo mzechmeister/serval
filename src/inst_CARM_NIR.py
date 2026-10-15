@@ -27,7 +27,7 @@ maskfile = 'telluric_mask_nir4.dat'
                                                          # lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib.
                                                          # In first tests, the 0.25 limit seems to be a good compromise between masking too many lines and
                                                          # not masking enough lines that are not corrected properly and yield the best results for Barnard's Star.
-skyfile = 'sky_mask_carm_nir.dat'
+skyfile = 'sky_mask_carm_nir_20261015.dat'
 
 pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits
 
