@@ -992,6 +992,9 @@ def serval():
 
    t0 = time.time()
    print("start time:", time.strftime("%Y-%m-%d %H:%M:%S %a", time.localtime()))
+   with os.popen('git -C '+servalsrc+' rev-parse --short HEAD 2> /dev/null') as stream:
+      gitver = stream.read().strip()
+      print("git version:", gitver)
 
    ### SELECT TARGET ###
    if tplrv=='auto' and (tpl is None or isinstance(tpl, int)):  tplrv = targrv
