@@ -26,10 +26,15 @@ import sys
 #    format object form1 "%OBJECT : %IDLIST(1) : %COO(A D) %PM(A D [E]) %PLX\n"
 #    query gj699
 
+SIMBAD_SITES = [
+   'https://simbad.cds.unistra.fr/simbad/sim-script',
+   'https://simbad.cfa.harvard.edu/simbad/sim-script',
+]
+
 def simbad_query(targ):
    '''
    Make a request to simbad to get RADE, PM, and PLX.
-   
+
    targ : str, identifier name for simbad request.
 
    Example:
@@ -43,15 +48,28 @@ def simbad_query(targ):
       'output console=off',
       'format object form1 "%OBJECT;%IDLIST(1);%COO(A D);%PM(A D [E]);%PLX;%RV"',
       'query '+targ]))
-   # urlopen('http://simbad.u-strasbg.fr/simbad/sim-script', b'submit=submit+script&script=output%20script%3Doff%0Aoutput%20console%3Doff%0Aformat%20object%20form1%20%22%25OBJECT%3B%25IDLIST%281%29%3B%25COO%28A%20D%29%3B%25PM%28A%20D%20%5BE%5D%29%3B%25PLX%3B%25RV%22%0Aquery%20gj699').read()
+   payload = str.encode('submit=submit+script&script='+query)
 
-   site = 'http://simbad.u-strasbg.fr/simbad/sim-script'
-   result = urlopen(site, str.encode('submit=submit+script&script='+query)).read().decode()
+   for site in SIMBAD_SITES:
+      try:
+         result = urlopen(site, payload, timeout=30).read().decode()
+         break
+      except IOError as e:   # DNS failures, HTTP errors and timeouts
+         print('SIMBAD request to %s failed: %s' % (site, e))
+   else:
+      print('No SIMBAD server could be reached.')
+      exit()
+
+
    if result.startswith('::error'):
-       print(result)
-       print('There was a problem with resolving "%s".'% targ)
-       print('The target can be checked directly on: https://simbad.u-strasbg.fr/simbad/sim-fid')
-       exit()
+      print(result)
+      print('There was a problem with resolving "%s".'% targ)
+      print('The target can be checked directly on: https://simbad.cds.unistra.fr/simbad/sim-fid')
+      exit()
+
+   print('SIMBAD request to %s succeeded.' % site)
+
+
    return result
 
 class Targ:
